@@ -31,7 +31,7 @@ install:
 all: clean install test black check_code
 
 
-uninstal:
+uninstall:
 	@python setup.py install --record files.txt
 	@cat files.txt | xargs rm -rf
 	@rm -f files.txt
