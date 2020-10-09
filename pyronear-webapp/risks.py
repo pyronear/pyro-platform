@@ -1,3 +1,4 @@
+
 '''This file is dedicated to the "Niveaux de Risque" dashboard.
 
 The main item is the RisksApp function that returns the corresponding page layout.
@@ -48,8 +49,7 @@ def build_risks_geojson_and_colorbar():
 
 
     ## We fetch the json file online and store it in the departments variable
-    req = Request('https://france-geojson.gregoiredavid.fr/repo/departements.geojson')
-    with urlopen(req) as response:
+    with open('data/departements.geojson') as response:
         departments = json.load(response)
 
     ## We add to each department in the geojson a new property called "score" that corresponds to the random risk level

@@ -1,3 +1,4 @@
+
 '''This file is dedicated to the "Alertes et Infrastructures" dashboard.
 
 The main item is the AlertsApp function that returns the corresponding page layout.
@@ -64,8 +65,7 @@ def choose_layer_style(n_clicks):
 def build_alerts_geojson():
 
     ### We fetch the json file online and store it in the departments variable
-    req = Request('https://france-geojson.gregoiredavid.fr/repo/departements.geojson')
-    with urlopen(req) as response:
+    with open('data/departements.geojson') as response:
         departments = json.load(response)
 
     ### We plug departments in a Dash Leaflet GeoJSON object that will be added to the map

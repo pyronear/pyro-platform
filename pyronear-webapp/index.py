@@ -1,3 +1,4 @@
+
 '''This file is the main one and the script to run in order to launch the app locally.
 
 Based on the url path, it calls functions imported from the .py in order to build
@@ -73,11 +74,9 @@ def display_page(pathname):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
-'''
-This one detects what department is being hovered by the user's cursor and
+'''This one detects what department is being hovered by the user's cursor and
 returns the corresponding name in the info object in the upper right corner of the map.
-If a marker is hovered instead of a department, it returns nothing for now.
-'''
+If a marker is hovered instead of a department, it returns nothing for now.'''
 @app.callback(
               Output('alerts_info', 'children'),
               [
