@@ -11,6 +11,9 @@ The main item is the AlertsApp function that returns the corresponding page layo
 ### Pandas, to read the csv file with positions of  cameras on the field
 import pandas as pd
 
+### Useful import to read the GeoJSON file
+import json
+
 ### Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html

@@ -11,6 +11,9 @@ The main item is the RisksApp function that returns the corresponding page layou
 ### NumPy to generate the random scores from 0 to 1 that we are using so far
 import numpy as np
 
+### Useful import to read the GeoJSON file
+import json
+
 ### Various modules provided by Dash to build the page layout
 import dash_html_components as html
 import dash_leaflet as dl
