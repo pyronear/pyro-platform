@@ -1,5 +1,5 @@
-'''
-This file is the main one and the script to run in order to launch the app locally.
+'''This file is the main one and the script to run in order to launch the app locally.
+
 Based on the url path, it calls functions imported from the .py in order to build
 the appropriate page layout.
 '''
@@ -85,7 +85,7 @@ If a marker is hovered instead of a department, it returns nothing for now.
                Input('markers', 'hover_feature')
                ]
               )
-def dpt_hover_simple(hovered_department, hovered_marker):
+def dpt_hover_alerts(hovered_department, hovered_marker):
     if hovered_marker is not None:
         hovered_marker = None
         return None
@@ -135,7 +135,7 @@ returns the corresponding name in the info object in the upper right corner of t
               Output('risks_info', 'children'),
               Input('geojson_risks', 'hover_feature')
               )
-def dpt_hover_simple(hovered_department):
+def dpt_hover_risks(hovered_department):
     return get_info(hovered_department)
 
 

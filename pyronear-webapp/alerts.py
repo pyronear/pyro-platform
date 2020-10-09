@@ -1,5 +1,5 @@
-'''
-This file is dedicated to the "Alertes et Infrastructures" dashboard.
+'''This file is dedicated to the "Alertes et Infrastructures" dashboard.
+
 The main item is the AlertsApp function that returns the corresponding page layout.
 '''
 
@@ -11,7 +11,7 @@ The main item is the AlertsApp function that returns the corresponding page layo
 import pandas as pd
 
 ### Useful imports to fetch the departments GeoJSON online and read it
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import json
 
 ### Various modules provided by Dash to build the page layout
@@ -64,7 +64,8 @@ def choose_layer_style(n_clicks):
 def build_alerts_geojson():
 
     ### We fetch the json file online and store it in the departments variable
-    with urlopen('https://france-geojson.gregoiredavid.fr/repo/departements.geojson') as response:
+    req = Request('https://france-geojson.gregoiredavid.fr/repo/departements.geojson')
+    with urlopen(req) as response:
         departments = json.load(response)
 
     ### We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
@@ -97,7 +98,7 @@ def get_camera_positions(dpt_code = None):
 
     ### We build a list of dictionaries containing the coordinates of each camera
     markers = []
-    for idx, row in camera_positions.iterrows():
+    for _, row in camera_positions.iterrows():
         lat = row['Latitude']
         lon = row['Longitude']
         markers.append(dict(lat = lat, lon = lon))

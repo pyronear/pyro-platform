@@ -1,6 +1,4 @@
-'''
-This file gathers a few items (variables, functions...) that are common to both dashboards.
-'''
+'''This file gathers a few items (variables, functions...) that are common to both dashboards.'''
 
 # ------------------------------------------------------------------------------
 # Imports

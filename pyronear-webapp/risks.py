@@ -1,5 +1,5 @@
-'''
-This file is dedicated to the "Niveaux de Risque" dashboard.
+'''This file is dedicated to the "Niveaux de Risque" dashboard.
+
 The main item is the RisksApp function that returns the corresponding page layout.
 '''
 
@@ -11,7 +11,7 @@ The main item is the RisksApp function that returns the corresponding page layou
 import numpy as np
 
 ### Useful imports to fetch the departments GeoJSON online and read it
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import json
 
 ### Various modules provided by Dash to build the page layout
@@ -40,7 +40,7 @@ def build_risks_geojson_and_colorbar():
     colorscale = ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026']
 
     ### We create a 'categories' object of the right format, then plug it into the Dash Leaflet function instantiating the colorbar
-    ctg = ["{}+".format(round(cls, 2), round(classes[i + 1], 2)) for i, cls in enumerate(classes[:-1])]
+    ctg = ["{}+".format(round(cls, 2)) for i, cls in enumerate(classes[:-1])]
     colorbar = dlx.categorical_colorbar(categories = ctg, colorscale = colorscale, width = 500, height = 30, position = "bottomleft")
 
     ### We define the style of department delimitations on the map (opacity and color of borders, opacity of color backgrounds...)
@@ -48,7 +48,8 @@ def build_risks_geojson_and_colorbar():
 
 
     ## We fetch the json file online and store it in the departments variable
-    with urlopen('https://france-geojson.gregoiredavid.fr/repo/departements.geojson') as response:
+    req = Request('https://france-geojson.gregoiredavid.fr/repo/departements.geojson')
+    with urlopen(req) as response:
         departments = json.load(response)
 
     ## We add to each department in the geojson a new property called "score" that corresponds to the random risk level

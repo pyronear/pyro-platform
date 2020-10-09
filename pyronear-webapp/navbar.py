@@ -1,5 +1,5 @@
-'''
-This file is dedicated to the navigation bar at the top of the web application.
+'''This file is dedicated to the navigation bar at the top of the web application.
+
 Its main component is the Navbar function that instantiates the navigation bar.
 '''
 
