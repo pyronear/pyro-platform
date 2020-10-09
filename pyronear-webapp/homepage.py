@@ -1,5 +1,5 @@
-
-'''This file is dedicated to the homepage.
+'''
+This file is dedicated to the homepage.
 
 The main item is the HomePage function that returns the corresponding page layout.
 '''

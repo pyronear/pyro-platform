@@ -1,5 +1,5 @@
-
-'''This file is dedicated to the "Alertes et Infrastructures" dashboard.
+'''
+This file is dedicated to the "Alertes et Infrastructures" dashboard.
 
 The main item is the AlertsApp function that returns the corresponding page layout.
 '''
@@ -10,10 +10,6 @@ The main item is the AlertsApp function that returns the corresponding page layo
 
 ### Pandas, to read the csv file with positions of  cameras on the field
 import pandas as pd
-
-### Useful imports to fetch the departments GeoJSON online and read it
-from urllib.request import Request, urlopen
-import json
 
 ### Various modules provided by Dash to build the page layout
 import dash_core_components as dcc

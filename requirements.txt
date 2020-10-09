@@ -2,7 +2,6 @@ wheel>=0.29
 pytest>=5.4.2
 pandas>=0.24.2
 numpy>=1.18.4
-urllib3>=1.24.3
 dash>=1.16.2
 dash-core-components>=1.12.1
 dash-html-components>=1.1.1

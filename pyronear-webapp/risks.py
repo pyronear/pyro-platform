@@ -1,5 +1,5 @@
-
-'''This file is dedicated to the "Niveaux de Risque" dashboard.
+'''
+This file is dedicated to the "Niveaux de Risque" dashboard.
 
 The main item is the RisksApp function that returns the corresponding page layout.
 '''
@@ -10,10 +10,6 @@ The main item is the RisksApp function that returns the corresponding page layou
 
 ### NumPy to generate the random scores from 0 to 1 that we are using so far
 import numpy as np
-
-### Useful imports to fetch the departments GeoJSON online and read it
-from urllib.request import Request, urlopen
-import json
 
 ### Various modules provided by Dash to build the page layout
 import dash_html_components as html

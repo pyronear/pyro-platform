@@ -1,5 +1,5 @@
-
-'''This file is the main one and the script to run in order to launch the app locally.
+'''
+This file is the main one and the script to run in order to launch the app locally.
 
 Based on the url path, it calls functions imported from the .py in order to build
 the appropriate page layout.
@@ -51,16 +51,17 @@ app.layout = html.Div(
 # ------------------------------------------------------------------------------
 # Overall page layout callback
 
-'''
-This is the main callback of the app.
-It takes the url path as input and returns the corresponding page layout,
-thanks to the instantiation functions built in the various .py files.
-'''
 @app.callback(
               Output('page-content', 'children'),
               Input('url', 'pathname')
               )
 def display_page(pathname):
+    '''
+    This is the main callback of the app.
+    It takes the url path as input and returns the corresponding page layout,
+    thanks to the instantiation functions built in the various .py files.
+    '''
+
     if pathname == '/alerts':
         return AlertsApp()
 
@@ -74,9 +75,6 @@ def display_page(pathname):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
-'''This one detects what department is being hovered by the user's cursor and
-returns the corresponding name in the info object in the upper right corner of the map.
-If a marker is hovered instead of a department, it returns nothing for now.'''
 @app.callback(
               Output('alerts_info', 'children'),
               [
@@ -85,6 +83,11 @@ If a marker is hovered instead of a department, it returns nothing for now.'''
                ]
               )
 def dpt_hover_alerts(hovered_department, hovered_marker):
+    '''
+    This one detects what department is being hovered by the user's cursor and
+    returns the corresponding name in the info object in the upper right corner of the map.
+    If a marker is hovered instead of a department, it returns nothing for now.
+    '''
     if hovered_marker is not None:
         hovered_marker = None
         return None
@@ -92,23 +95,18 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
     return get_info(hovered_department)
 
 
-'''
-This one detects what department the user is clicking on and returns the position
-of the cameras deployed in this department as markers on the map. It relies on the
-get_camera_positions function, imported from alerts.py that takes a department code
-as input and returns a GeoJSON file containing the position of cameras.
-'''
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
+    '''
+    This one detects what department the user is clicking on and returns the position
+    of the cameras deployed in this department as markers on the map. It relies on the
+    get_camera_positions function, imported from alerts.py that takes a department code
+    as input and returns a GeoJSON file containing the position of cameras.
+    '''
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
 
 
-'''
-This callback detects clicks on the button used to change the layer style of the map
-and returns the right topographic or satellite view, as well as the appropriate
-content for the button.
-'''
 @app.callback(
               [Output('layer_style_button', 'children'),
                Output('alerts_tile_layer', 'url'),
@@ -117,6 +115,11 @@ content for the button.
               Input('layer_style_button', 'n_clicks')
               )
 def change_layer_style(n_clicks = None):
+    '''
+    This callback detects clicks on the button used to change the layer style of the map
+    and returns the right topographic or satellite view, as well as the appropriate
+    content for the button.
+    '''
     if n_clicks is None:
         n_clicks = 0
 
@@ -126,15 +129,15 @@ def change_layer_style(n_clicks = None):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
-'''
-This one detects what department is being hovered by the user's cursor and
-returns the corresponding name in the info object in the upper right corner of the map.
-'''
 @app.callback(
               Output('risks_info', 'children'),
               Input('geojson_risks', 'hover_feature')
               )
 def dpt_hover_risks(hovered_department):
+    '''
+    This one detects what department is being hovered by the user's cursor and
+    returns the corresponding name in the info object in the upper right corner of the map.
+    '''
     return get_info(hovered_department)
 
 
