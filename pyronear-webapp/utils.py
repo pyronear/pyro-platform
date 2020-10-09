@@ -1,4 +1,4 @@
-"""This file gathers a few items (variables, functions...) that are common to both dashboards."""
+"""The following file gathers a few items (variables, functions...) that are common to both dashboards."""
 
 # ------------------------------------------------------------------------------
 # Imports

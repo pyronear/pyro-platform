@@ -1,8 +1,8 @@
-'''
-This file is dedicated to the "Alertes et Infrastructures" dashboard.
+"""
+The following is dedicated to the "Alertes et Infrastructures" dashboard.
 
 The main item is the AlertsApp function that returns the corresponding page layout.
-'''
+"""
 
 
 # ------------------------------------------------------------------------------
