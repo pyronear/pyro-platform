@@ -1,5 +1,4 @@
-"""
-The following is dedicated to the homepage.
+"""The following is dedicated to the homepage.
 
 The main item is the HomePage function that returns the corresponding page layout.
 """

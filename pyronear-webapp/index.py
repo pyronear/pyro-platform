@@ -1,9 +1,8 @@
-'''
-The following is the main file and the script to run in order to launch the app locally.
+"""The following is the main file and the script to run in order to launch the app locally.
 
 Based on the url path, it calls functions imported from the .py in order to build
 the appropriate page layout.
-'''
+"""
 
 # ------------------------------------------------------------------------------
 # Imports

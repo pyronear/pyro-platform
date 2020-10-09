@@ -1,8 +1,7 @@
-'''
-The following is dedicated to the "Niveaux de Risque" dashboard.
+"""The following is dedicated to the "Niveaux de Risque" dashboard.
 
 The main item is the RisksApp function that returns the corresponding page layout.
-'''
+"""
 
 
 # ------------------------------------------------------------------------------
