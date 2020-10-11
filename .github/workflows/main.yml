@@ -1,3 +1,5 @@
+name: dash-project
+
 on:
   push:
     branches: [ master ]
@@ -5,13 +7,11 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-
+  install-deps:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7]
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -22,6 +22,19 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    #- name: Test
-    #  run: |
-    #    make test
+
+  flake8-py3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+          architecture: x64
+      - name: Run flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          flake8 --version
+          flake8 ./
