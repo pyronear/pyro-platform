@@ -15,23 +15,16 @@ import dash_bootstrap_components as dbc
 def Navbar():
 
     navbar = dbc.NavbarSimple(
-                              children = [
-                                          dbc.DropdownMenu(
-                                                           nav = True,
-                                                           in_navbar = True,
-                                                           label = 'Tableaux de bord',
-                                                           children = [
-                                                                       dbc.DropdownMenuItem('Alertes et Infrastructures',
-                                                                                            href = 'alerts'),
-
-                                                                       dbc.DropdownMenuItem('Niveaux de Risque',
-                                                                                            href = 'risks')
-                                                                       ],
-                                                            ),
-                                          ],
-                              brand = 'À propos',
-                              brand_href = '/home',
-                              sticky = 'top'
-                              )
+        children=[
+            dbc.DropdownMenu(nav=True,
+                             in_navbar=True,
+                             label='Tableaux de bord',
+                             children=[
+                                 dbc.DropdownMenuItem('Alertes et Infrastructures', href='alerts'),
+                                 dbc.DropdownMenuItem('Niveaux de Risque', href='risks')],
+                             )],
+        brand='À propos',
+        brand_href='/home',
+        sticky='top')
 
     return navbar
