@@ -1,8 +1,5 @@
 FROM python:3.7.9-slim
 
-RUN apt-get update && apt-get upgrade -y && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
 # set work directory
 WORKDIR /usr/src/app
 
