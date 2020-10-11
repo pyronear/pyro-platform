@@ -22,6 +22,7 @@ from homepage import Homepage
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
 from risks import RisksApp
 from utils import get_info
+import config as cfg
 
 
 # ------------------------------------------------------------------------------
@@ -121,4 +122,4 @@ def dpt_hover_risks(hovered_department):
 # Running the web-app server
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, debug=True)
+    app.run_server(host='0.0.0.0', port=8050, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
