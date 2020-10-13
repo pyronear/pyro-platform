@@ -7,3 +7,4 @@ dash-html-components>=1.1.1
 dash-bootstrap-components>=0.10.6
 dash-leaflet>=0.1.4
 plotly>=4.7.1
+gunicorn>=20.0.4

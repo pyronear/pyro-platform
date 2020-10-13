@@ -1,1 +1,1 @@
-web: python app/index.py --host 0.0.0.0 --port=${PORT:-5000}
+web: gunicorn --workers 1 -b 127.0.0.1:${PORT:-5000} --chdir ./app main:server
