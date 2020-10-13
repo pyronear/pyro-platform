@@ -122,4 +122,12 @@ def dpt_hover_risks(hovered_department):
 # Running the web-app server
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
+    import argparse
+    parser = argparse.ArgumentParser(description='Pyronear web-app',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host of the server')
+    parser.add_argument('--port', type=int, default=8050, help='Port to run the server on')
+    args = parser.parse_args()
+
+    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
