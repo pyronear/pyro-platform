@@ -7,6 +7,7 @@ The main item is the AlertsApp function that returns the corresponding page layo
 # ------------------------------------------------------------------------------
 # Imports
 
+from pathlib import Path
 # Pandas, to read the csv file with positions of  cameras on the field
 import pandas as pd
 
@@ -64,7 +65,7 @@ def choose_layer_style(n_clicks):
 def build_alerts_geojson():
 
     # We fetch the json file online and store it in the departments variable
-    with open('data/departements.geojson') as response:
+    with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
         departments = json.load(response)
 
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
@@ -89,7 +90,7 @@ def get_camera_positions(dpt_code=None):
         return None
 
     # We read the csv file that locates the cameras and filter for the department of interest
-    camera_positions = pd.read_csv('data/cameras.csv', ';')
+    camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
     # We build a list of dictionaries containing the coordinates of each camera
