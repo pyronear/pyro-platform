@@ -32,6 +32,8 @@ import config as cfg
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.config.suppress_callback_exceptions = True
 
+server = app.server
+
 # We create a rough layout that will be filled by the first callback based on the url path
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
                        html.Div(id='page-content')])
