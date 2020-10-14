@@ -5,7 +5,6 @@ in order to plot them right under the homepage map
 """
 
 import plotly.graph_objects as go
-import pandas as pd
 import numpy as np
 
 
