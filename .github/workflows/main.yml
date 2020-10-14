@@ -1,0 +1,50 @@
+name: dash-project
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  install-deps:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+  flake8-py3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+          architecture: x64
+      - name: Run flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          flake8 --version
+          flake8 ./
+
+  docker-ready:
+    runs-on: ubuntu-latest
+    needs: install-deps
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build & run docker
+        run: docker-compose up -d --build
+      - name: Ping app inside the container
+        run: nc -vz localhost 8050

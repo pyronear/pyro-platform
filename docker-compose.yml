@@ -1,0 +1,10 @@
+version: '3.7'
+
+services:
+  web:
+    build: .
+    command: python index.py
+    volumes:
+      - ./app/:/usr/src/app/
+    ports:
+      - "8050:8050"
