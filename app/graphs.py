@@ -1,6 +1,7 @@
-
 """The following file is dedicated to storing graphs functions.
-These graphs will be called from homepage.py in order to plot them right under the homepage map
+
+These graphs will be called from homepage.py
+in order to plot them right under the homepage map
 """
 
 import plotly.graph_objects as go
