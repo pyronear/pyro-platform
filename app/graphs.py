@@ -1,4 +1,3 @@
-
 """The following file is dedicated to storing graphs functions.
 
 These graphs will be called from homepage.py
