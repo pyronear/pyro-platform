@@ -34,17 +34,15 @@ meteo_fig = generate_meteo_fig()
 nav = Navbar()
 
 body = dbc.Container(
-    [
-    dbc.Row(
+    [dbc.Row(
         [dbc.Col(html.H1('Bienvenue sur Pyronear')),
-        dbc.Col(dcc.Dropdown(id='user_department_input',
-                            options=[
-                            {'label': 'Ardèche', 'value': 'Ardèche'},
-                            {'label': 'Gard', 'value': 'Gard'},
-                            {'label': 'Landes', 'value': 'Landes'}
-                            ]))
-        ]),
-    dbc.Row(
+         dbc.Col(dcc.Dropdown(id='user_department_input',
+                              options=[{'label': 'Ardèche', 'value': 'Ardèche'},
+                                       {'label': 'Gard', 'value': 'Gard'},
+                                       {'label': 'Landes', 'value': 'Landes'}
+                                       ]))
+         ]),
+     dbc.Row(
         [dbc.Col(
             [html.H2('Description du projet'),
              html.P(("Cette application a pour but de fournir un outil facilitant l'action"
@@ -52,33 +50,33 @@ body = dbc.Container(
                      "L'outil repose sur des images vidéos prises depuis des tours de guêt."
                      "En plus des alertes incendies, cette application s'appuie également sur un"
                      "ensemble de données météorologiques, topographiques, géographiques, pour"
-                     "fournir une évaluation du niveau de risque associé à une zone géographique pour un temps donné.")),
-            ],
+                     "fournir une évaluation du niveau de risque associé"
+                     " à une zone géographique pour un temps donné.")),
+             ],
             md=12)]),
-    dbc.Row(
+     dbc.Row(
         [dbc.Col(
             # add the slider + map options here
             html.P(("Ici vient s'ajouter le slider et les options pour reliefs, vue sat, ...")),
             md=4),
-        dbc.Col([
+         dbc.Col(
             # add the map here
-            html.Div(map_object)
-            ],
+            html.Div(map_object),
             md=8)]),
-    dbc.Row(
+     dbc.Row(
         [dbc.Col([html.H2("Données météorologiques"),
-                dcc.Graph(figure=meteo_fig)
-            ],
-            md=4),
-        dbc.Col([html.H2("another indicator"),
-                dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})
-            ],
-            md=4),
-        dbc.Col([html.H2("a third indicator"),
-                dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})
-            ],
-            md=4)
-        ])
+                  dcc.Graph(figure=meteo_fig)
+                  ],
+                 md=4),
+         dbc.Col([html.H2("another indicator"),
+                  dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})
+                  ],
+                 md=4),
+         dbc.Col([html.H2("a third indicator"),
+                  dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})
+                  ],
+                 md=4)
+         ])
      ],
     className="mt-4")
 
