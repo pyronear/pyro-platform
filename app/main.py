@@ -32,6 +32,8 @@ import config as cfg
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.config.suppress_callback_exceptions = True
 
+server = app.server
+
 # We create a rough layout that will be filled by the first callback based on the url path
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
                        html.Div(id='page-content')])
@@ -122,4 +124,12 @@ def dpt_hover_risks(hovered_department):
 # Running the web-app server
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
+    import argparse
+    parser = argparse.ArgumentParser(description='Pyronear web-app',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host of the server')
+    parser.add_argument('--port', type=int, default=8050, help='Port to run the server on')
+    args = parser.parse_args()
+
+    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
