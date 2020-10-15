@@ -7,6 +7,7 @@ The main item is the RisksApp function that returns the corresponding page layou
 # ------------------------------------------------------------------------------
 # Imports
 
+from pathlib import Path
 # NumPy to generate the random scores from 0 to 1 that we are using so far
 import numpy as np
 
@@ -49,7 +50,7 @@ def build_risks_geojson_and_colorbar():
     scale_style = dict(weight=2, opacity=0.9, color='white', dashArray='3', fillOpacity=0.7)
 
     # We fetch the json file online and store it in the departments variable
-    with open('data/departements.geojson') as response:
+    with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
         departments = json.load(response)
 
     # We add to each department in the geojson a new property called "score" that corresponds to the random risk level
