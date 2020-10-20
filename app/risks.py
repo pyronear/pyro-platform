@@ -39,6 +39,7 @@ with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') 
 for department in departments['features']:
     department['properties']['score'] = np.random.random()
 
+
 # Preparing the choropleth map, fetching the departments GeoJSON and building the related map attribute
 def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
@@ -74,6 +75,7 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
     return geojson, colorbar
 
+
 # Building the slider that determines the color opacity level when displaying each department's level of risk
 def build_opacity_slider():
 
@@ -82,13 +84,14 @@ def build_opacity_slider():
     slider = dcc.Slider(id='opacity_slider_risks',
                         min=0, max=1,
                         step=0.01,
-                        marks={0:'0%', 0.25:'25%', 0.5:'50%', 0.75:'75%', 1:'100%'},
+                        marks={0: '0%', 0.25: '25%', 0.5: '50%', 0.75: '75%', 1: '100%'},
                         value=0.75)
 
     slider_div = html.Div(style=dict(width=500),
                           children=[slider_title, slider])
 
     return html.Center(slider_div)
+
 
 # And we define one last function to gather all previous elements in a single map object
 def build_risks_map():
