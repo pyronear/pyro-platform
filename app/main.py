@@ -7,9 +7,6 @@ the appropriate page layout.
 # ------------------------------------------------------------------------------
 # Imports
 
-# NumPy to generate the classes of the color scale
-import numpy as np
-
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
 from dash.dependencies import Input, Output
@@ -97,8 +94,7 @@ def region_click(feature):
         return get_camera_positions(feature['properties']['code'])
 
 
-@app.callback([Output('layer_style_button', 'children'),
-               Output('alerts_tile_layer', 'url'),
+@app.callback([Output('layer_style_button', 'children'), Output('alerts_tile_layer', 'url'),
                Output('alerts_tile_layer', 'attribution')],
               Input('layer_style_button', 'n_clicks'))
 def change_layer_style(n_clicks=None):
