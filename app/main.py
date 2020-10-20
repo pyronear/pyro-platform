@@ -120,6 +120,7 @@ def dpt_hover_risks(hovered_department):
     '''
     return get_info(hovered_department)
 
+
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
 def dpt_color_opacity(opacity_level):
     '''
