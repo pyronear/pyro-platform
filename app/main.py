@@ -7,6 +7,9 @@ the appropriate page layout.
 # ------------------------------------------------------------------------------
 # Imports
 
+# NumPy to generate the classes of the color scale
+import numpy as np
+
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
 from dash.dependencies import Input, Output
@@ -15,13 +18,14 @@ from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
+import dash_leaflet as dl
 
 # For each page of the web-app, we import the corresponding instantiation function
 # As well as some other functions from alerts.py and utils.py for interactivity
 from homepage import Homepage
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
-from risks import RisksApp
-from utils import get_info
+from risks import RisksApp, build_risks_geojson_and_colorbar
+from utils import get_info, build_info_object
 import config as cfg
 
 
@@ -93,7 +97,8 @@ def region_click(feature):
         return get_camera_positions(feature['properties']['code'])
 
 
-@app.callback([Output('layer_style_button', 'children'), Output('alerts_tile_layer', 'url'),
+@app.callback([Output('layer_style_button', 'children'),
+               Output('alerts_tile_layer', 'url'),
                Output('alerts_tile_layer', 'attribution')],
               Input('layer_style_button', 'n_clicks'))
 def change_layer_style(n_clicks=None):
@@ -118,6 +123,20 @@ def dpt_hover_risks(hovered_department):
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
     return get_info(hovered_department)
+
+@app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
+def dpt_color_opacity(opacity_level):
+    '''
+    This callback takes as input the opacity level chosen by the user on the slider
+    and accordingly reinstantiates the colorbar and geojson objects.
+    These new objects are then injected in the children attribute of the map.
+    '''
+    colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
+
+    return [dl.TileLayer(),
+            geojson,
+            colorbar,
+            build_info_object(app_page='risks')]
 
 
 # ------------------------------------------------------------------------------
