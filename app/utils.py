@@ -10,7 +10,7 @@ import dash_html_components as html
 # Content
 
 map_style = {'width': '100%',
-             'height': '90vh',
+             'height': '75vh',
              'margin': 'auto',
              'display': 'block'}
 
