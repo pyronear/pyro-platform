@@ -52,7 +52,7 @@ def build_risks_geojson_and_colorbar():
 
     ## We add to each department in the geojson a new property called "score" that corresponds to the random risk level
     for department in departments['features']:
-        department['properties']['score'] = np.random.random()
+        department['properties']['score'] = np.random.rand()
 
 
     ## We finally instantiate the dl.GeoJSON object that will be attributed to the "Niveaux de Risque" map

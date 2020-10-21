@@ -15,6 +15,7 @@ from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
+import dash_leaflet as dl
 
 ### For each page of the web-app, we import the corresponding instantiation function
 ### As well as some other functions from alerts.py and utils.py for interactivity
@@ -85,14 +86,14 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
-    If a marker is hovered instead of a department, it returns nothing for now.
+    If a marker is hovered instead of a department, it returns its area info for now.
     '''
-    if hovered_marker is not None:
-        hovered_marker = None
-        return None
-
-    return get_info(hovered_department)
-
+    if hovered_department is not None:
+        return get_info(hovered_department,feature_type='geojson_alerts')
+    elif hovered_marker is not None:
+        return get_info(hovered_marker,feature_type='markers')
+    
+    return get_info()
 
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
@@ -105,6 +106,14 @@ def region_click(feature):
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
 
+
+@app.callback(Output("markers", "children"), [Input("markers", "click_feature")])
+def marker_click(feature):
+    '''
+    This function detect clicks on camera markers and return popup with its area info for now
+    '''
+    if feature is not None:
+        return [dl.Marker(children=dl.Tooltip('{}'.format(feature['properties']['area'])))]
 
 @app.callback(
               [Output('layer_style_button', 'children'),
@@ -137,7 +146,7 @@ def dpt_hover_risks(hovered_department):
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return get_info(hovered_department)
+    return get_info(hovered_department,feature_type='geojson_risks')
 
 
 # ------------------------------------------------------------------------------
