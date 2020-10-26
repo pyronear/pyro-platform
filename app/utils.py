@@ -12,13 +12,10 @@ import dash_html_components as html
 #  the hovered camera (marker)
 # ------------------------------------------------------------------------------
 
-map_style = {
-             'width': '100%',
-             'height': '90vh',
+map_style = {'width': '100%',
+             'height': '75vh',
              'margin': 'auto',
-             'display': 'block'
-             }
-
+             'display': 'block'}
 
 def get_info(feature=None, feature_type=None):
     """
@@ -35,21 +32,19 @@ def get_info(feature=None, feature_type=None):
     # if no object are hovered, it just return standard statement
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]
 
+
 def build_info_object(app_page):
 
     if app_page == 'alerts':
         object_id = 'alerts_info'
     else:
         object_id = 'risks_info'
-    
-    return html.Div(
-                    children = get_info(),
-                    id = object_id,
-                    className = 'info',
-                    style = {
-                             'position' : 'absolute',
-                             'top' : '10px',
-                             'right' : '10px',
-                             'z-index' : '1000'
-                             }
+
+    return html.Div(children=get_info(),
+                    id=object_id,
+                    className='info',
+                    style={'position': 'absolute',
+                           'top': '10px',
+                           'right': '10px',
+                           'z-index': '1000'}
                     )

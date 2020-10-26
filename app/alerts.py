@@ -7,22 +7,23 @@ The main item is the AlertsApp function that returns the corresponding page layo
 # ------------------------------------------------------------------------------
 # Imports
 
-### Pandas, to read the csv file with positions of  cameras on the field
+from pathlib import Path
+# Pandas, to read the csv file with positions of  cameras on the field
 import pandas as pd
 
-### Useful import to read the GeoJSON file
+# Useful import to read the GeoJSON file
 import json
 
-### Various modules provided by Dash to build the page layout
+# Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
-### From navbar.py to add the navigation bar at the top of the page
+# From navbar.py to add the navigation bar at the top of the page
 from navbar import Navbar
 
-### Various imports from utils.py, useful for both Alerts and Risks dashboards
+# Various imports from utils.py, useful for both Alerts and Risks dashboards
 from utils import map_style, build_info_object
 
 
@@ -30,31 +31,32 @@ from utils import map_style, build_info_object
 # Before moving to app layout
 
 # The following block is used to determine what layer we use for the map and enable the user to change it
-## This function creates the button that allows users to change the map layer (satellite or topographic)
+# This function creates the button that allows users to change the map layer (satellite or topographic)
 def build_layer_style_button():
 
-    button = html.Button(
-                         children = 'Activer la vue satellite',
-                         id = 'layer_style_button'
-                         )
+    button = html.Button(children='Activer la vue satellite',
+                         id='layer_style_button')
 
     return html.Center(button)
 
-## This function takes as input the number of clicks on the button defined above and returns the layer style to use
+
+# This function takes as input the number of clicks on the button defined above and returns the layer style to use
 def choose_layer_style(n_clicks):
 
-    ### Because we start with the topographic view, if the number of clicks is even, this means that
-    ### we are still using the topographic view and we may want to activate the satellite one
+    # Because we start with the topographic view, if the number of clicks is even, this means that
+    # we are still using the topographic view and we may want to activate the satellite one
     if n_clicks % 2 == 0:
         button_content = 'Activer la vue satellite'
         layer_url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
         layer_attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
-    ### If the number of clicks is odd, this means we are using the satellite view and may want to come back to the topographic one
+    # If the number of clicks is odd, this means we are using the satellite view and may
+    # want to come back to the topographic one
     else:
         button_content = 'Revenir à la vue schématique'
         layer_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        layer_attribution = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        layer_attribution = ("Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, "
+                             "Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community")
 
     return button_content, layer_url, layer_attribution
 
@@ -62,23 +64,20 @@ def choose_layer_style(n_clicks):
 # Fetching the departments GeoJSON and building the related map attribute
 def build_alerts_geojson():
 
-    ### We fetch the json file online and store it in the departments variable
-    with open('data/departements.geojson') as response:
+    # We fetch the json file online and store it in the departments variable
+    with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
         departments = json.load(response)
 
-    ### We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
-    geojson = dl.GeoJSON(
-                         data = departments,
-                         id = 'geojson_alerts',
-                         zoomToBoundsOnClick = True,
-                         hoverStyle = dict(
-                                           weight = 3,
-                                           color = '#666',
-                                           dashArray = ''
-                                           )
+    # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
+    geojson = dl.GeoJSON(data=departments,
+                         id='geojson_alerts',
+                         zoomToBoundsOnClick=True,
+                         hoverStyle=dict(weight=3,
+                                         color='#666',
+                                         dashArray='')
                          )
 
-    ### We simply return the GeoJSON object for now
+    # We simply return the GeoJSON object for now
     return geojson
 
 
@@ -115,12 +114,11 @@ def get_camera_positions(dpt_code = None):
 
     return markers
 
-## Once we have the positions of cameras, we output another GeoJSON object gathering these locations
+
+# Once we have the positions of cameras, we output another GeoJSON object gathering these locations
 def build_alerts_markers():
-    markers = dl.GeoJSON(
-                         data = get_camera_positions(),
-                         id = 'markers'
-                         )
+    markers = dl.GeoJSON(data=get_camera_positions(),
+                         id='markers')
 
     return markers
 
@@ -128,22 +126,18 @@ def build_alerts_markers():
 # And we define one last function to gather all previous elements in a single map object
 def build_alerts_map():
 
-    map_object = dl.Map(
-                        center = [46.5, 2],     # Determines the point around which the map is initially centered
-                        zoom = 6,               # Determines the initial level of zoom around the center point
-                        children = [
-                                    dl.TileLayer(
-                                                 id = 'alerts_tile_layer'
-                                                 ),
-                                    build_alerts_geojson(),
-                                    build_info_object(app_page = 'alerts'),
-                                    build_alerts_markers()
-                                    ],
-                        style = map_style,      # Reminder: map_style is imported from utils.py
-                        id = 'map'
-                        )
+    map_object = dl.Map(center=[46.5, 2],     # Determines the point around which the map is initially centered
+                        zoom=6,               # Determines the initial level of zoom around the center point
+                        children=[
+                            dl.TileLayer(id='alerts_tile_layer'),
+                            build_alerts_geojson(),
+                            build_info_object(app_page='alerts'),
+                            build_alerts_markers()],
+                        style=map_style,      # Reminder: map_style is imported from utils.py
+                        id='map')
 
     return map_object
+
 
 # ------------------------------------------------------------------------------
 # App layout (finally!)
@@ -163,16 +157,13 @@ separator = dcc.Markdown('---')
 # Finally instantiating the map object
 map_object = build_alerts_map()
 
+
 # Gathering all these elements in a HTML Div and having it returned by the AlertsApp function
 def AlertsApp():
-    layout = [
-              nav,
+    layout = [nav,
               space,
               layer_style_button,
               separator,
-              map_object
-              ]
+              map_object]
 
     return html.Div(layout)
-
-

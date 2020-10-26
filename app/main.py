@@ -7,42 +7,37 @@ the appropriate page layout.
 # ------------------------------------------------------------------------------
 # Imports
 
-### Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
+# Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
 from dash.dependencies import Input, Output
 
-### Various modules provided by Dash to build the page layout
+# Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
-### For each page of the web-app, we import the corresponding instantiation function
-### As well as some other functions from alerts.py and utils.py for interactivity
+# For each page of the web-app, we import the corresponding instantiation function
+# As well as some other functions from alerts.py and utils.py for interactivity
 from homepage import Homepage
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
-from risks import RisksApp
-from utils import get_info
+from risks import RisksApp, build_risks_geojson_and_colorbar
+from utils import get_info, build_info_object
+import config as cfg
 
 
 # ------------------------------------------------------------------------------
 # App instantiation and overall layout
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
-app = dash.Dash(__name__, external_stylesheets = [dbc.themes.UNITED])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.config.suppress_callback_exceptions = True
 
-# We create a rough layout that will be filled by the first callback based on the url path
-app.layout = html.Div(
-                      [
-                       dcc.Location(
-                                    id = 'url',
-                                    refresh = False
-                                    ),
+server = app.server
 
-                       html.Div(id = 'page-content')
-                       ]
-                       )
+# We create a rough layout that will be filled by the first callback based on the url path
+app.layout = html.Div([dcc.Location(id='url', refresh=False),
+                       html.Div(id='page-content')])
 
 
 # ------------------------------------------------------------------------------
@@ -51,10 +46,7 @@ app.layout = html.Div(
 # ------------------------------------------------------------------------------
 # Overall page layout callback
 
-@app.callback(
-              Output('page-content', 'children'),
-              Input('url', 'pathname')
-              )
+@app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
 def display_page(pathname):
     '''
     This is the main callback of the app.
@@ -75,13 +67,8 @@ def display_page(pathname):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
-@app.callback(
-              Output('alerts_info', 'children'),
-              [
-               Input('geojson_alerts', 'hover_feature'),
-               Input('markers', 'hover_feature')
-               ]
-              )
+@app.callback(Output('alerts_info', 'children'),
+              [Input('geojson_alerts', 'hover_feature'), Input('markers', 'hover_feature')])
 def dpt_hover_alerts(hovered_department, hovered_marker):
     '''
     This one detects what department is being hovered by the user's cursor and
@@ -137,10 +124,7 @@ def change_layer_style(n_clicks = None):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
-@app.callback(
-              Output('risks_info', 'children'),
-              Input('geojson_risks', 'hover_feature')
-              )
+@app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
     '''
     This one detects what department is being hovered by the user's cursor and
@@ -149,8 +133,31 @@ def dpt_hover_risks(hovered_department):
     return get_info(hovered_department,feature_type='geojson_risks')
 
 
+@app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
+def dpt_color_opacity(opacity_level):
+    '''
+    This callback takes as input the opacity level chosen by the user on the slider
+    and accordingly reinstantiates the colorbar and geojson objects.
+    These new objects are then injected in the children attribute of the map.
+    '''
+    colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
+
+    return [dl.TileLayer(),
+            geojson,
+            colorbar,
+            build_info_object(app_page='risks')]
+
+
 # ------------------------------------------------------------------------------
 # Running the web-app server
 
 if __name__ == '__main__':
-    app.run_server(debug = True)
+    import argparse
+    parser = argparse.ArgumentParser(description='Pyronear web-app',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host of the server')
+    parser.add_argument('--port', type=int, default=8050, help='Port to run the server on')
+    args = parser.parse_args()
+
+    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
