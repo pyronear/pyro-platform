@@ -79,8 +79,8 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
         return get_info(hovered_department,feature_type='geojson_alerts')
     elif hovered_marker is not None:
         return get_info(hovered_marker,feature_type='markers')
-    
-    return get_info()
+    else:
+        return get_info()
 
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
