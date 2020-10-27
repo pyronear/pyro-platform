@@ -82,18 +82,18 @@ def build_alerts_geojson():
 
 
 # Fetching the positions of cameras on the field and building the related map attribute
-## Fetching the positions of detection units in a given department
-def get_camera_positions(dpt_code = None):
+# Fetching the positions of detection units in a given department
+def get_camera_positions(dpt_code=None):
 
-    ### As long as the user does not click on a department, dpt_code is None and we return no device
+    # As long as the user does not click on a department, dpt_code is None and we return no device
     if not dpt_code:
         return None
 
-    ### We read the csv file that locates the cameras and filter for the department of interest
+    # We read the csv file that locates the cameras and filter for the department of interest
     camera_positions = pd.read_csv('data/cameras.csv', ';')
     camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
-    ### We build a list of dictionaries containing the info of each camera
+    # We build a list of dictionaries containing the info of each camera
     markers = []
     for _, row in camera_positions.iterrows():
         lat = row['Latitude']
@@ -101,15 +101,18 @@ def get_camera_positions(dpt_code = None):
         area = row['Tours']
         alert_codis = row['Connexion Alerte CODIS']
         nb_device = row['Nombres Devices']
-        popup = ["Ville: {} <br>Connexion Alerte CODIS: {} <br>Nombres Devices: {}".format(area, alert_codis,nb_device)]
-        markers.append(dict(lat = lat,
-                            lon = lon,
-                            area = area,
-                            alert_codis = alert_codis,
-                            nb_device = nb_device,
-                            popup= popup))
+        popup = ["Ville: {} <br>\
+                 Connexion Alerte CODIS: {} <br>\
+                 Nombres Devices: {}"
+                .format(area, alert_codis, nb_device)]
+        markers.append(dict(lat=lat,
+                            lon=lon,
+                            area=area,
+                            alert_codis=alert_codis,
+                            nb_device=nb_device,
+                            popup=popup))
 
-    ### We convert it into geojson format (not a dl.GeoJSON object yet) and return it
+    # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
     markers = dlx.dicts_to_geojson(markers)
 
     return markers

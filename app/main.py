@@ -76,11 +76,12 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
     If a marker is hovered instead of a department, it returns its area info for now.
     '''
     if hovered_department is not None:
-        return get_info(hovered_department,feature_type='geojson_alerts')
+        return get_info(hovered_department, feature_type='geojson_alerts')
     elif hovered_marker is not None:
-        return get_info(hovered_marker,feature_type='markers')
+        return get_info(hovered_marker, feature_type='markers')
     else:
         return get_info()
+
 
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
@@ -102,14 +103,14 @@ def marker_click(feature):
     if feature is not None:
         return [dl.Marker(children=dl.Tooltip('{}'.format(feature['properties']['area'])))]
 
-@app.callback(
-              [Output('layer_style_button', 'children'),
+
+@app.callback([Output('layer_style_button', 'children'),
                Output('alerts_tile_layer', 'url'),
                Output('alerts_tile_layer', 'attribution')
                ],
-              Input('layer_style_button', 'n_clicks')
+              [Input('layer_style_button', 'n_clicks')]
               )
-def change_layer_style(n_clicks = None):
+def change_layer_style(n_clicks=None):
     '''
     This callback detects clicks on the button used to change the layer style of the map
     and returns the right topographic or satellite view, as well as the appropriate
@@ -130,7 +131,7 @@ def dpt_hover_risks(hovered_department):
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return get_info(hovered_department,feature_type='geojson_risks')
+    return get_info(hovered_department, feature_type='geojson_risks')
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
