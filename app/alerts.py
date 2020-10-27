@@ -103,8 +103,7 @@ def get_camera_positions(dpt_code=None):
         nb_device = row['Nombres Devices']
         popup = ["Ville: {} <br>\
                  Connexion Alerte CODIS: {} <br>\
-                 Nombres Devices: {}"
-                .format(area, alert_codis, nb_device)]
+                 Nombres Devices: {}".format(area, alert_codis, nb_device)]
         markers.append(dict(lat=lat,
                             lon=lon,
                             area=area,
