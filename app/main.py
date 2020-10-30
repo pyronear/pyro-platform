@@ -91,10 +91,10 @@ def dpt_hover_alerts(hovered_department, clicked_marker, hovered_marker):
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
     '''
-    This one detects what department the user is clicking on and returns the position
+    This one detects which department the user is clicking on and returns the position
     of the cameras deployed in this department as markers on the map. It relies on the
     get_camera_positions function, imported from alerts.py that takes a department code
-    as input and returns a GeoJSON file containing the position of cameras.
+    as input and returns a GeoJSON file containing cameras positions.
     '''
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
@@ -133,7 +133,7 @@ def change_layer_style(n_clicks=None):
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
     '''
-    This one detects what department is being hovered by the user's cursor and
+    This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
     return get_info(hovered_department, feature_type='geojson_risks')
@@ -143,8 +143,8 @@ def dpt_hover_risks(hovered_department):
 def dpt_color_opacity(opacity_level):
     '''
     This callback takes as input the opacity level chosen by the user on the slider
-    and accordingly reinstantiates the colorbar and geojson objects.
-    These new objects are then injected in the children attribute of the map.
+    and reinstantiates the colorbar and geojson objects accordingly.
+    These new objects are then injected in the map's children attribute.
     '''
     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
