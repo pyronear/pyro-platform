@@ -90,7 +90,7 @@ def get_camera_positions(dpt_code=None):
         return None
 
     # We read the csv file that locates the cameras and filter for the department of interest
-    camera_positions = pd.read_csv('data/cameras.csv', ';')
+    camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
     # We build a list of dictionaries containing the info of each camera

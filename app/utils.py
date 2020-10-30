@@ -26,9 +26,11 @@ def get_info(feature=None, feature_type=None):
     header_dept = [html.H4('Département sélectionné :')]
     header_camera = [html.H4('Caméra sélectionnée :')]
     if feature:
-        if feature_type == 'markers':
+        if feature_type == 'markers_hover':
             return header_camera + [html.B('Zone: {}'.format(feature['properties']['area']))]
-        elif feature_type == 'geojson_alerts' or feature_type == 'geojson_risks':
+        elif feature_type == 'markers_click':
+            return header_camera + [html.B(feature['properties']['popup'])]
+        elif feature_type in ['geojson_alerts','geojson_risks']:
             return header_dept + [html.B(feature['properties']['nom'])]
     # if no object are hovered, it just return standard statement
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]

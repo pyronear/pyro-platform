@@ -68,8 +68,10 @@ def display_page(pathname):
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
 @app.callback(Output('alerts_info', 'children'),
-              [Input('geojson_alerts', 'hover_feature'), Input('markers', 'hover_feature')])
-def dpt_hover_alerts(hovered_department, hovered_marker):
+              [Input('geojson_alerts', 'hover_feature'), 
+              Input('markers', 'n_clicks'),
+              Input('markers', 'hover_feature')])
+def dpt_hover_alerts(hovered_department, clicked_marker, hovered_marker):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
@@ -77,8 +79,11 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
     '''
     if hovered_department is not None:
         return get_info(hovered_department, feature_type='geojson_alerts')
+    elif clicked_marker is not None:
+        return get_info(clicked_marker, feature_type='markers_click')
     elif hovered_marker is not None:
-        return get_info(hovered_marker, feature_type='markers')
+        return get_info(hovered_marker, feature_type='markers_hover')
+    
     else:
         return get_info()
 
@@ -94,15 +99,15 @@ def region_click(feature):
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
 
-
+"""
 @app.callback(Output("markers", "children"), [Input("markers", "click_feature")])
 def marker_click(feature):
     '''
-    This function detect clicks on camera markers and return popup with its area info for now
+    This function detects clicks on camera markers and returns a popup with its area info for now
     '''
     if feature is not None:
         return [dl.Marker(children=dl.Tooltip('{}'.format(feature['properties']['area'])))]
-
+"""
 
 @app.callback([Output('layer_style_button', 'children'),
                Output('alerts_tile_layer', 'url'),
