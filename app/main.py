@@ -99,7 +99,7 @@ def region_click(feature):
         return get_camera_positions(feature['properties']['code'])
 
 
-'''
+"""
 @app.callback(Output("markers", "children"), [Input("markers", "click_feature")])
 def marker_click(feature):
 
@@ -107,8 +107,7 @@ def marker_click(feature):
 
     if feature is not None:
         return [dl.Marker(children=dl.Tooltip('{}'.format(feature['properties']['area'])))]
-'''
-
+"""
 
 @app.callback([Output('layer_style_button', 'children'),
                Output('alerts_tile_layer', 'url'),
