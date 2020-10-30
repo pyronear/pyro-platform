@@ -19,8 +19,13 @@ map_style = {'width': '100%',
 
 
 def get_info(feature=None, feature_type=None):
-    '''This function check the geojson object thanks to the feature_type
-    argument and returns the appropriate message.'''
+    """This function  the geojson object thanks to feature_type.
+    
+    It takes as argument the geojson hovered by user 
+    and the type of attribute we want to use from it
+    
+    It returns the appropriate message for each elements on the map.
+    """
     header_dept = [html.H4('Département sélectionné :')]
     header_camera = [html.H4('Caméra sélectionnée :')]
     if feature:
