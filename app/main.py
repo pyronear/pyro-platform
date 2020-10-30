@@ -99,15 +99,15 @@ def region_click(feature):
         return get_camera_positions(feature['properties']['code'])
 
 
-"""
+'''
 @app.callback(Output("markers", "children"), [Input("markers", "click_feature")])
 def marker_click(feature):
-    '''
+
     This function detects clicks on camera markers and returns a popup with its area info for now
-    '''
+
     if feature is not None:
         return [dl.Marker(children=dl.Tooltip('{}'.format(feature['properties']['area'])))]
-"""
+'''
 
 
 @app.callback([Output('layer_style_button', 'children'),
