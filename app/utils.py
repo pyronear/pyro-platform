@@ -21,7 +21,7 @@ map_style = {'width': '100%',
 def get_info(feature=None, feature_type=None):
 
     '''This function check the geojson object thanks to the feature_type argument
-    and a return the appropriate message.'''
+    and returns the appropriate message.'''
 
     header_dept = [html.H4('Département sélectionné :')]
     header_camera = [html.H4('Caméra sélectionnée :')]
