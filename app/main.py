@@ -9,7 +9,7 @@ the appropriate page layout.
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
@@ -18,13 +18,12 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
 # For each page of the web-app, we import the corresponding instantiation function
-# As well as some other functions from alerts.py and utils.py for interactivity
-from homepage import Homepage
+# as well as some other functions from alerts.py and utils.py for interactivity
+from homepage import Homepage, choose_map_style
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
 from risks import RisksApp, build_risks_geojson_and_colorbar
 from utils import get_info, build_info_object
 import config as cfg
-
 
 # ------------------------------------------------------------------------------
 # App instantiation and overall layout
@@ -39,11 +38,24 @@ server = app.server
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
                        html.Div(id='page-content')])
 
-
 # ------------------------------------------------------------------------------
 # CALLBACKS
 
 # ------------------------------------------------------------------------------
+# Overall navbar callback for toggling the collapse on small screens
+
+
+@app.callback(
+    Output("navbar-collapse", "is_open"),
+    [Input("navbar-toggler", "n_clicks")],
+    [State("navbar-collapse", "is_open")],
+)
+def toggle_navbar_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+
 # Overall page layout callback
 
 @app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
@@ -99,12 +111,9 @@ def region_click(feature):
         return get_camera_positions(feature['properties']['code'])
 
 
-@app.callback([Output('layer_style_button', 'children'),
-               Output('alerts_tile_layer', 'url'),
-               Output('alerts_tile_layer', 'attribution')
-               ],
-              [Input('layer_style_button', 'n_clicks')]
-              )
+@app.callback([Output('layer_style_button', 'children'), Output('tile_layer', 'url'),
+               Output('tile_layer', 'attribution')],
+              Input('layer_style_button', 'n_clicks'))
 def change_layer_style(n_clicks=None):
     '''
     This callback detects clicks on the button used to change the layer style of the map
@@ -138,14 +147,33 @@ def dpt_color_opacity(opacity_level):
     '''
     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
-    return [dl.TileLayer(),
+    return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
             build_info_object(app_page='risks')]
 
 
 # ------------------------------------------------------------------------------
+# Callbacks related to Homepage
+
+@app.callback([
+    Output('map_style_button', 'children'), Output('hp_map', 'children'),
+    Output('hp_slider', 'children')],
+    Input('map_style_button', 'n_clicks'))
+def change_map_style(n_clicks=None):
+    '''
+    This callback detects clicks on the button used to change the layer style of the map
+    and returns the right topographic or satellite view, as well as the appropriate
+    content for the button.
+    '''
+    if n_clicks is None:
+        n_clicks = 0
+
+    return choose_map_style(n_clicks)
+
+# ------------------------------------------------------------------------------
 # Running the web-app server
+
 
 if __name__ == '__main__':
     import argparse
