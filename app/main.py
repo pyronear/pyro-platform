@@ -68,35 +68,43 @@ def display_page(pathname):
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
 @app.callback(Output('alerts_info', 'children'),
-              [Input('geojson_alerts', 'hover_feature'), Input('markers', 'hover_feature')])
-def dpt_hover_alerts(hovered_department, hovered_marker):
+              [Input('geojson_alerts', 'hover_feature'),
+              Input('markers', 'n_clicks'),
+              Input('markers', 'hover_feature')])
+def dpt_hover_alerts(hovered_department, clicked_marker, hovered_marker):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
-    If a marker is hovered instead of a department, it returns nothing for now.
+    If a marker is hovered instead of a department, it returns its area info for now.
     '''
-    if hovered_marker is not None:
-        hovered_marker = None
-        return None
-
-    return get_info(hovered_department)
+    if hovered_department is not None:
+        return get_info(hovered_department, feature_type='geojson_alerts')
+    elif clicked_marker is not None:
+        return get_info(clicked_marker, feature_type='markers_click')
+    elif hovered_marker is not None:
+        return get_info(hovered_marker, feature_type='markers_hover')
+    else:
+        return get_info()
 
 
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
     '''
-    This one detects what department the user is clicking on and returns the position
+    This one detects which department the user is clicking on and returns the position
     of the cameras deployed in this department as markers on the map. It relies on the
     get_camera_positions function, imported from alerts.py that takes a department code
-    as input and returns a GeoJSON file containing the position of cameras.
+    as input and returns a GeoJSON file containing cameras positions.
     '''
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
 
 
-@app.callback([Output('layer_style_button', 'children'), Output('alerts_tile_layer', 'url'),
-               Output('alerts_tile_layer', 'attribution')],
-              Input('layer_style_button', 'n_clicks'))
+@app.callback([Output('layer_style_button', 'children'),
+               Output('alerts_tile_layer', 'url'),
+               Output('alerts_tile_layer', 'attribution')
+               ],
+              [Input('layer_style_button', 'n_clicks')]
+              )
 def change_layer_style(n_clicks=None):
     '''
     This callback detects clicks on the button used to change the layer style of the map
@@ -115,18 +123,18 @@ def change_layer_style(n_clicks=None):
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
     '''
-    This one detects what department is being hovered by the user's cursor and
+    This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return get_info(hovered_department)
+    return get_info(hovered_department, feature_type='geojson_risks')
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
 def dpt_color_opacity(opacity_level):
     '''
     This callback takes as input the opacity level chosen by the user on the slider
-    and accordingly reinstantiates the colorbar and geojson objects.
-    These new objects are then injected in the children attribute of the map.
+    and reinstantiates the colorbar and geojson objects accordingly.
+    These new objects are then injected in the map's children attribute.
     '''
     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
