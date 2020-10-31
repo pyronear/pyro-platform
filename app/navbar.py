@@ -39,7 +39,7 @@ def Navbar():
         "SDIS PyroDev",
         id="user-div",
         className="ml-auto flex-nowrap mt-3 mt-md-0",
-        tyle={'color': 'white'})
+        style={'color': 'white'})
 
     # Navbar
     navbar = dbc.Navbar(
