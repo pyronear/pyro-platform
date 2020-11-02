@@ -41,7 +41,7 @@ def build_map_style_button():
 def choose_map_style(n_clicks):
 
     # Because we start with the alerts map, if the number of clicks is even, this means that
-    # we are still using the alerts map and we may want to risk one
+    # we are still using the alerts map and we may want to switch to the risks one
     if n_clicks % 2 == 0:
         button_content_map = 'Afficher les niveaux de risques'
         map_object = build_alerts_map()
@@ -78,7 +78,7 @@ def meteo_graphs(display=False):
 # ------------------------------------------------------------------------------
 # Content and App layout
 
-# Instantiating the alert map object from alerts.py and setting it a the default map object:
+# Instantiating the alerts map object from alerts.py and setting it as the default map object:
 map_object = build_alerts_map()
 
 # Instantiating fig objects from graphs.py functions
@@ -87,13 +87,13 @@ meteo_fig = generate_meteo_fig()
 # Instantiating navbar object from navbar.py
 nav = Navbar()
 
-# Instantiating map layers button object from alters.py
+# Instantiating map layers button object from alerts.py
 map_layers_button = build_layer_style_button()
 
 # Instantiating map style button object
 map_style_button = build_map_style_button()
 
-# Instantiating meteo graphs, set to True to display them under the map, Fale to hide them
+# Instantiating meteo graphs, set to True to display them under the map, False to hide them
 meteo_graphs = meteo_graphs(display=False)
 
 # Body container
