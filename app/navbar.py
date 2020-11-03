@@ -8,7 +8,6 @@ Its main component is the Navbar function that instantiates the navigation bar.
 
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-from pathlib import Path
 
 # ------------------------------------------------------------------------------
 # Content
