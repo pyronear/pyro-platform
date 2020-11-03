@@ -9,15 +9,13 @@ Its main component is the Navbar function that instantiates the navigation bar.
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 from pathlib import Path
-import base64
 
 # ------------------------------------------------------------------------------
 # Content
 
 
-# Encoding logo image file
-pyro_logo = Path(__file__).parent.joinpath('data', 'pyro_logo.png')
-encoded_image = base64.b64encode(open(pyro_logo, 'rb').read())
+# Pyronear Logo
+pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
 
 def Navbar():
@@ -47,7 +45,7 @@ def Navbar():
             html.A(
                 dbc.Row(
                     [
-                        dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()), width="120px")),
+                        dbc.Col(html.Img(src=pyro_logo, width="120px")),
                     ],
                     align="center",
                     no_gutters=True,
