@@ -131,7 +131,7 @@ def build_alerts_map():
     map_object = dl.Map(center=[46.5, 2],     # Determines the point around which the map is initially centered
                         zoom=6,               # Determines the initial level of zoom around the center point
                         children=[
-                            dl.TileLayer(id='alerts_tile_layer'),
+                            dl.TileLayer(id='tile_layer'),
                             build_alerts_geojson(),
                             build_info_object(app_page='alerts'),
                             build_alerts_markers()],
