@@ -41,7 +41,7 @@ You can run the web server using the following commands:
 
 ```bash
 cd app
-python index.py
+python main.py
 ```
 
 Then your Dash app will be available at http://localhost:8050/
