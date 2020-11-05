@@ -93,12 +93,23 @@ def get_camera_positions(dpt_code=None):
     camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
-    # We build a list of dictionaries containing the coordinates of each camera
+    # We build a list of dictionaries containing the info of each camera
     markers = []
     for _, row in camera_positions.iterrows():
         lat = row['Latitude']
         lon = row['Longitude']
-        markers.append(dict(lat=lat, lon=lon))
+        area = row['Tours']
+        alert_codis = row['Connexion Alerte CODIS']
+        nb_device = row['Nombres Devices']
+        popup = ["Ville: {} <br>\
+                 Connexion Alerte CODIS: {} <br>\
+                 Nombres Devices: {}".format(area, alert_codis, nb_device)]
+        markers.append(dict(lat=lat,
+                            lon=lon,
+                            area=area,
+                            alert_codis=alert_codis,
+                            nb_device=nb_device,
+                            popup=popup))
 
     # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
     markers = dlx.dicts_to_geojson(markers)
@@ -120,7 +131,7 @@ def build_alerts_map():
     map_object = dl.Map(center=[46.5, 2],     # Determines the point around which the map is initially centered
                         zoom=6,               # Determines the initial level of zoom around the center point
                         children=[
-                            dl.TileLayer(id='alerts_tile_layer'),
+                            dl.TileLayer(id='tile_layer'),
                             build_alerts_geojson(),
                             build_info_object(app_page='alerts'),
                             build_alerts_markers()],

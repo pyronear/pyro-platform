@@ -37,7 +37,7 @@ with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') 
 
 # We add to each department in the geojson a new property called "score" that corresponds to the random risk level
 for department in departments['features']:
-    department['properties']['score'] = np.random.random()
+    department['properties']['score'] = np.random.rand()
 
 
 # Preparing the choropleth map, fetching the departments GeoJSON and building the related map attribute
@@ -87,7 +87,7 @@ def build_opacity_slider():
                         marks={0: '0%', 0.25: '25%', 0.5: '50%', 0.75: '75%', 1: '100%'},
                         value=0.75)
 
-    slider_div = html.Div(style=dict(width=500),
+    slider_div = html.Div(style=dict(width=330),
                           children=[slider_title, slider])
 
     return html.Center(slider_div)
@@ -100,7 +100,7 @@ def build_risks_map():
 
     map_object = dl.Map(center=[46.5, 2],          # Determines the point around which the map is initially centered
                         zoom=6,                    # Determines the initial level of zoom around the center point
-                        children=[dl.TileLayer(),
+                        children=[dl.TileLayer(id='tile_layer'),
                                   geojson,
                                   colorbar,
                                   build_info_object(app_page='risks')],
