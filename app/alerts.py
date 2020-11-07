@@ -13,7 +13,7 @@ from pathlib import Path
 # Pandas, to read the csv file with the positions of cameras on the field
 import pandas as pd
 
-# Useful imports to read the GeoJSON file
+# Useful import to read the GeoJSON file
 import json
 
 # Various modules provided by Dash to build the page layout
