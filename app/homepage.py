@@ -57,6 +57,60 @@ def choose_map_style(n_clicks):
     return button_content_map, map_object, slider
 
 
+#This function return the user selection area in the left side bar
+def user_selection_area():
+    """ This function return the basic dash component of the the left side bar
+    of the monitoring platform and has been create because it used several time in app.
+
+    Parameters:
+    None
+
+    Returns:
+    html dash components: A set of component that composed the left side bar of the app
+    """
+    return [dcc.Markdown('---'),
+            html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # map filters added here
+            html.P(map_layers_button),
+            dcc.Markdown('---'),
+            html.P(map_style_button),
+            html.P(id="hp_slider"),
+            html.P(id="hp_video")
+            ]
+
+
+# This function either displays video of selected markers
+def show_camera_video(feature=None):
+    """ This function return the video of the marker and put it into the left side bar
+    of the monitoring platform
+
+    Parameters:
+    Feature (geojson children): Number of click the marker has received
+
+    Returns:
+    html dash components: A default video for now (later, the real video / picture of the marker)
+    """
+
+    video_style = {'width': '50vh',
+                   'height': '40vh',
+                   'margin': 'auto',
+                   'display': 'block'
+                   }
+
+    if feature is not None:
+        separator = dcc.Markdown('---')
+        video_title = html.H5("Camera selectionnée", style={'text-align': 'center'})
+        video_html = html.Video(id='Video_Camera',
+                                src='https://media.giphy.com/media/l2JeaPjeaR9DvDWXS/giphy.mp4',
+                                style=video_style,
+                                controls=True)
+
+        video_div = html.Div(style=video_style,
+                             children=[separator, video_title, video_html]
+                             )
+        return html.Center(video_div)
+    return ' '
+
+
 # This function either displays or hides meteo graphs from graphs.py
 def meteo_graphs(display=False):
     if display is True:
@@ -80,6 +134,62 @@ def meteo_graphs(display=False):
 # Content and App layout
 # The following function is used in the main.py file to instantiate the layout of the homepage
 
+# Instantiating the alerts map object from alerts.py and setting it as the default map object:
+map_object = build_alerts_map()
+
+# Instantiating fig objects from graphs.py functions
+meteo_fig = generate_meteo_fig()
+
+# Instantiating navbar object from navbar.py
+nav = Navbar()
+
+# Instantiating map layers button object from alerts.py
+map_layers_button = build_layer_style_button()
+
+# Instantiating map style button object
+map_style_button = build_map_style_button()
+
+# Instantiating meteo graphs, set to True to display them under the map, False to hide them
+meteo_graphs = meteo_graphs(display=False)
+
+
+# Body container
+body = dbc.Container([
+    dbc.Row(
+        [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
+         ]),
+    dbc.Row(
+        [
+            dbc.Col(
+                dcc.Dropdown(
+                    id='user_department_input',
+                    options=[
+                        {'label': 'Ardèche', 'value': 'Ardèche'},
+                        {'label': 'Gard', 'value': 'Gard'},
+                        {'label': 'Landes', 'value': 'Landes'}],
+                    placeholder="Départements"),
+                md=3),
+        ]
+    ),
+    dbc.Row(
+        [dbc.Col(
+            #side bar for the user to apply filter
+            user_selection_area(),
+            id='user_selection_column',
+            md=3),
+         dbc.Col(
+            # map object added here
+            html.Div(map_object, id='hp_map'),
+            md=9)]
+    ),
+    # meteo graphs added here
+    meteo_graphs
+],
+    fluid=True,
+)
+
+
+# Gathering all these elements in a HTML Div and having it returned by the Homepage function
 def Homepage():
 
     # Body container

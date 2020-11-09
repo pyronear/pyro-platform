@@ -110,27 +110,26 @@ def get_camera_positions(dpt_code=None):
         area = row['Tours']
         alert_codis = row['Connexion Alerte CODIS']
         nb_device = row['Nombres Devices']
-        popup = ["Ville: {} <br>\
-                 Connexion Alerte CODIS: {} <br>\
-                 Nombres Devices: {}".format(area, alert_codis, nb_device)]
         markers.append(dict(lat=lat,
                             lon=lon,
                             area=area,
-                            alert_codis=alert_codis,
                             nb_device=nb_device,
-                            popup=popup))
+                            alert_codis=alert_codis
+                            ))
 
     # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
     markers = dlx.dicts_to_geojson(markers)
-
+    markers = dlx.geojson_to_geobuf(markers)
     return markers
 
 
 # Once we have the positions of cameras, we output another GeoJSON object gathering these locations
 def build_alerts_markers():
-    markers = dl.GeoJSON(data=get_camera_positions(),
-                         id='markers')
 
+    markers = dl.GeoJSON(data=get_camera_positions(),
+                         id='markers',
+                         format='geobuf'
+                         )
     return markers
 
 

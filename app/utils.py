@@ -4,7 +4,9 @@
 # Imports
 
 import dash_html_components as html
-
+import dash_leaflet as dl
+import dash_core_components as dcc
+from operator import add
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
@@ -18,7 +20,7 @@ map_style = {'width': '100%',
              'display': 'block'}
 
 
-def get_info(feature=None, feature_type=None):
+def build_alerts_map(feature=None, feature_type=None):
     """
     This function  the geojson object thanks to feature_type.
     It takes as argument the geojson hovered by user
@@ -32,15 +34,22 @@ def get_info(feature=None, feature_type=None):
 
         if feature_type == 'markers_hover':
             return header_camera + [html.B('Zone: {}'.format(feature['properties']['area']))]
-
-        elif feature_type == 'markers_click':
-            return header_camera + [html.B(feature['properties']['popup'])]
-
         elif feature_type in ['geojson_alerts', 'geojson_risks']:
             return header_dept + [html.B(feature['properties']['nom'])]
 
     # If no object are hovered, it just return standard statement
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]
+
+
+def build_popup(feature=None):
+    """
+    This function extract info to display from the geojson object
+    It takes as argument the geojson clicked by user
+    It returns the popup with the appropriate info for each markers on the map.
+    """
+    if feature is not None:
+        coord = 'Coordonnées de la caméra : {}'.format(feature['geometry']['coordinates'])
+        return [dl.Popup(coord)]
 
 
 def build_info_object(app_page):
@@ -54,7 +63,7 @@ def build_info_object(app_page):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=get_info(),
+    return html.Div(children=build_alerts_map(),
                     id=object_id,
                     className='info',
                     style={'position': 'absolute',
