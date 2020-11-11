@@ -57,18 +57,16 @@ def choose_map_style(n_clicks):
     return button_content_map, map_object, slider
 
 
-#This function return the user selection area in the left side bar
+#This function returns the user selection area in the left side bar
 def user_selection_area():
-    """Summary : Define the components of the user selection area (left side bar)
-    
-    Desc: This function return the basic dash component of the the left side bar
-    of the monitoring platform and has been create because it used several time in app.
+    """ This function returns the basic dash component of the left side bar
+    of the monitoring platform and has been created because it is used several time within the app.
 
     Parameters:
     None
 
     Returns:
-    html dash components: A list of components that composed the left side bar of the app
+    html dash components: A set of components that composed the left side bar of the app
     """
     return [dcc.Markdown('---'),
             html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # map filters added here
