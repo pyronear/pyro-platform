@@ -31,7 +31,7 @@ import config as cfg
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
-app.title = 'PyroNear'
+app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 
 server = app.server
