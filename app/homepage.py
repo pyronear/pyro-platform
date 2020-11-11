@@ -80,13 +80,11 @@ def user_selection_area():
 
 # This function either displays video of selected markers
 def show_camera_video(feature=None):
-    """Summary : Return video of the selected marker
-    
-    Desc : This function return the video of the marker and put it into the left side bar
+    """ This function returns the video associated with the selected marker and places it into the left side bar
     of the monitoring platform
 
     Parameters:
-    Feature (geojson children): Number of click the marker has received
+    Feature (geojson children): Number of clicks the marker has received
 
     Returns:
     html dash components: A default video for now (later, the real video / picture of the marker)
