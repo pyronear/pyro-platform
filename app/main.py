@@ -38,13 +38,14 @@ server = app.server
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
                        html.Div(id='page-content')])
 
+
 # ------------------------------------------------------------------------------
 # CALLBACKS
 
 # ------------------------------------------------------------------------------
+# General callbacks
+
 # Overall navbar callback for toggling the collapse on small screens
-
-
 @app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
@@ -57,7 +58,6 @@ def toggle_navbar_collapse(n, is_open):
 
 
 # Overall page layout callback
-
 @app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
 def display_page(pathname):
     '''
@@ -171,9 +171,9 @@ def change_map_style(n_clicks=None):
 
     return choose_map_style(n_clicks)
 
+
 # ------------------------------------------------------------------------------
 # Running the web-app server
-
 
 if __name__ == '__main__':
     import argparse
