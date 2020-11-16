@@ -7,12 +7,11 @@ The main item is the RisksApp function that returns the corresponding page layou
 # ------------------------------------------------------------------------------
 # Imports
 
-from pathlib import Path
-
 # NumPy to generate the random scores from 0 to 1 that we are using so far, as well as the classes
 import numpy as np
 
-# Useful import to read the GeoJSON file
+# Useful imports to open and read the GeoJSON file
+from pathlib import Path
 import json
 
 # Various modules provided by Dash to build the page layout
@@ -29,11 +28,12 @@ from utils import map_style, build_info_object
 
 
 # ------------------------------------------------------------------------------
-# Before moving to app layout
+# Departments and color scale section (before moving to app layout)
 
 # We fetch the json file online and store it in the departments variable
 with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
     departments = json.load(response)
+
 
 # We add to each department in the geojson a new property called "score" that corresponds to the random risk level
 for department in departments['features']:
@@ -111,32 +111,15 @@ def build_risks_map():
 
 
 # ------------------------------------------------------------------------------
-# App layout
+# Page layout
 
-# Instantiating the navigation bar
-nav = Navbar()
-
-# Adding a first separator between the navigation bar and the slider
-space = dcc.Markdown('---')
-
-# Instantiating the slider
-slider = build_opacity_slider()
-
-# Adding a second separator between the navigation slider and the map
-separator = dcc.Markdown('---')
-
-# Instantiating the map object
-map_object = build_risks_map()
-
-
-# Gathering all these elements in a HTML Div and having it returned by the RisksApp function
 def RisksApp():
     layout = [
-        nav,
-        space,
-        slider,
-        separator,
-        map_object
+        Navbar(),                   # Instantiating the navigation bar
+        dcc.Markdown('---'),        # Adding a first separator between the navigation bar and the slider
+        build_opacity_slider(),     # Instantiating the slider
+        dcc.Markdown('---'),        # Adding a second separator between the navigation slider and the map
+        build_risks_map()           # Instantiating the map object
     ]
 
     return html.Div(layout)
