@@ -57,7 +57,7 @@ def choose_map_style(n_clicks):
     return button_content_map, map_object, slider
 
 
-#This function return the user selection area in the left side bar
+#This function returns the user selection area in the left side bar
 def user_selection_area():
     """Summary : Define the components of the user selection area (left side bar)
     
@@ -88,7 +88,7 @@ def show_camera_video(feature=None):
     of the monitoring platform
 
     Parameters:
-    Feature (geojson children): Number of click the marker has received
+    Feature (geojson children): Number of clicks the marker has received
 
     Returns:
     html dash components: A default video for now (later, the real video / picture of the marker)
