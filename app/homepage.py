@@ -209,35 +209,26 @@ def Homepage():
                             {'label': 'Gard', 'value': 'Gard'},
                             {'label': 'Landes', 'value': 'Landes'}],
                         placeholder="Départements"),
-                    md=3),
+                    md=3)
             ]
         ),
         dbc.Row(
-            [dbc.Col(
-                [
-                    dcc.Markdown('---'),
-                    # Map filters added here
-                    html.H5(("Filtres Carte"), style={'text-align': 'center'}),
-                    # Instantiating map layers button object from alerts.py
-                    html.P(build_layer_style_button()),
-                    dcc.Markdown('---'),
-                    # Instantiating map style button object
-                    html.P(build_map_style_button()),
-                    html.P(id="hp_slider"),
-                ],
-                md=3),
-             dbc.Col(
-                # Instantiating the alerts map object from alerts.py and setting it as the default map object
-                html.Div(build_alerts_map(), id='hp_map'),
-                md=9)]
+            [
+                dbc.Col(
+                    user_selection_area(),
+                    id='user_selection_column',
+                    md=3),
+                dbc.Col(
+                    # map object added here
+                    html.Div(build_alerts_map(), id='hp_map'),
+                    md=9)
+            ]
         ),
-        # Instantiating meteo graphs, set to True to display them under the map, False to hide them
+        # meteo graphs added here
         meteo_graphs(display=False)
     ],
         fluid=True,
     )
-
-    layout = html.Div([Navbar(),   # Instantiating navbar object from navbar.py
-                       body])
-
+    # Instantiating navbar object from navbar.py
+    layout = html.Div([Navbar(), body])
     return layout
