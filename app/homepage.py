@@ -60,7 +60,7 @@ def choose_map_style(n_clicks):
 #This function returns the user selection area in the left side bar
 def user_selection_area():
     """Summary : Define the components of the user selection area (left side bar)
-    
+
     Desc: This function return the basic dash component of the the left side bar
     of the monitoring platform and has been create because it used several time in app.
 
@@ -83,7 +83,7 @@ def user_selection_area():
 # This function either displays video of selected markers
 def show_camera_video(feature=None):
     """Summary : Return video of the selected marker
-    
+
     Desc : This function return the video of the marker and put it into the left side bar
     of the monitoring platform
 
