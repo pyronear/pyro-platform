@@ -59,14 +59,16 @@ def choose_map_style(n_clicks):
 
 #This function return the user selection area in the left side bar
 def user_selection_area():
-    """ This function return the basic dash component of the the left side bar
+    """Summary : Define the components of the user selection area (left side bar)
+    
+    Desc: This function return the basic dash component of the the left side bar
     of the monitoring platform and has been create because it used several time in app.
 
     Parameters:
     None
 
     Returns:
-    html dash components: A set of component that composed the left side bar of the app
+    html dash components: A list of components that composed the left side bar of the app
     """
     return [dcc.Markdown('---'),
             html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # map filters added here
@@ -80,7 +82,9 @@ def user_selection_area():
 
 # This function either displays video of selected markers
 def show_camera_video(feature=None):
-    """ This function return the video of the marker and put it into the left side bar
+    """Summary : Return video of the selected marker
+    
+    Desc : This function return the video of the marker and put it into the left side bar
     of the monitoring platform
 
     Parameters:
@@ -89,13 +93,11 @@ def show_camera_video(feature=None):
     Returns:
     html dash components: A default video for now (later, the real video / picture of the marker)
     """
-
     video_style = {'width': '50vh',
                    'height': '40vh',
                    'margin': 'auto',
                    'display': 'block'
                    }
-
     if feature is not None:
         separator = dcc.Markdown('---')
         video_title = html.H5("Camera selectionnée", style={'text-align': 'center'})
