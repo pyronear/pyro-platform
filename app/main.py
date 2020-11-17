@@ -30,6 +30,7 @@ import config as cfg
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
+app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 
 server = app.server
@@ -42,9 +43,9 @@ app.layout = html.Div([dcc.Location(id='url', refresh=False),
 # CALLBACKS
 
 # ------------------------------------------------------------------------------
+# General callbacks
+
 # Overall navbar callback for toggling the collapse on small screens
-
-
 @app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
@@ -57,7 +58,6 @@ def toggle_navbar_collapse(n, is_open):
 
 
 # Overall page layout callback
-
 @app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
 def display_page(pathname):
     '''

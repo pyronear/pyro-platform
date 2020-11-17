@@ -1,5 +1,5 @@
-# Pyronear WebApp
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e4490e06eaf41a3a5faea69dad5caa9)](https://www.codacy.com/gh/pyronear/pyronear-webapp/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=pyronear/pyronear-webapp&amp;utm_campaign=Badge_Grade) ![Build Status](https://github.com/pyronear/pyronear-webapp/workflows/dash-project/badge.svg) 
+# Pyronear Platform
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e4490e06eaf41a3a5faea69dad5caa9)](https://www.codacy.com/gh/pyronear/pyro-platform/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=pyronear/pyro-platform&amp;utm_campaign=Badge_Grade) ![Build Status](https://github.com/pyronear/pyro-platform/workflows/dash-project/badge.svg) 
 
 The building blocks of our wildfire detection & monitoring API.
 
@@ -27,8 +27,8 @@ The building blocks of our wildfire detection & monitoring API.
 You can clone and install the project dependencies as follows:
 
 ```bash
-git clone https://github.com/pyronear/pyronear-webapp.git
-pip install -r pyronear-webapp/requirements.txt
+git clone https://github.com/pyronear/pyro-platform.git
+pip install -r pyro-platform/requirements.txt
 ```
 
 
@@ -41,7 +41,7 @@ You can run the web server using the following commands:
 
 ```bash
 cd app
-python index.py
+python main.py
 ```
 
 Then your Dash app will be available at http://localhost:8050/
