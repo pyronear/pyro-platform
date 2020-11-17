@@ -22,6 +22,7 @@ def Navbar():
     # Dropdown menu
     dropdown = dbc.DropdownMenu(
         children=[
+            dbc.DropdownMenuItem("Page d'Accueil", href='home'),
             dbc.DropdownMenuItem('Alertes et Infrastructures', href='alerts'),
             dbc.DropdownMenuItem('Niveaux de Risque', href='risks'),
         ],
