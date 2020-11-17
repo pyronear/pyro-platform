@@ -5,8 +5,6 @@
 
 import dash_html_components as html
 import dash_leaflet as dl
-import dash_core_components as dcc
-from operator import add
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
