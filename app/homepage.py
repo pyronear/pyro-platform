@@ -153,28 +153,26 @@ def Homepage():
                             {'label': 'Gard', 'value': 'Gard'},
                             {'label': 'Landes', 'value': 'Landes'}],
                         placeholder="Départements"),
-                    md=3),
+                    md=3)
             ]
         ),
         dbc.Row(
             [
                 dbc.Col(
-                  user_selection_area(),
-                  id='user_selection_column',
-                  md=3),
-               dbc.Col(
-                  # map object added here
-                  html.Div(build_alerts_map(), id='hp_map'),
-                  md=9)]
-       ),
+                    user_selection_area(),
+                    id='user_selection_column',
+                    md=3),
+                dbc.Col(
+                    # map object added here
+                    html.Div(build_alerts_map(), id='hp_map'),
+                    md=9)
+            ]
+        ),
         # meteo graphs added here
-       meteo_graphs(display=False)
+        meteo_graphs(display=False)
     ],
-      fluid=True,
-  )
-
-  layout = html.Div([Navbar(),   # Instantiating navbar object from navbar.py
-                     body])
-  
-  return layout
-   
+        fluid=True,
+    )
+    # Instantiating navbar object from navbar.py
+    layout = html.Div([Navbar(), body])
+    return layout
