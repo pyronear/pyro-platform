@@ -9,7 +9,7 @@ the appropriate page layout.
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
@@ -18,19 +18,19 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
 # For each page of the web-app, we import the corresponding instantiation function
-# As well as some other functions from alerts.py and utils.py for interactivity
-from homepage import Homepage
+# as well as some other functions from alerts.py and utils.py for interactivity
+from homepage import Homepage, choose_map_style, show_camera_video
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
 from risks import RisksApp, build_risks_geojson_and_colorbar
-from utils import get_info, build_info_object
+from utils import build_alerts_map, build_info_object, build_popup
 import config as cfg
-
 
 # ------------------------------------------------------------------------------
 # App instantiation and overall layout
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
+app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 
 server = app.server
@@ -44,8 +44,21 @@ app.layout = html.Div([dcc.Location(id='url', refresh=False),
 # CALLBACKS
 
 # ------------------------------------------------------------------------------
-# Overall page layout callback
+# General callbacks
 
+# Overall navbar callback for toggling the collapse on small screens
+@app.callback(
+    Output("navbar-collapse", "is_open"),
+    [Input("navbar-toggler", "n_clicks")],
+    [State("navbar-collapse", "is_open")],
+)
+def toggle_navbar_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+
+# Overall page layout callback
 @app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
 def display_page(pathname):
     '''
@@ -68,34 +81,61 @@ def display_page(pathname):
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
 @app.callback(Output('alerts_info', 'children'),
-              [Input('geojson_alerts', 'hover_feature'), Input('markers', 'hover_feature')])
+              [Input('geojson_alerts', 'hover_feature'),
+              Input('markers', 'hover_feature')])
 def dpt_hover_alerts(hovered_department, hovered_marker):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
-    If a marker is hovered instead of a department, it returns nothing for now.
+    If a marker is hovered instead of a department, it returns its area info for now.
+    If a marker is clicked instead of hovered, it returns a simple message for now.
     '''
-    if hovered_marker is not None:
-        hovered_marker = None
-        return None
+    if hovered_department is not None:
+        return build_alerts_map(hovered_department, feature_type='geojson_alerts')
+    elif hovered_marker is not None:
+        return build_alerts_map(hovered_marker, feature_type='markers_hover')
+    else:
+        return build_alerts_map()
 
-    return get_info(hovered_department)
+
+@app.callback(Output('markers', 'children'),
+              [Input('markers', 'click_feature')])
+def display_popup(click_feature_marker=None):
+    '''
+    This one detects if the user clicked on a marker.
+    If so, the function returns a popup with markers' information
+    '''
+    if click_feature_marker is not None:
+        return build_popup(click_feature_marker)
+
+
+@app.callback(Output('hp_video', 'children'),
+              [Input('markers', 'n_clicks'), Input('markers', 'click_feature')])
+def display_camera_video(n_clicks_marker=None, click_feature_marker=None):
+    '''
+    This one detects the number of clicks the user make on a marker.
+    If 2 clicks are collected, the function returns the video of the cameras selected
+    '''
+    if n_clicks_marker is not None and n_clicks_marker % 2 == 0:
+        return show_camera_video(click_feature_marker)
+    else:
+        return show_camera_video()
 
 
 @app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
     '''
-    This one detects what department the user is clicking on and returns the position
+    This one detects which department the user is clicking on and returns the position
     of the cameras deployed in this department as markers on the map. It relies on the
     get_camera_positions function, imported from alerts.py that takes a department code
-    as input and returns a GeoJSON file containing the position of cameras.
+    as input and returns a GeoJSON file containing cameras positions.
     '''
     if feature is not None:
         return get_camera_positions(feature['properties']['code'])
 
 
-@app.callback([Output('layer_style_button', 'children'), Output('alerts_tile_layer', 'url'),
-               Output('alerts_tile_layer', 'attribution')],
+@app.callback([Output('layer_style_button', 'children'), Output('tile_layer', 'url'),
+               Output('tile_layer', 'attribution')],
               Input('layer_style_button', 'n_clicks'))
 def change_layer_style(n_clicks=None):
     '''
@@ -115,25 +155,44 @@ def change_layer_style(n_clicks=None):
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
     '''
-    This one detects what department is being hovered by the user's cursor and
+    This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return get_info(hovered_department)
+    return build_alerts_map(hovered_department, feature_type='geojson_risks')
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
 def dpt_color_opacity(opacity_level):
     '''
     This callback takes as input the opacity level chosen by the user on the slider
-    and accordingly reinstantiates the colorbar and geojson objects.
-    These new objects are then injected in the children attribute of the map.
+    and reinstantiates the colorbar and geojson objects accordingly.
+    These new objects are then injected in the map's children attribute.
     '''
     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
-    return [dl.TileLayer(),
+    return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
             build_info_object(app_page='risks')]
+
+
+# ------------------------------------------------------------------------------
+# Callbacks related to Homepage
+
+@app.callback([
+    Output('map_style_button', 'children'), Output('hp_map', 'children'),
+    Output('hp_slider', 'children')],
+    Input('map_style_button', 'n_clicks'))
+def change_map_style(n_clicks=None):
+    '''
+    This callback detects clicks on the button used to change the layer style of the map
+    and returns the right topographic or satellite view, as well as the appropriate
+    content for the button.
+    '''
+    if n_clicks is None:
+        n_clicks = 0
+
+    return choose_map_style(n_clicks)
 
 
 # ------------------------------------------------------------------------------

@@ -7,8 +7,10 @@ The main item is the AlertsApp function that returns the corresponding page layo
 # ------------------------------------------------------------------------------
 # Imports
 
+# Useful import to open local files (positions of cameras and department GeoJSON)
 from pathlib import Path
-# Pandas, to read the csv file with positions of  cameras on the field
+
+# Pandas, to read the csv file with the positions of cameras on the field
 import pandas as pd
 
 # Useful import to read the GeoJSON file
@@ -28,9 +30,9 @@ from utils import map_style, build_info_object
 
 
 # ------------------------------------------------------------------------------
-# Before moving to app layout
-
+# Map layer
 # The following block is used to determine what layer we use for the map and enable the user to change it
+
 # This function creates the button that allows users to change the map layer (satellite or topographic)
 def build_layer_style_button():
 
@@ -61,6 +63,10 @@ def choose_layer_style(n_clicks):
     return button_content, layer_url, layer_attribution
 
 
+# ------------------------------------------------------------------------------
+# Departments
+# The following block is used to display the borders of the departments on the map
+
 # Fetching the departments GeoJSON and building the related map attribute
 def build_alerts_geojson():
 
@@ -81,7 +87,10 @@ def build_alerts_geojson():
     return geojson
 
 
-# Fetching the positions of cameras on the field and building the related map attribute
+# ------------------------------------------------------------------------------
+# Cameras
+# The following block is dedicated to fetching information about cameras and displaying them on the map
+
 # Fetching the positions of detection units in a given department
 def get_camera_positions(dpt_code=None):
 
@@ -93,34 +102,48 @@ def get_camera_positions(dpt_code=None):
     camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
-    # We build a list of dictionaries containing the coordinates of each camera
+    # We build a list of dictionaries containing the info of each camera
     markers = []
     for _, row in camera_positions.iterrows():
         lat = row['Latitude']
         lon = row['Longitude']
-        markers.append(dict(lat=lat, lon=lon))
+        area = row['Tours']
+        alert_codis = row['Connexion Alerte CODIS']
+        nb_device = row['Nombres Devices']
+        markers.append(dict(lat=lat,
+                            lon=lon,
+                            area=area,
+                            nb_device=nb_device,
+                            alert_codis=alert_codis
+                            ))
 
     # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
     markers = dlx.dicts_to_geojson(markers)
-
+    markers = dlx.geojson_to_geobuf(markers)
     return markers
 
 
 # Once we have the positions of cameras, we output another GeoJSON object gathering these locations
 def build_alerts_markers():
-    markers = dl.GeoJSON(data=get_camera_positions(),
-                         id='markers')
 
+    markers = dl.GeoJSON(data=get_camera_positions(),
+                         id='markers',
+                         format='geobuf'
+                         )
     return markers
 
 
-# And we define one last function to gather all previous elements in a single map object
+# ------------------------------------------------------------------------------
+# Page layout
+# The last block gathers previously defined functions to output the layout of the alerts dashboard
+
+# The following function gathers all previous elements in a single map object
 def build_alerts_map():
 
     map_object = dl.Map(center=[46.5, 2],     # Determines the point around which the map is initially centered
                         zoom=6,               # Determines the initial level of zoom around the center point
                         children=[
-                            dl.TileLayer(id='alerts_tile_layer'),
+                            dl.TileLayer(id='tile_layer'),
                             build_alerts_geojson(),
                             build_info_object(app_page='alerts'),
                             build_alerts_markers()],
@@ -130,31 +153,12 @@ def build_alerts_map():
     return map_object
 
 
-# ------------------------------------------------------------------------------
-# App layout (finally!)
-
-# Instantiating the navigation bar
-nav = Navbar()
-
-# Adding a first separator between the navigation bar and the button
-space = dcc.Markdown('---')
-
-# Instantiating the button to change the map layer style
-layer_style_button = build_layer_style_button()
-
-# Adding a second separator between the button and the map
-separator = dcc.Markdown('---')
-
-# Finally instantiating the map object
-map_object = build_alerts_map()
-
-
-# Gathering all these elements in a HTML Div and having it returned by the AlertsApp function
+# This function will be used in the main.py file to instantiate the layout of the alerts dashboard
 def AlertsApp():
-    layout = [nav,
-              space,
-              layer_style_button,
-              separator,
-              map_object]
+    layout = [Navbar(),                     # Instantiating the navigation bar
+              dcc.Markdown('---'),          # Adding a first separator between the navigation bar and the button
+              build_layer_style_button(),   # Instantiating the button to change the map layer style
+              dcc.Markdown('---'),          # Adding a second separator between the button and the map
+              build_alerts_map()]           # Finally instantiating the map object
 
     return html.Div(layout)
