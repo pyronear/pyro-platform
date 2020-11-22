@@ -22,7 +22,7 @@ import dash_leaflet as dl
 from homepage import Homepage, choose_map_style, show_camera_video
 from alerts import AlertsApp, get_camera_positions, choose_layer_style
 from risks import RisksApp, build_risks_geojson_and_colorbar
-from utils import build_alerts_map, build_info_object, build_popup
+from utils import build_alerts_map, build_info_object, build_popup, get_old_fire_positions, build_historic_markers
 import config as cfg
 
 # ------------------------------------------------------------------------------
@@ -122,7 +122,8 @@ def display_camera_video(n_clicks_marker=None, click_feature_marker=None):
         return show_camera_video()
 
 
-@app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
+@app.callback([Output('markers', 'data'), Output('fire_markers_alerts', 'data')],
+              [Input('geojson_alerts', 'click_feature')])
 def region_click(feature):
     '''
     This one detects which department the user is clicking on and returns the position
@@ -131,7 +132,10 @@ def region_click(feature):
     as input and returns a GeoJSON file containing cameras positions.
     '''
     if feature is not None:
-        return get_camera_positions(feature['properties']['code'])
+        return (get_camera_positions(feature['properties']['code']), 
+                get_old_fire_positions(feature['properties']['code']))
+    else:
+        return (None, None)
 
 
 @app.callback([Output('layer_style_button', 'children'), Output('tile_layer', 'url'),
@@ -173,7 +177,20 @@ def dpt_color_opacity(opacity_level):
     return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
-            build_info_object(app_page='risks')]
+            build_info_object(app_page='risks'),
+            build_historic_markers(app_page='risks')]
+
+
+@app.callback(Output('fire_markers_risks', 'data'), [Input('geojson_risks', 'click_feature')])
+def region_click(feature):
+    '''
+    This one detects what department the user is clicking on and returns the position
+    of the old fires in this department as markers on the map. It relies on the
+    get_old_fire_positions function, imported from historic.py that takes a department code
+    as input and returns a GeoJSON file containing the position of the old fires.
+    '''
+    if feature is not None:
+        return get_old_fire_positions(feature['properties']['code'])
 
 
 # ------------------------------------------------------------------------------

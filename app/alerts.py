@@ -26,7 +26,7 @@ import dash_leaflet.express as dlx
 from navbar import Navbar
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object
+from utils import map_style, build_info_object, build_historic_markers
 
 
 # ------------------------------------------------------------------------------
@@ -146,7 +146,8 @@ def build_alerts_map():
                             dl.TileLayer(id='tile_layer'),
                             build_alerts_geojson(),
                             build_info_object(app_page='alerts'),
-                            build_alerts_markers()],
+                            build_alerts_markers(),
+                            build_historic_markers(app_page='alerts')],
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')
 

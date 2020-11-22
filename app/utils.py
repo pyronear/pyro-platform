@@ -5,6 +5,9 @@
 
 import dash_html_components as html
 import dash_leaflet as dl
+import pandas as pd
+from pathlib import Path
+import dash_leaflet.express as dlx
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
@@ -69,3 +72,38 @@ def build_info_object(app_page):
                            'right': '10px',
                            'z-index': '1000'}
                     )
+
+# Fetching the positions of the old fires on the field and building the related map attribute
+# Fetching the positions of detection units in a given department
+def get_old_fire_positions(dpt_code=None):
+
+    # As long as the user does not click on a department, dpt_code is None and we return no device
+    if not dpt_code:
+        return None
+
+    # We read the csv file that locates the old fires and filter for the department of interest
+    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'historic_fires.csv'), ',')
+    # Below it allows us to filter by department with a click on the map
+    old_fire_positions = old_fire_positions[old_fire_positions['Département'] == int(dpt_code)].copy()
+
+    # We build a list of dictionaries containing the coordinates of each fire
+    fire_markers = []
+    for _, row in old_fire_positions.iterrows():
+        lat = row['latitude']
+        lon = row['longitude']
+        fire_markers.append(dict(lat=lat, lon=lon))
+
+    # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
+    fire_markers = dlx.dicts_to_geojson(fire_markers)
+
+    return fire_markers
+
+# Once we have the positions of cameras, we output another GeoJSON object gathering these locations
+def build_historic_markers(app_page):
+    if app_page=='alerts':
+        fire_markers = dl.GeoJSON(data=get_old_fire_positions(),
+                         id='fire_markers_alerts')
+    elif app_page=='risks':
+        fire_markers = dl.GeoJSON(data=get_old_fire_positions(),
+                         id='fire_markers_risks')                     
+    return fire_markers
