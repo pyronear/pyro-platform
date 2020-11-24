@@ -68,7 +68,7 @@ def choose_layer_style(n_clicks):
 # The following block is used to display the borders of the departments on the map
 
 # Fetching the departments GeoJSON and building the related map attribute
-def build_alerts_geojson():
+def build_departments_geojson():
 
     # We fetch the json file online and store it in the departments variable
     with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
@@ -76,7 +76,7 @@ def build_alerts_geojson():
 
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
     geojson = dl.GeoJSON(data=departments,
-                         id='geojson_alerts',
+                         id='geojson_departments',
                          zoomToBoundsOnClick=True,
                          hoverStyle=dict(weight=3,
                                          color='#666',
@@ -92,46 +92,83 @@ def build_alerts_geojson():
 # The following block is dedicated to fetching information about cameras and displaying them on the map
 
 # Fetching the positions of detection units in a given department
-def get_camera_positions(dpt_code=None):
+def build_sites_markers(dpt_code=None):
 
     # As long as the user does not click on a department, dpt_code is None and we return no device
-    if not dpt_code:
-        return None
+    # if not dpt_code:
+    #     return None
 
     # We read the csv file that locates the cameras and filter for the department of interest
     camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
-    camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
+    # camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
-    # We build a list of dictionaries containing the info of each camera
+    # We define the site marker icon
+    icon = {
+    "iconUrl": 'https://www.flaticon.com/premium-icon/icons/svg/3371/3371105.svg',
+    "iconSize": [40, 40],  # size of the icon
+    "iconAnchor": [0, 20]  # point of the icon which will correspond to marker's location
+    # "popupAnchor": [-3, -76]  # point from which the popup should open relative to the iconAnchor
+    }
+
+    # We build a list of markers containing the info of each site/camera
     markers = []
-    for _, row in camera_positions.iterrows():
+    for i, row in camera_positions.iterrows():
         lat = row['Latitude']
         lon = row['Longitude']
-        area = row['Tours']
+        site_name = row['Tours']
         alert_codis = row['Connexion Alerte CODIS']
         nb_device = row['Nombres Devices']
-        markers.append(dict(lat=lat,
-                            lon=lon,
-                            area=area,
-                            nb_device=nb_device,
-                            alert_codis=alert_codis
-                            ))
+        markers.append(dl.Marker(id=f'site_{i}', # Necessary to set an id for each marker in order to retrieve information through callbacks
+                                 position=(lat, lon),
+                                 icon=icon,
+                                 children=[dl.Tooltip(site_name),
+                                           dl.Popup([html.H2(f'Site {site_name}'),
+                                                     html.P(f'Coordonnées : ({lat}, {lon})'),
+                                                     html.P(f'Nombre de caméras : {nb_device}')])]))
 
-    # We convert it into geojson format (not a dl.GeoJSON object yet) and return it
-    markers = dlx.dicts_to_geojson(markers)
-    markers = dlx.geojson_to_geobuf(markers)
-    return markers
+    # We group all dl.Marker objects in a dl.LayerGroup object
+    markers_layer = dl.MarkerClusterGroup(children=markers, id='sites_markers')
+
+    return markers_layer
 
 
-# Once we have the positions of cameras, we output another GeoJSON object gathering these locations
+# ------------------------------------------------------------------------------
+# Fire alerts
+# The following block is dedicated to fetching information about fire alerts and displaying them on the map
+
+# The following function is built to retrieve alerts information, build the corresponding markers objects and wraps them in a dl.LayerGroup object that is returned
+# To each dl.Marker object (associated with a single fire alert), we add a custom icon, as well as dl.Tooltip and dl.Popup features
 def build_alerts_markers():
+    # At the moment we just reuse the cameras positions data
+    # We read the csv file that locates the cameras and filter for the department of interest
+    camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
+    camera_positions = camera_positions.copy()
 
-    markers = dl.GeoJSON(data=get_camera_positions(),
-                         id='markers',
-                         format='geobuf'
-                         )
-    return markers
+    # We define the alert marker icon
+    icon = {
+    "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
+    "iconSize": [40, 40],  # size of the icon
+    "iconAnchor": [20, 20]  # point of the icon which will correspond to marker's location
+    # "popupAnchor": [-3, -76]  # point from which the popup should open relative to the iconAnchor
+    }
 
+    markers = [dl.Marker(id=f'alert_{i}', # Necessary to set an id for each marker in order to retrieve information through callbacks
+                         position=(row['Latitude'], row['Longitude']),
+                         icon=icon,
+                         children=[dl.Tooltip(f'fire alert #{i}'),
+                                   dl.Popup([html.H2("Alerte déclenchée"),
+                                             html.P(f"position : ({row['Latitude']}, {row['Longitude']})"),
+                                             html.Button("Voir images", id="show_images_btn", n_clicks=0)
+                                             # html.P(id='popup_video',
+                                             #        children=video_div)
+                                             ]
+                                            )
+                                   ]
+                        ) for i, row in camera_positions[:3].iterrows()]
+
+    markers_layer = dl.LayerGroup(children=markers, id='alerts_markers')
+
+    return markers_layer
 
 # ------------------------------------------------------------------------------
 # Page layout
@@ -144,8 +181,9 @@ def build_alerts_map():
                         zoom=6,               # Determines the initial level of zoom around the center point
                         children=[
                             dl.TileLayer(id='tile_layer'),
-                            build_alerts_geojson(),
+                            build_departments_geojson(),
                             build_info_object(app_page='alerts'),
+                            build_sites_markers(),
                             build_alerts_markers()],
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')

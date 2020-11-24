@@ -18,24 +18,18 @@ map_style = {'width': '100%',
              'display': 'block'}
 
 
-def build_alerts_map(feature=None, feature_type=None):
+def build_info_box(feature=None):
     """
-    This function  the geojson object thanks to feature_type.
-    It takes as argument the geojson hovered by user
-    and the type of attribute we want to use from it
-    It returns the appropriate message for each elements on the map.
+    This function generates an information box about the hovered department.
+    It takes as argument the geojson hovered by the user
+    It returns the appropriate message for each element in the box.
     """
     header_dept = [html.H4('Département sélectionné :')]
-    header_camera = [html.H4('Caméra sélectionnée :')]
 
     if feature:
+        return header_dept + [html.B(feature['properties']['nom'])]
 
-        if feature_type == 'markers_hover':
-            return header_camera + [html.B('Zone: {}'.format(feature['properties']['area']))]
-        elif feature_type in ['geojson_alerts', 'geojson_risks']:
-            return header_dept + [html.B(feature['properties']['nom'])]
-
-    # If no object are hovered, it just return standard statement
+    # If no object is hovered, it just returns a standard statement
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]
 
 
@@ -61,7 +55,7 @@ def build_info_object(app_page):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=build_alerts_map(),
+    return html.Div(children=build_info_box(),
                     id=object_id,
                     className='info',
                     style={'position': 'absolute',
