@@ -20,9 +20,9 @@ import dash_leaflet as dl
 # For each page of the web-app, we import the corresponding instantiation function
 # as well as some other functions from alerts.py and utils.py for interactivity
 from homepage import Homepage, choose_map_style, show_camera_video
-from alerts import AlertsApp, get_camera_positions, choose_layer_style
+from alerts import AlertsApp, choose_layer_style
 from risks import RisksApp, build_risks_geojson_and_colorbar
-from utils import build_alerts_map, build_info_object, build_popup
+from utils import build_info_box, build_info_object, build_popup
 import config as cfg
 
 # ------------------------------------------------------------------------------
@@ -80,9 +80,8 @@ def display_page(pathname):
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
 @app.callback(Output('alerts_info', 'children'),
-              [Input('geojson_alerts', 'hover_feature'),
-              Input('markers', 'hover_feature')])
-def dpt_hover_alerts(hovered_department, hovered_marker):
+              [Input('geojson_departments', 'hover_feature')])
+def dpt_hover_alerts(hovered_department):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
@@ -90,47 +89,34 @@ def dpt_hover_alerts(hovered_department, hovered_marker):
     If a marker is clicked instead of hovered, it returns a simple message for now.
     '''
     if hovered_department is not None:
-        return build_alerts_map(hovered_department, feature_type='geojson_alerts')
-    elif hovered_marker is not None:
-        return build_alerts_map(hovered_marker, feature_type='markers_hover')
+        return build_info_box(hovered_department)
     else:
-        return build_alerts_map()
-
-
-@app.callback(Output('markers', 'children'),
-              [Input('markers', 'click_feature')])
-def display_popup(click_feature_marker=None):
-    '''
-    This one detects if the user clicked on a marker.
-    If so, the function returns a popup with markers' information
-    '''
-    if click_feature_marker is not None:
-        return build_popup(click_feature_marker)
+        return build_info_box()
 
 
 @app.callback(Output('hp_video', 'children'),
-              [Input('markers', 'n_clicks'), Input('markers', 'click_feature')])
-def display_camera_video(n_clicks_marker=None, click_feature_marker=None):
+              [Input('show_images_btn', 'n_clicks')])
+def display_camera_video(n_clicks_marker):
     '''
-    This one detects the number of clicks the user make on a marker.
-    If 2 clicks are collected, the function returns the video of the cameras selected
+    This one detects the number of clicks the user made on an alert popup button.
+    If 1 click is made, the function returns the image of the corresponding alert.
     '''
-    if n_clicks_marker is not None and n_clicks_marker % 2 == 0:
-        return show_camera_video(click_feature_marker)
+    if (n_clicks_marker+1) % 2 == 0:
+        return show_camera_video(n_clicks_marker)
     else:
         return show_camera_video()
 
 
-@app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
-def region_click(feature):
-    '''
-    This one detects which department the user is clicking on and returns the position
-    of the cameras deployed in this department as markers on the map. It relies on the
-    get_camera_positions function, imported from alerts.py that takes a department code
-    as input and returns a GeoJSON file containing cameras positions.
-    '''
-    if feature is not None:
-        return get_camera_positions(feature['properties']['code'])
+# @app.callback(Output('sites_markers', 'children'), [Input('geojson_departments', 'click_feature')])
+# def region_click(feature):
+#     '''
+#     This one detects which department the user is clicking on and returns the position
+#     of the cameras deployed in this department as markers on the map. It relies on the
+#     get_camera_positions function, imported from alerts.py that takes a department code
+#     as input and returns a GeoJSON file containing cameras positions.
+#     '''
+#     if feature is not None:
+#         return get_sites_list(feature['properties']['code'])
 
 
 @app.callback([Output('layer_style_button', 'children'), Output('tile_layer', 'url'),
@@ -157,7 +143,7 @@ def dpt_hover_risks(hovered_department):
     This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return build_alerts_map(hovered_department, feature_type='geojson_risks')
+    return build_info_box(hovered_department, feature_type='geojson_risks')
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))

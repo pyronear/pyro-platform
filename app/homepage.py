@@ -202,19 +202,6 @@ def Homepage():
         dbc.Row(
             [
                 dbc.Col(
-                    dcc.Dropdown(
-                        id='user_department_input',
-                        options=[
-                            {'label': 'Ardèche', 'value': 'Ardèche'},
-                            {'label': 'Gard', 'value': 'Gard'},
-                            {'label': 'Landes', 'value': 'Landes'}],
-                        placeholder="Départements"),
-                    md=3)
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
                     user_selection_area(),
                     id='user_selection_column',
                     md=3),
