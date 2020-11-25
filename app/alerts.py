@@ -102,14 +102,6 @@ def build_sites_markers(dpt_code=None):
     camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     # camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
-    # We define the site marker icon
-    icon = {
-    "iconUrl": 'https://www.flaticon.com/premium-icon/icons/svg/3371/3371105.svg',
-    "iconSize": [40, 40],  # size of the icon
-    "iconAnchor": [0, 20]  # point of the icon which will correspond to marker's location
-    # "popupAnchor": [-3, -76]  # point from which the popup should open relative to the iconAnchor
-    }
-
     # We build a list of markers containing the info of each site/camera
     markers = []
     for i, row in camera_positions.iterrows():
@@ -120,7 +112,6 @@ def build_sites_markers(dpt_code=None):
         nb_device = row['Nombres Devices']
         markers.append(dl.Marker(id=f'site_{i}', # Necessary to set an id for each marker in order to retrieve information through callbacks
                                  position=(lat, lon),
-                                 icon=icon,
                                  children=[dl.Tooltip(site_name),
                                            dl.Popup([html.H2(f'Site {site_name}'),
                                                      html.P(f'Coordonnées : ({lat}, {lon})'),
