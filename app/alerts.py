@@ -19,6 +19,7 @@ import json
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
@@ -26,10 +27,11 @@ import dash_leaflet.express as dlx
 from navbar import Navbar
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object
+from utils import map_style, build_info_object, build_live_alerts_metadata
 
 
 # ------------------------------------------------------------------------------
+
 # Map layer
 # The following block is used to determine what layer we use for the map and enable the user to change it
 
@@ -37,7 +39,8 @@ from utils import map_style, build_info_object
 def build_layer_style_button():
 
     button = html.Button(children='Activer la vue satellite',
-                         id='layer_style_button')
+                         id='layer_style_button',
+                         className="btn btn-warning")
 
     return html.Center(button)
 
@@ -88,9 +91,7 @@ def build_departments_geojson():
 
 
 # ------------------------------------------------------------------------------
-# Cameras
-# The following block is dedicated to fetching information about cameras and displaying them on the map
-
+# Sites markers
 # Fetching the positions of detection units in a given department
 def build_sites_markers(dpt_code=None):
 
@@ -108,9 +109,8 @@ def build_sites_markers(dpt_code=None):
         lat = row['Latitude']
         lon = row['Longitude']
         site_name = row['Tours']
-        alert_codis = row['Connexion Alerte CODIS']
         nb_device = row['Nombres Devices']
-        markers.append(dl.Marker(id=f'site_{i}', # Necessary to set an id for each marker in order to retrieve information through callbacks
+        markers.append(dl.Marker(id=f'site_{i}',    # Necessary to set an id for each marker to reteive callbacks
                                  position=(lat, lon),
                                  children=[dl.Tooltip(site_name),
                                            dl.Popup([html.H2(f'Site {site_name}'),
@@ -127,39 +127,73 @@ def build_sites_markers(dpt_code=None):
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map
 
-# The following function is built to retrieve alerts information, build the corresponding markers objects and wraps them in a dl.LayerGroup object that is returned
-# To each dl.Marker object (associated with a single fire alert), we add a custom icon, as well as dl.Tooltip and dl.Popup features
-def build_alerts_markers():
-    # At the moment we just reuse the cameras positions data
-    # We read the csv file that locates the cameras and filter for the department of interest
-    camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
-    camera_positions = camera_positions.copy()
+# This function creates alerts-related elements such as alert_button, alert_markers
+def build_alerts_elements(value):
 
-    # We define the alert marker icon
-    icon = {
-    "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
-    "iconSize": [40, 40],  # size of the icon
-    "iconAnchor": [20, 20]  # point of the icon which will correspond to marker's location
-    # "popupAnchor": [-3, -76]  # point from which the popup should open relative to the iconAnchor
-    }
+    # Fetching alert status and reusable metadata
+    alert_metadata = build_live_alerts_metadata()
+    alert_lat = alert_metadata["lat"]
+    alert_lon = alert_metadata["lon"]
+    alert_id = str(alert_metadata["id"])
 
-    markers = [dl.Marker(id=f'alert_{i}', # Necessary to set an id for each marker in order to retrieve information through callbacks
-                         position=(row['Latitude'], row['Longitude']),
-                         icon=icon,
-                         children=[dl.Tooltip(f'fire alert #{i}'),
-                                   dl.Popup([html.H2("Alerte déclenchée"),
-                                             html.P(f"position : ({row['Latitude']}, {row['Longitude']})"),
-                                             html.Button("Voir images", id="show_images_btn", n_clicks=0)
-                                             # html.P(id='popup_video',
-                                             #        children=video_div)
-                                             ]
-                                            )
-                                   ]
-                        ) for i, row in camera_positions[:3].iterrows()]
+    # Building the button that allows users to zoom towards the alert marker
+    if value == 0:
+        alert_button = dbc.Button(
+            children="Départ de feu, cliquez-ici !",
+            color="danger",
+            block=True,
+            id='alert_button'
+        )
+    else:
+        alert_button = ""
 
-    markers_layer = dl.LayerGroup(children=markers, id='alerts_markers')
+    # Building alerts_markers objects and wraps them in a dl.LayerGroup object
+    if value == 0:
+        icon = {
+            "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
+            "iconSize": [40, 40],       # Size of the icon
+            "iconAnchor": [20, 20]      # Point of the icon which will correspond to marker's location
+            # "popupAnchor": [-3, -76]  # Point from which the popup should open relative to the iconAnchor
+        }
+        alerts_markers = [dl.Marker(
+            id="marker_{}".format(alert_id),   # Setting a unique id for each alerts_markers
+            position=(alert_lat, alert_lon),
+            icon=icon,
+            children=[dl.Popup(
+                [
+                    html.H2("Alerte détectée"),
+                    html.P("Coordonées : {}, {} ".format(alert_lat, alert_lon)),
+                    html.Button("Afficher les données de détection",
+                                id=("display_alert_frame_btn{}".format(alert_id)),  # Setting a unique btn id
+                                n_clicks=0,
+                                className="btn btn-danger")
+                ])])]
+        alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id='alerts_markers')
+    else:
+        alerts_markers_layer = ""
 
-    return markers_layer
+    return alert_button, alerts_markers_layer
+
+
+# This function either triggers a zoom towards the alert point each time the alert button is clicked
+# and sets the default zoom and center params for map_object
+def define_map_zoom_center(n_clicks):
+
+    # Fetching alert status and reusable metadata
+    alert_metadata = build_live_alerts_metadata()
+    alert_lat = alert_metadata["lat"]
+    alert_lon = alert_metadata["lon"]
+
+    # Defining center and zoom parameters for map_object
+    if n_clicks > 0:
+        center = [alert_lat, alert_lon]
+        zoom = 9
+    else:
+        center = [46.5, 2]
+        zoom = 6
+
+    return center, zoom
+
 
 # ------------------------------------------------------------------------------
 # Page layout
@@ -175,7 +209,7 @@ def build_alerts_map():
                             build_departments_geojson(),
                             build_info_object(app_page='alerts'),
                             build_sites_markers(),
-                            build_alerts_markers()],
+                            html.Div(id="live_alerts_marker")],
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')
 
