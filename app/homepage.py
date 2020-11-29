@@ -23,16 +23,42 @@ from risks import build_risks_map, build_opacity_slider
 # Importing plotly fig objects from graphs.py
 from graphs import generate_meteo_fig
 
+# Importing utils fetched API data
+from utils import build_live_alerts_metadata
+
 
 # ------------------------------------------------------------------------------
 # Before moving to the app layout
+
+#Fetching reusable alert metadata
+alert_metadata = build_live_alerts_metadata()
+if alert_metadata:
+    frame_url = alert_metadata["media_url"]
+
+
+# This function creates a radio button in order to simulate an alert event that will be later catched through the API
+def build_alert_radio_button():
+
+    alert_radio_button = dcc.RadioItems(
+        options=[
+            {'label': 'no alert', 'value': 1},
+            {'label': 'alert', 'value': 0},
+        ],
+        value=0,
+        labelStyle={'display': 'inline-block'},
+        id='alert_radio_button'
+    )
+
+    return alert_radio_button
+
 
 # The following block is used to determine what map styles (risks or alerts) we use for and enable the user to change it
 # This function creates the button that allows users to change the map style
 def build_map_style_button():
 
     button = html.Button(children='Afficher les niveaux de risques',
-                         id='map_style_button')
+                         id='map_style_button',
+                         className='btn btn-warning')
 
     return html.Center(button)
 
@@ -59,58 +85,59 @@ def choose_map_style(n_clicks):
 
 #This function returns the user selection area in the left side bar
 def user_selection_area():
-    """Summary : Define the components of the user selection area (left side bar)
 
-    Desc: This function return the basic dash component of the the left side bar
-    of the monitoring platform and has been create because it used several time in app.
-
-    Parameters:
-    None
-
-    Returns:
-    html dash components: A set of components that composed the left side bar of the app
-    """
-    return [dcc.Markdown('---'),
-            html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # map filters added here
-            html.P(map_layers_button),
+    return [build_alert_radio_button(),
             dcc.Markdown('---'),
-            html.P(map_style_button),
-            html.P(id="hp_slider"),
-            html.P(id="hp_video")
+            html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # Map filters added here
+            html.P(build_layer_style_button()),                          # Changes layer view style btn
+            dcc.Markdown('---'),
+            html.P(build_map_style_button()),                            # Changes map style btn
+            html.P(id="hp_slider"),                                      # Opacity sliders for risks map
+            html.P(id="hp_alert_frame_metadata")                         # Displays alert_frame and alert_metadata
             ]
 
 
-# This function either displays video of selected markers
-def show_camera_video(feature=None):
-    """Summary : Return video of the selected marker
+# Displays alert_frame and metadata related to a specific alert_markers after a click on display_alert_frame_btn
+def display_alerts_frames(feature=None):
 
-    Desc : This function return the video of the marker and put it into the left side bar
-    of the monitoring platform
+    # Fetching alert status and reusable metadata
+    alert_metadata = build_live_alerts_metadata()
+    alert_lat = str(alert_metadata["lat"])
+    alert_lon = str(alert_metadata["lon"])
+    alert_frame = alert_metadata["media_url"]
+    alert_device = str(alert_metadata["device_id"])
+    alert_site = alert_metadata["site_name"]
+    alert_azimuth = alert_metadata["azimuth"]
 
-    Parameters:
-    Feature (geojson children): Number of clicks the marker has received
-
-    Returns:
-    html dash components: A default video for now (later, the real video / picture of the marker)
-    """
-    video_style = {'width': '50vh',
-                   'height': '40vh',
+    frame_style = {'width': '50vh',
+                   'height': '35vh',
                    'margin': 'auto',
-                   'display': 'block'
+                   'display': 'block',
+                   'text-align': 'center',
                    }
-    if feature is not None:
-        separator = dcc.Markdown('---')
-        video_title = html.H5("Camera selectionnée", style={'text-align': 'center'})
-        video_html = html.Video(id='Video_Camera',
-                                src='https://media.giphy.com/media/l2JeaPjeaR9DvDWXS/giphy.mp4',
-                                style=video_style,
-                                controls=True)
 
-        video_div = html.Div(style=video_style,
-                             children=[separator, video_title, video_html]
-                             )
-        return html.Center(video_div)
-    return ' '
+    if feature is not None:
+        separator1 = dcc.Markdown('---')
+        frame_title = html.H5("Image de détéction", style={'text-align': 'center'})
+        alert_frame = html.Img(
+            id='alert_frame',
+            src=frame_url,
+            style=frame_style,)
+        separator2 = dcc.Markdown('---')
+        alert_metadata_title = html.H5("Données de détéction", style={'text-align': 'center'})
+        alert_metadata = html.Div(
+            id="alert_metadata_user_selection",
+            children=[
+                "Tour: {}".format(alert_site), html.Br(),
+                "Coordonnées de la tour: {}, {}".format(alert_lat, alert_lon), html.Br(),
+                "Id de caméra: {}".format(alert_device), html.Br(),
+                "Azimuth: {}".format(alert_azimuth)])
+
+        alert_frame_metadata = html.Div(
+            children=[separator1, frame_title, alert_frame, separator2, alert_metadata_title, alert_metadata])
+
+        return html.Div(alert_frame_metadata)
+    return ""
 
 
 # This function either displays or hides meteo graphs from graphs.py
@@ -198,6 +225,9 @@ def Homepage():
     body = dbc.Container([
         dbc.Row(
             [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
+             ]),
+        dbc.Row(
+            [dbc.Col(id='lol'),
              ]),
         dbc.Row(
             [
