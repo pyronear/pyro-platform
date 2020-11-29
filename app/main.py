@@ -1,5 +1,4 @@
 """The following is the main file and the script to run in order to launch the app locally.
-
 Based on the url path, it calls functions imported from the .py in order to build
 the appropriate page layout.
 """
@@ -19,10 +18,10 @@ import dash_leaflet as dl
 
 # For each page of the web-app, we import the corresponding instantiation function
 # as well as some other functions from alerts.py and utils.py for interactivity
-from homepage import Homepage, choose_map_style, show_camera_video
-from alerts import AlertsApp, choose_layer_style
+from homepage import Homepage, choose_map_style, display_alerts_frames
+from alerts import AlertsApp, choose_layer_style, define_map_zoom_center, build_alerts_elements
 from risks import RisksApp, build_risks_geojson_and_colorbar
-from utils import build_info_box, build_info_object, build_popup
+from utils import build_info_box, build_info_object, build_popup, build_live_alerts_metadata
 import config as cfg
 
 # ------------------------------------------------------------------------------
@@ -79,6 +78,11 @@ def display_page(pathname):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
+# Fetching reusable alert metadata
+alert_metadata = build_live_alerts_metadata()
+alert_id = alert_metadata["id"]
+
+
 @app.callback(Output('alerts_info', 'children'),
               [Input('geojson_departments', 'hover_feature')])
 def dpt_hover_alerts(hovered_department):
@@ -94,17 +98,17 @@ def dpt_hover_alerts(hovered_department):
         return build_info_box()
 
 
-@app.callback(Output('hp_video', 'children'),
-              [Input('show_images_btn', 'n_clicks')])
-def display_camera_video(n_clicks_marker):
+@app.callback(Output('hp_alert_frame_metadata', 'children'),
+              [Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks')])
+def display_alert_frame(n_clicks_marker):
     '''
     This one detects the number of clicks the user made on an alert popup button.
     If 1 click is made, the function returns the image of the corresponding alert.
     '''
-    if (n_clicks_marker+1) % 2 == 0:
-        return show_camera_video(n_clicks_marker)
+    if (n_clicks_marker + 1) % 2 == 0:
+        return display_alerts_frames(n_clicks_marker)
     else:
-        return show_camera_video()
+        return display_alerts_frames()
 
 
 # @app.callback(Output('sites_markers', 'children'), [Input('geojson_departments', 'click_feature')])
@@ -143,7 +147,7 @@ def dpt_hover_risks(hovered_department):
     This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return build_info_box(hovered_department, feature_type='geojson_risks')
+    return build_info_box(hovered_department)
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
@@ -178,6 +182,26 @@ def change_map_style(n_clicks=None):
         n_clicks = 0
 
     return choose_map_style(n_clicks)
+
+
+@app.callback([Output('map', 'center'), Output('map', 'zoom')],
+              Input("alert_button", "n_clicks"))
+def change_zoom_center(n_clicks=None):
+
+    if n_clicks is None:
+        n_clicks = 0
+
+    return define_map_zoom_center(n_clicks)
+
+
+@app.callback([Output('lol', 'children'), Output('live_alerts_marker', 'children')],
+              [Input('alert_radio_button', 'value')])
+def define_alert_status(value=None):
+    if value is None:
+        value = 0
+
+    return build_alerts_elements(value)
+
 
 # ------------------------------------------------------------------------------
 # Running the web-app server
