@@ -5,6 +5,7 @@
 
 import dash_html_components as html
 import dash_leaflet as dl
+import dash_bootstrap_components as dbc
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
@@ -63,3 +64,29 @@ def build_info_object(app_page):
                            'right': '10px',
                            'z-index': '1000'}
                     )
+
+# ------------------------------------------------------------------------------
+# Content  : Those functions aim at fetching API data and more specificaly :
+#  query alerts db to build alert metadata
+#  query devices db to devices alert metadata
+#  for now this is still a drafted response, proper API calls will be done soon
+# ------------------------------------------------------------------------------
+
+
+def build_live_alerts_metadata():
+
+    alert_metadata = {
+        "id": 0,
+        "created_at": "2020-11-25T15:22:21.690Z",
+        "media_url": "https://photos.lci.fr/images/613/344/photo-incendie-generac-gard-e8f2d9-0@1x.jpeg",
+        "lat": 44.765181,
+        "lon": 4.51488,
+        "event_id": 0,
+        "azimuth": "49.2°",
+        "site_name": "Serre de pied de Boeuf",
+        "type": "start",
+        "is_acknowledged": False,
+        "device_id": 123
+    }
+
+    return alert_metadata
