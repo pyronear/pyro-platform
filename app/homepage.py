@@ -118,13 +118,13 @@ def display_alerts_frames(feature=None):
 
     if feature is not None:
         separator1 = dcc.Markdown('---')
-        frame_title = html.H5("Image de détéction", style={'text-align': 'center'})
+        frame_title = html.H5("Image de détection", style={'text-align': 'center'})
         alert_frame = html.Img(
             id='alert_frame',
             src=frame_url,
             style=frame_style,)
         separator2 = dcc.Markdown('---')
-        alert_metadata_title = html.H5("Données de détéction", style={'text-align': 'center'})
+        alert_metadata_title = html.H5("Données de détection", style={'text-align': 'center'})
         alert_metadata = html.Div(
             id="alert_metadata_user_selection",
             children=[
