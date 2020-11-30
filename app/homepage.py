@@ -36,7 +36,7 @@ if alert_metadata:
     frame_url = alert_metadata["media_url"]
 
 
-# This function creates a radio button in order to simulate an alert event that will be later catched through the API
+# This function creates a radio button in order to simulate an alert event that will be later caught by the API
 def build_alert_radio_button():
 
     alert_radio_button = dcc.RadioItems(
