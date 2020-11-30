@@ -44,6 +44,7 @@ app.layout = html.Div([dcc.Location(id='url', refresh=False),
 # ------------------------------------------------------------------------------
 # General callbacks
 
+
 # Overall navbar callback for toggling the collapse on small screens
 @app.callback(
     Output("navbar-collapse", "is_open"),
@@ -194,7 +195,7 @@ def change_zoom_center(n_clicks=None):
     return define_map_zoom_center(n_clicks)
 
 
-@app.callback([Output('lol', 'children'), Output('live_alerts_marker', 'children')],
+@app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
               [Input('alert_radio_button', 'value')])
 def define_alert_status(value=None):
     if value is None:

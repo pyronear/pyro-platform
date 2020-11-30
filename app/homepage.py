@@ -44,7 +44,7 @@ def build_alert_radio_button():
             {'label': 'no alert', 'value': 1},
             {'label': 'alert', 'value': 0},
         ],
-        value=0,
+        value=1,
         labelStyle={'display': 'inline-block'},
         id='alert_radio_button'
     )
@@ -163,43 +163,11 @@ def meteo_graphs(display=False):
 # Content and App layout
 # The following function is used in the main.py file to instantiate the layout of the homepage
 
-# Instantiating the alerts map object from alerts.py and setting it as the default map object:
-map_object = build_alerts_map()
-
-# Instantiating fig objects from graphs.py functions
-meteo_fig = generate_meteo_fig()
-
-# Instantiating navbar object from navbar.py
-nav = Navbar()
-
-# Instantiating map layers button object from alerts.py
-map_layers_button = build_layer_style_button()
-
-# Instantiating map style button object
-map_style_button = build_map_style_button()
-
-# Instantiating meteo graphs, set to True to display them under the map, False to hide them
-meteo_graphs = meteo_graphs(display=False)
-
-
 # Body container
 body = dbc.Container([
     dbc.Row(
         [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
          ]),
-    dbc.Row(
-        [
-            dbc.Col(
-                dcc.Dropdown(
-                    id='user_department_input',
-                    options=[
-                        {'label': 'Ardèche', 'value': 'Ardèche'},
-                        {'label': 'Gard', 'value': 'Gard'},
-                        {'label': 'Landes', 'value': 'Landes'}],
-                    placeholder="Départements"),
-                md=3),
-        ]
-    ),
     dbc.Row(
         [dbc.Col(
             #side bar for the user to apply filter
@@ -208,11 +176,11 @@ body = dbc.Container([
             md=3),
          dbc.Col(
             # map object added here
-            html.Div(map_object, id='hp_map'),
+            html.Div(build_alerts_map(), id='hp_map'),
             md=9)]
     ),
-    # meteo graphs added here
-    meteo_graphs
+    # Instantiating meteo graphs, set to True to display them under the map, False to hide them
+    meteo_graphs(display=False)
 ],
     fluid=True,
 )
@@ -227,7 +195,7 @@ def Homepage():
             [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
              ]),
         dbc.Row(
-            [dbc.Col(id='lol'),
+            [dbc.Col(id='live_alert_header_btn'),
              ]),
         dbc.Row(
             [
