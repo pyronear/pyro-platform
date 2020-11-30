@@ -52,7 +52,7 @@ def build_alert_radio_button():
     return alert_radio_button
 
 
-# The following block is used to determine what map styles (risks or alerts) we use for and enable the user to change it
+# The following block is used to determine which map styles (risks or alerts) we use and enable the user to change it
 # This function creates the button that allows users to change the map style
 def build_map_style_button():
 
