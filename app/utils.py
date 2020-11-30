@@ -5,7 +5,6 @@
 
 import dash_html_components as html
 import dash_leaflet as dl
-import dash_bootstrap_components as dbc
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
