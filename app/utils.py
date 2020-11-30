@@ -65,7 +65,7 @@ def build_info_object(app_page):
                     )
 
 # ------------------------------------------------------------------------------
-# Content  : Those functions aim at fetching API data and more specificaly :
+# Content  : Those functions aim at fetching API data and more specifically :
 #  query alerts db to build alert metadata
 #  query devices db to devices alert metadata
 #  for now this is still a drafted response, proper API calls will be done soon
