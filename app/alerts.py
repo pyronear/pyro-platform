@@ -136,19 +136,15 @@ def build_alerts_elements(value):
     alert_lon = alert_metadata["lon"]
     alert_id = str(alert_metadata["id"])
 
-    # Building the button that allows users to zoom towards the alert marker
     if value == 0:
+        # Building the button that allows users to zoom towards the alert marker
         alert_button = dbc.Button(
             children="Départ de feu, cliquez-ici !",
             color="danger",
             block=True,
             id='alert_button'
         )
-    else:
-        alert_button = ""
-
-    # Building alerts_markers objects and wraps them in a dl.LayerGroup object
-    if value == 0:
+        # Building alerts_markers objects and wraps them in a dl.LayerGroup object
         icon = {
             "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
             "iconSize": [40, 40],       # Size of the icon
@@ -170,6 +166,7 @@ def build_alerts_elements(value):
                 ])])]
         alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id='alerts_markers')
     else:
+        alert_button = ""
         alerts_markers_layer = ""
 
     return alert_button, alerts_markers_layer
