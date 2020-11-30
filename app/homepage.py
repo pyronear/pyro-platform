@@ -32,11 +32,10 @@ from utils import build_live_alerts_metadata
 
 #Fetching reusable alert metadata
 alert_metadata = build_live_alerts_metadata()
-if alert_metadata:
-    frame_url = alert_metadata["media_url"]
+frame_url = alert_metadata["media_url"]
 
 
-# This function creates a radio button in order to simulate an alert event that will be later catched through the API
+# This function creates a radio button in order to simulate an alert event that will be later caught by the API
 def build_alert_radio_button():
 
     alert_radio_button = dcc.RadioItems(
@@ -52,7 +51,7 @@ def build_alert_radio_button():
     return alert_radio_button
 
 
-# The following block is used to determine what map styles (risks or alerts) we use for and enable the user to change it
+# The following block is used to determine which map styles (risks or alerts) we use and enables the user to change it
 # This function creates the button that allows users to change the map style
 def build_map_style_button():
 
@@ -102,10 +101,10 @@ def display_alerts_frames(feature=None):
 
     # Fetching alert status and reusable metadata
     alert_metadata = build_live_alerts_metadata()
-    alert_lat = str(alert_metadata["lat"])
-    alert_lon = str(alert_metadata["lon"])
+    alert_lat = (alert_metadata["lat"])
+    alert_lon = (alert_metadata["lon"])
     alert_frame = alert_metadata["media_url"]
-    alert_device = str(alert_metadata["device_id"])
+    alert_device = (alert_metadata["device_id"])
     alert_site = alert_metadata["site_name"]
     alert_azimuth = alert_metadata["azimuth"]
 
