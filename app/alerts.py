@@ -118,9 +118,9 @@ def build_sites_markers(dpt_code=None):
                                                      html.P(f'Nombre de caméras : {nb_device}')])]))
 
     # We group all dl.Marker objects in a dl.LayerGroup object
-    markers_layer = dl.MarkerClusterGroup(children=markers, id='sites_markers')
+    markers_cluster = dl.MarkerClusterGroup(children=markers, id='sites_markers')
 
-    return markers_layer
+    return markers_cluster
 
 
 # ------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ def build_alerts_elements(value):
             # "popupAnchor": [-3, -76]  # Point from which the popup should open relative to the iconAnchor
         }
         alerts_markers = [dl.Marker(
-            id="marker_{}".format(alert_id),   # Setting a unique id for each alerts_markers
+            id="alert_marker_{}".format(alert_id),   # Setting a unique id for each alerts_markers
             position=(alert_lat, alert_lon),
             icon=icon,
             children=[dl.Popup(

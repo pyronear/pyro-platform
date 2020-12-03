@@ -101,8 +101,8 @@ def display_alerts_frames(feature=None):
 
     # Fetching alert status and reusable metadata
     alert_metadata = build_live_alerts_metadata()
-    alert_lat = (alert_metadata["lat"])
-    alert_lon = (alert_metadata["lon"])
+    alert_lat = alert_metadata["lat"]
+    alert_lon = alert_metadata["lon"]
     alert_frame = alert_metadata["media_url"]
     alert_device = (alert_metadata["device_id"])
     alert_site = alert_metadata["site_name"]
@@ -160,38 +160,16 @@ def meteo_graphs(display=False):
 
 # ------------------------------------------------------------------------------
 # Content and App layout
-# The following function is used in the main.py file to instantiate the layout of the homepage
-
-# Body container
-body = dbc.Container([
-    dbc.Row(
-        [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
-         ]),
-    dbc.Row(
-        [dbc.Col(
-            #side bar for the user to apply filter
-            user_selection_area(),
-            id='user_selection_column',
-            md=3),
-         dbc.Col(
-            # map object added here
-            html.Div(build_alerts_map(), id='hp_map'),
-            md=9)]
-    ),
-    # Instantiating meteo graphs, set to True to display them under the map, False to hide them
-    meteo_graphs(display=False)
-],
-    fluid=True,
-)
-
-
+# The following function is used in the main.py file to instantiate the layout of the homepag
 # Gathering all these elements in a HTML Div and having it returned by the Homepage function
+
 def Homepage():
 
     # Body container
     body = dbc.Container([
         dbc.Row(
-            [dbc.Col(html.H1('Plateforme de Monitoring', style={'text-align': 'center'}), className="pt-4"),
+            [
+            dcc.Markdown('---')
              ]),
         dbc.Row(
             [dbc.Col(id='live_alert_header_btn'),

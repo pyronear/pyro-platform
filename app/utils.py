@@ -13,7 +13,7 @@ import dash_leaflet as dl
 # ------------------------------------------------------------------------------
 
 map_style = {'width': '100%',
-             'height': '75vh',
+             'height': '90vh',
              'margin': 'auto',
              'display': 'block'}
 
