@@ -168,8 +168,7 @@ def Homepage():
     # Body container
     body = dbc.Container([
         dbc.Row(
-            [
-            dcc.Markdown('---')
+            [dcc.Markdown('---'),
              ]),
         dbc.Row(
             [dbc.Col(id='live_alert_header_btn'),

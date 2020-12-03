@@ -57,7 +57,7 @@ def Navbar(dropdown=False):
                 href="#",
             ),
             dbc.NavbarToggler(id="navbar-toggler"),
-            dbc.Collapse([user_item,dropdown], id="navbar-collapse", navbar=True),
+            dbc.Collapse([user_item, dropdown], id="navbar-collapse", navbar=True),
         ],
         color="black",
         dark=True,
