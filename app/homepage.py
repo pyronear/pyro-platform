@@ -97,7 +97,7 @@ def user_selection_area():
 
 
 # Displays alert_frame and metadata related to a specific alert_markers after a click on display_alert_frame_btn
-def display_alerts_frames(feature=None):
+def display_alerts_frames(feature=None, alert_metadata=None):
 
     # Fetching alert status and reusable metadata
     alert_metadata = build_live_alerts_metadata()

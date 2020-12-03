@@ -101,13 +101,13 @@ def dpt_hover_alerts(hovered_department):
 
 @app.callback(Output('hp_alert_frame_metadata', 'children'),
               [Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks')])
-def display_alert_frame(n_clicks_marker):
+def display_alert_frame_metadata(n_clicks_marker):
     '''
     This one detects the number of clicks the user made on an alert popup button.
     If 1 click is made, the function returns the image of the corresponding alert.
     '''
     if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker)
+        return display_alerts_frames(n_clicks_marker, alert_metadata)
     else:
         return display_alerts_frames()
 
@@ -192,7 +192,7 @@ def change_zoom_center(n_clicks=None):
     if n_clicks is None:
         n_clicks = 0
 
-    return define_map_zoom_center(n_clicks)
+    return define_map_zoom_center(n_clicks, alert_metadata)
 
 
 @app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
@@ -201,7 +201,7 @@ def define_alert_status(value=None):
     if value is None:
         value = 0
 
-    return build_alerts_elements(value)
+    return build_alerts_elements(value, alert_metadata)
 
 
 # ------------------------------------------------------------------------------

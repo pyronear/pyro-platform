@@ -27,7 +27,7 @@ import dash_leaflet.express as dlx
 from navbar import Navbar
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object, build_live_alerts_metadata
+from utils import map_style, build_info_object
 
 
 # ------------------------------------------------------------------------------
@@ -128,10 +128,9 @@ def build_sites_markers(dpt_code=None):
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map
 
 # This function creates alerts-related elements such as alert_button, alert_markers
-def build_alerts_elements(value):
+def build_alerts_elements(value, alert_metadata):
 
     # Fetching alert status and reusable metadata
-    alert_metadata = build_live_alerts_metadata()
     alert_lat = alert_metadata["lat"]
     alert_lon = alert_metadata["lon"]
     alert_id = str(alert_metadata["id"])
@@ -174,10 +173,9 @@ def build_alerts_elements(value):
 
 # This function either triggers a zoom towards the alert point each time the alert button is clicked
 # and sets the default zoom and center params for map_object
-def define_map_zoom_center(n_clicks):
+def define_map_zoom_center(n_clicks, alert_metadata):
 
     # Fetching alert status and reusable metadata
-    alert_metadata = build_live_alerts_metadata()
     alert_lat = alert_metadata["lat"]
     alert_lon = alert_metadata["lon"]
 
