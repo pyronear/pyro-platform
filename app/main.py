@@ -166,6 +166,7 @@ def region_click_alerts(feature, radio_button_value):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
+
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
     '''
@@ -217,6 +218,7 @@ def region_click_risks(feature, radio_button_value):
 
 # ------------------------------------------------------------------------------
 # Callbacks related to Homepage
+
 
 @app.callback([
     Output('map_style_button', 'children'), Output('hp_map', 'children'),

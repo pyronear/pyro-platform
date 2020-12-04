@@ -205,8 +205,7 @@ def build_alerts_map():
                             build_info_object(app_page='alerts'),
                             build_sites_markers(),
                             html.Div(id="live_alerts_marker"),
-                            html.Div(id='fire_markers_alerts')  # Will contain the past fire markers of the alerts map
-                            ],
+                            html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')
 
