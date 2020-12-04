@@ -126,7 +126,6 @@ def build_historic_markers(dpt_code=None):
 
     return fire_markers
 
-
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at fetching API data and more specifically:
 #  query alerts db to build alert metadata

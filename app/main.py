@@ -163,7 +163,10 @@ def region_click_alerts(feature, radio_button_value):
         else:
             return None
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> c6adcf2425e9a3cbdca0b73f86750cf2ad52c461
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
@@ -189,7 +192,8 @@ def dpt_color_opacity(opacity_level):
             geojson,
             colorbar,
             build_info_object(app_page='risks'),
-            html.Div(id='fire_markers_risks')]
+            html.Div(id='fire_markers_risks')
+            ]
 
 
 @app.callback(Output('fire_markers_risks', 'children'),
@@ -214,7 +218,6 @@ def region_click_risks(feature, radio_button_value):
             return build_historic_markers(dpt_code=feature['properties']['code'])
         else:
             return None
-
 
 # ------------------------------------------------------------------------------
 # Callbacks related to Homepage
