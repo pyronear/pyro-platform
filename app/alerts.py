@@ -157,7 +157,7 @@ def build_alerts_elements(value, alert_metadata):
             children=[dl.Popup(
                 [
                     html.H2("Alerte détectée"),
-                    html.P("Coordonées : {}, {} ".format(alert_lat, alert_lon)),
+                    html.P("Coordonnées : {}, {} ".format(alert_lat, alert_lon)),
                     html.Button("Afficher les données de détection",
                                 id=("display_alert_frame_btn{}".format(alert_id)),  # Setting a unique btn id
                                 n_clicks=0,
@@ -204,7 +204,8 @@ def build_alerts_map():
                             build_departments_geojson(),
                             build_info_object(app_page='alerts'),
                             build_sites_markers(),
-                            html.Div(id="live_alerts_marker")],
+                            html.Div(id="live_alerts_marker"),
+                            html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')
 

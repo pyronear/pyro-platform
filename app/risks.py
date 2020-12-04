@@ -79,7 +79,7 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 # Building the slider that determines the color opacity level when displaying each department's level of risk
 def build_opacity_slider():
 
-    slider_title = dcc.Markdown("Choisissez le niveau d'opacité des aplats de couleurs :")
+    slider_title = dcc.Markdown("Choisissez l'opacité des aplats de couleurs :")
 
     slider = dcc.Slider(id='opacity_slider_risks',
                         min=0, max=1,
@@ -103,7 +103,9 @@ def build_risks_map():
                         children=[dl.TileLayer(id='tile_layer'),
                                   geojson,
                                   colorbar,
-                                  build_info_object(app_page='risks')],
+                                  build_info_object(app_page='risks'),
+                                  html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
+                                  ],
                         style=map_style,           # Reminder: map_style is imported from utils.py
                         id='map')
 
