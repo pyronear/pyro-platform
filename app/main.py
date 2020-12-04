@@ -163,10 +163,7 @@ def region_click_alerts(feature, radio_button_value):
         else:
             return None
 
-<<<<<<< HEAD
 
-=======
->>>>>>> c6adcf2425e9a3cbdca0b73f86750cf2ad52c461
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
