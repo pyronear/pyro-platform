@@ -103,7 +103,9 @@ def build_risks_map():
                         children=[dl.TileLayer(id='tile_layer'),
                                   geojson,
                                   colorbar,
-                                  build_info_object(app_page='risks')],
+                                  build_info_object(app_page='risks'),
+                                  html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
+                                  ],
                         style=map_style,           # Reminder: map_style is imported from utils.py
                         id='map')
 
