@@ -24,6 +24,7 @@ from risks import RisksApp, build_risks_geojson_and_colorbar
 from utils import build_info_box, build_info_object, build_live_alerts_metadata
 import config as cfg
 
+from flask_caching import Cache
 # ------------------------------------------------------------------------------
 # App instantiation and overall layout
 
@@ -32,12 +33,16 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 
-server = app.server
-
 # We create a rough layout that will be filled by the first callback based on the url path
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
                        html.Div(id='page-content')])
 
+#Cache configuration
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'cached-data-dir',
+    'CACHE_DEFAULT_TIMEOUT': 60
+})
 # ------------------------------------------------------------------------------
 # CALLBACKS
 
@@ -101,6 +106,7 @@ def dpt_hover_alerts(hovered_department):
 
 @app.callback(Output('hp_alert_frame_metadata', 'children'),
               [Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks')])
+@cache.memoize()
 def display_alert_frame_metadata(n_clicks_marker):
     '''
     This one detects the number of clicks the user made on an alert popup button.
@@ -187,6 +193,7 @@ def change_map_style(n_clicks=None):
 
 @app.callback([Output('map', 'center'), Output('map', 'zoom')],
               Input("alert_button", "n_clicks"))
+@cache.memoize()
 def change_zoom_center(n_clicks=None):
 
     if n_clicks is None:
@@ -197,6 +204,7 @@ def change_zoom_center(n_clicks=None):
 
 @app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
               [Input('alert_radio_button', 'value')])
+@cache.memoize()
 def define_alert_status(value=None):
     if value is None:
         value = 0
