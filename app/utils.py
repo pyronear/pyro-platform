@@ -4,7 +4,7 @@
 # Imports
 
 import dash_html_components as html
-
+import dash_leaflet as dl
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
@@ -13,34 +13,35 @@ import dash_html_components as html
 # ------------------------------------------------------------------------------
 
 map_style = {'width': '100%',
-             'height': '75vh',
+             'height': '90vh',
              'margin': 'auto',
              'display': 'block'}
 
 
-def get_info(feature=None, feature_type=None):
+def build_info_box(feature=None):
     """
-    This function  the geojson object thanks to feature_type.
-    It takes as argument the geojson hovered by user
-    and the type of attribute we want to use from it
-    It returns the appropriate message for each elements on the map.
+    This function generates an information box about the hovered department.
+    It takes as argument the geojson hovered by the user
+    It returns the appropriate message for each element in the box.
     """
     header_dept = [html.H4('Département sélectionné :')]
-    header_camera = [html.H4('Caméra sélectionnée :')]
 
     if feature:
+        return header_dept + [html.B(feature['properties']['nom'])]
 
-        if feature_type == 'markers_hover':
-            return header_camera + [html.B('Zone: {}'.format(feature['properties']['area']))]
-
-        elif feature_type == 'markers_click':
-            return header_camera + [html.B(feature['properties']['popup'])]
-
-        elif feature_type in ['geojson_alerts', 'geojson_risks']:
-            return header_dept + [html.B(feature['properties']['nom'])]
-
-    # If no object are hovered, it just return standard statement
+    # If no object is hovered, it just returns a standard statement
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]
+
+
+def build_popup(feature=None):
+    """
+    This function extract info to display from the geojson object
+    It takes as argument the geojson clicked by user
+    It returns the popup with the appropriate info for each markers on the map.
+    """
+    if feature is not None:
+        coord = 'Coordonnées de la caméra : {}'.format(feature['geometry']['coordinates'])
+        return [dl.Popup(coord)]
 
 
 def build_info_object(app_page):
@@ -54,7 +55,7 @@ def build_info_object(app_page):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=get_info(),
+    return html.Div(children=build_info_box(),
                     id=object_id,
                     className='info',
                     style={'position': 'absolute',
@@ -62,3 +63,29 @@ def build_info_object(app_page):
                            'right': '10px',
                            'z-index': '1000'}
                     )
+
+# ------------------------------------------------------------------------------
+# Content  : Those functions aim at fetching API data and more specifically :
+#  query alerts db to build alert metadata
+#  query devices db to devices alert metadata
+#  for now this is still a drafted response, proper API calls will be done soon
+# ------------------------------------------------------------------------------
+
+
+def build_live_alerts_metadata():
+
+    alert_metadata = {
+        "id": 0,
+        "created_at": "2020-11-25T15:22:21.690Z",
+        "media_url": "https://photos.lci.fr/images/613/344/photo-incendie-generac-gard-e8f2d9-0@1x.jpeg",
+        "lat": 44.765181,
+        "lon": 4.51488,
+        "event_id": 0,
+        "azimuth": "49.2°",
+        "site_name": "Serre de pied de Boeuf",
+        "type": "start",
+        "is_acknowledged": False,
+        "device_id": 123
+    }
+
+    return alert_metadata
