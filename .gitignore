@@ -131,3 +131,6 @@ dmypy.json
 # .DS_STORE files
 .DS_Store
 .github/.DS_Store
+
+#cached files
+.app/cached-data-dir
