@@ -1,5 +1,4 @@
 """The following is the main file and the script to run in order to launch the app locally.
-
 Based on the url path, it calls functions imported from the .py in order to build
 the appropriate page layout.
 """
@@ -19,10 +18,11 @@ import dash_leaflet as dl
 
 # For each page of the web-app, we import the corresponding instantiation function
 # as well as some other functions from alerts.py and utils.py for interactivity
-from homepage import Homepage, choose_map_style
-from alerts import AlertsApp, get_camera_positions, choose_layer_style
+from homepage import Homepage, choose_map_style, display_alerts_frames
+from alerts import AlertsApp, choose_layer_style, define_map_zoom_center, build_alerts_elements
 from risks import RisksApp, build_risks_geojson_and_colorbar
-from utils import get_info, build_info_object
+from utils import build_info_box, build_info_object, build_live_alerts_metadata
+from utils import build_historic_markers, build_legend_box
 import config as cfg
 
 # ------------------------------------------------------------------------------
@@ -44,6 +44,7 @@ app.layout = html.Div([dcc.Location(id='url', refresh=False),
 
 # ------------------------------------------------------------------------------
 # General callbacks
+
 
 # Overall navbar callback for toggling the collapse on small screens
 @app.callback(
@@ -79,36 +80,49 @@ def display_page(pathname):
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Alertes et Infrastructures" dashboard
 
+# Fetching reusable alert metadata
+alert_metadata = build_live_alerts_metadata()
+alert_id = alert_metadata["id"]
+
+
 @app.callback(Output('alerts_info', 'children'),
-              [Input('geojson_alerts', 'hover_feature'),
-              Input('markers', 'n_clicks'),
-              Input('markers', 'hover_feature')])
-def dpt_hover_alerts(hovered_department, clicked_marker, hovered_marker):
+              [Input('geojson_departments', 'hover_feature')])
+def dpt_hover_alerts(hovered_department):
     '''
     This one detects what department is being hovered by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     If a marker is hovered instead of a department, it returns its area info for now.
+    If a marker is clicked instead of hovered, it returns a simple message for now.
     '''
     if hovered_department is not None:
-        return get_info(hovered_department, feature_type='geojson_alerts')
-    elif clicked_marker is not None:
-        return get_info(clicked_marker, feature_type='markers_click')
-    elif hovered_marker is not None:
-        return get_info(hovered_marker, feature_type='markers_hover')
+        return build_info_box(hovered_department)
     else:
-        return get_info()
+        return build_info_box()
 
 
-@app.callback(Output('markers', 'data'), [Input('geojson_alerts', 'click_feature')])
-def region_click(feature):
+@app.callback(Output('hp_alert_frame_metadata', 'children'),
+              [Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks')])
+def display_alert_frame_metadata(n_clicks_marker):
     '''
-    This one detects which department the user is clicking on and returns the position
-    of the cameras deployed in this department as markers on the map. It relies on the
-    get_camera_positions function, imported from alerts.py that takes a department code
-    as input and returns a GeoJSON file containing cameras positions.
+    This one detects the number of clicks the user made on an alert popup button.
+    If 1 click is made, the function returns the image of the corresponding alert.
     '''
-    if feature is not None:
-        return get_camera_positions(feature['properties']['code'])
+    if (n_clicks_marker + 1) % 2 == 0:
+        return display_alerts_frames(n_clicks_marker, alert_metadata)
+    else:
+        return display_alerts_frames()
+
+
+# @app.callback(Output('sites_markers', 'children'), [Input('geojson_departments', 'click_feature')])
+# def region_click(feature):
+#     '''
+#     This one detects which department the user is clicking on and returns the position
+#     of the cameras deployed in this department as markers on the map. It relies on the
+#     get_camera_positions function, imported from alerts.py that takes a department code
+#     as input and returns a GeoJSON file containing cameras positions.
+#     '''
+#     if feature is not None:
+#         return get_sites_list(feature['properties']['code'])
 
 
 @app.callback([Output('layer_style_button', 'children'), Output('tile_layer', 'url'),
@@ -126,8 +140,32 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
+@app.callback(Output('fire_markers_alerts', 'children'),
+              [Input('geojson_departments', 'click_feature'),
+               Input('historic_fires_radio_button', 'value')])
+def region_click_alerts(feature, radio_button_value):
+    '''
+    -- Displaying past fires on the alerts map --
+
+    This one detects what department the user is clicking on and returns the
+    position of the old fires in this department as markers on the map.
+
+    It relies on the get_old_fire_positions function, imported from historic.py that takes
+    a department code as input and returns a GeoJSON file containing the position of the old fires.
+
+    It also takes as input the value of the radio button dedicated to past fires,
+    so that if the user has selected "Non", the container of historic fire markers
+    is left empty and we fill it with the relevant information if the user has selected "Yes".
+    '''
+    if feature is not None:
+        if radio_button_value == 1:
+            return build_historic_markers(dpt_code=feature['properties']['code'])
+        else:
+            return None
+
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
+
 
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
@@ -135,7 +173,7 @@ def dpt_hover_risks(hovered_department):
     This one detects which department is being hovered on by the user's cursor and
     returns the corresponding name in the info object in the upper right corner of the map.
     '''
-    return get_info(hovered_department, feature_type='geojson_risks')
+    return build_info_box(hovered_department)
 
 
 @app.callback(Output('map', 'children'), Input('opacity_slider_risks', 'value'))
@@ -150,11 +188,38 @@ def dpt_color_opacity(opacity_level):
     return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
-            build_info_object(app_page='risks')]
+            build_info_object(app_page='risks'),
+            build_legend_box(app_page='risks'),
+            html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
+            ]
 
+
+@app.callback(Output('fire_markers_risks', 'children'),
+              [Input('geojson_risks', 'click_feature'),
+               Input('historic_fires_radio_button', 'value')])
+def region_click_risks(feature, radio_button_value):
+    '''
+    -- Displaying past fires on the risks map --
+
+    This one detects what department the user is clicking on and returns the
+    position of the old fires in this department as markers on the map.
+
+    It relies on the get_old_fire_positions function, imported from historic.py that takes
+    a department code as input and returns a GeoJSON file containing the position of the old fires.
+
+    It also takes as input the value of the radio button dedicated to past fires,
+    so that if the user has selected "Non", the container of historic fire markers
+    is left empty and we fill it with the relevant information if the user has selected "Yes".
+    '''
+    if feature is not None:
+        if radio_button_value == 1:
+            return build_historic_markers(dpt_code=feature['properties']['code'])
+        else:
+            return None
 
 # ------------------------------------------------------------------------------
 # Callbacks related to Homepage
+
 
 @app.callback([
     Output('map_style_button', 'children'), Output('hp_map', 'children'),
@@ -170,6 +235,26 @@ def change_map_style(n_clicks=None):
         n_clicks = 0
 
     return choose_map_style(n_clicks)
+
+
+@app.callback([Output('map', 'center'), Output('map', 'zoom')],
+              Input("alert_button", "n_clicks"))
+def change_zoom_center(n_clicks=None):
+
+    if n_clicks is None:
+        n_clicks = 0
+
+    return define_map_zoom_center(n_clicks, alert_metadata)
+
+
+@app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
+              [Input('alert_radio_button', 'value')])
+def define_alert_status(value=None):
+    if value is None:
+        value = 0
+
+    return build_alerts_elements(value, alert_metadata)
+
 
 # ------------------------------------------------------------------------------
 # Running the web-app server
