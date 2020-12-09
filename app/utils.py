@@ -85,9 +85,10 @@ def get_old_fire_positions(dpt_code=None):
     # Below it allows us to filter by department with a click on the map
     old_fire_positions = old_fire_positions[old_fire_positions['Département'] == int(dpt_code)].copy()
 
-    icon = {"iconUrl": 'https://static.thenounproject.com/png/3391697-200.png',
-            "iconSize": [60, 60],       # Size of the icon
-            "iconAnchor": [30, 30]      # Point of the icon which will correspond to marker's location
+    icon = {"iconUrl": '../assets/pyro_oldfire_icon.png',
+            "iconSize": [50, 50],       # Size of the icon
+            "iconAnchor": [25, 45],      # Point of the icon which will correspond to marker's and popup's location
+            "popupAnchor": [0, -20]  # Point from which the popup should open relative to the iconAnchor
             }
 
     # We build a list of dictionaries containing the coordinates of each fire
