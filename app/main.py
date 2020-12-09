@@ -22,6 +22,7 @@ from homepage import Homepage, choose_map_style, display_alerts_frames
 from alerts import AlertsApp, choose_layer_style, define_map_zoom_center, build_alerts_elements
 from risks import RisksApp, build_risks_geojson_and_colorbar
 from utils import build_info_box, build_info_object, build_live_alerts_metadata
+from utils import build_historic_markers, build_legend_box
 import config as cfg
 
 # ------------------------------------------------------------------------------
@@ -139,8 +140,32 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
+@app.callback(Output('fire_markers_alerts', 'children'),
+              [Input('geojson_departments', 'click_feature'),
+               Input('historic_fires_radio_button', 'value')])
+def region_click_alerts(feature, radio_button_value):
+    '''
+    -- Displaying past fires on the alerts map --
+
+    This one detects what department the user is clicking on and returns the
+    position of the old fires in this department as markers on the map.
+
+    It relies on the get_old_fire_positions function, imported from historic.py that takes
+    a department code as input and returns a GeoJSON file containing the position of the old fires.
+
+    It also takes as input the value of the radio button dedicated to past fires,
+    so that if the user has selected "Non", the container of historic fire markers
+    is left empty and we fill it with the relevant information if the user has selected "Yes".
+    '''
+    if feature is not None:
+        if radio_button_value == 1:
+            return build_historic_markers(dpt_code=feature['properties']['code'])
+        else:
+            return None
+
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
+
 
 @app.callback(Output('risks_info', 'children'), Input('geojson_risks', 'hover_feature'))
 def dpt_hover_risks(hovered_department):
@@ -163,11 +188,38 @@ def dpt_color_opacity(opacity_level):
     return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
-            build_info_object(app_page='risks')]
+            build_info_object(app_page='risks'),
+            build_legend_box(app_page='risks'),
+            html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
+            ]
 
+
+@app.callback(Output('fire_markers_risks', 'children'),
+              [Input('geojson_risks', 'click_feature'),
+               Input('historic_fires_radio_button', 'value')])
+def region_click_risks(feature, radio_button_value):
+    '''
+    -- Displaying past fires on the risks map --
+
+    This one detects what department the user is clicking on and returns the
+    position of the old fires in this department as markers on the map.
+
+    It relies on the get_old_fire_positions function, imported from historic.py that takes
+    a department code as input and returns a GeoJSON file containing the position of the old fires.
+
+    It also takes as input the value of the radio button dedicated to past fires,
+    so that if the user has selected "Non", the container of historic fire markers
+    is left empty and we fill it with the relevant information if the user has selected "Yes".
+    '''
+    if feature is not None:
+        if radio_button_value == 1:
+            return build_historic_markers(dpt_code=feature['properties']['code'])
+        else:
+            return None
 
 # ------------------------------------------------------------------------------
 # Callbacks related to Homepage
+
 
 @app.callback([
     Output('map_style_button', 'children'), Output('hp_map', 'children'),

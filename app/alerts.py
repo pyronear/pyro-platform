@@ -27,7 +27,7 @@ import dash_leaflet.express as dlx
 from navbar import Navbar
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object
+from utils import map_style, build_info_object, build_legend_box
 
 
 # ------------------------------------------------------------------------------
@@ -103,6 +103,12 @@ def build_sites_markers(dpt_code=None):
     camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
     # camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
+    # Building alerts_markers objects and wraps them in a dl.LayerGroup object
+    icon = {"iconUrl": '../assets/pyro_site_icon.png',
+            "iconSize": [50, 50],       # Size of the icon
+            "iconAnchor": [25, 45],      # Point of the icon which will correspond to marker's location
+            "popupAnchor": [0, -20]}  # Point from which the popup should open relative to the iconAnchor
+
     # We build a list of markers containing the info of each site/camera
     markers = []
     for i, row in camera_positions.iterrows():
@@ -112,6 +118,7 @@ def build_sites_markers(dpt_code=None):
         nb_device = row['Nombres Devices']
         markers.append(dl.Marker(id=f'site_{i}',    # Necessary to set an id for each marker to reteive callbacks
                                  position=(lat, lon),
+                                 icon=icon,
                                  children=[dl.Tooltip(site_name),
                                            dl.Popup([html.H2(f'Site {site_name}'),
                                                      html.P(f'Coordonnées : ({lat}, {lon})'),
@@ -145,10 +152,10 @@ def build_alerts_elements(value, alert_metadata):
         )
         # Building alerts_markers objects and wraps them in a dl.LayerGroup object
         icon = {
-            "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
-            "iconSize": [40, 40],       # Size of the icon
-            "iconAnchor": [20, 20]      # Point of the icon which will correspond to marker's location
-            # "popupAnchor": [-3, -76]  # Point from which the popup should open relative to the iconAnchor
+            "iconUrl": '../assets/pyro_alert_icon.png',
+            "iconSize": [50, 50],       # Size of the icon
+            "iconAnchor": [25, 45],      # Point of the icon which will correspond to marker's and popup's location
+            "popupAnchor": [0, -20]  # Point from which the popup should open relative to the iconAnchor
         }
         alerts_markers = [dl.Marker(
             id="alert_marker_{}".format(alert_id),   # Setting a unique id for each alerts_markers
@@ -203,8 +210,10 @@ def build_alerts_map():
                             dl.TileLayer(id='tile_layer'),
                             build_departments_geojson(),
                             build_info_object(app_page='alerts'),
+                            build_legend_box(app_page='alerts'),
                             build_sites_markers(),
-                            html.Div(id="live_alerts_marker")],
+                            html.Div(id="live_alerts_marker"),
+                            html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map
                         style=map_style,      # Reminder: map_style is imported from utils.py
                         id='map')
 
