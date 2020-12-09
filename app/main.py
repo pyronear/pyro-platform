@@ -22,7 +22,7 @@ from homepage import Homepage, choose_map_style, display_alerts_frames
 from alerts import AlertsApp, choose_layer_style, define_map_zoom_center, build_alerts_elements
 from risks import RisksApp, build_risks_geojson_and_colorbar
 from utils import build_info_box, build_info_object, build_live_alerts_metadata
-from utils import get_old_fire_positions, build_historic_markers, build_legend_box
+from utils import build_historic_markers, build_legend_box
 import config as cfg
 
 # ------------------------------------------------------------------------------

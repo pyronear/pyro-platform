@@ -11,7 +11,6 @@ import datetime as dt
 
 import dash_html_components as html
 import dash_leaflet as dl
-import dash_leaflet.express as dlx
 
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
