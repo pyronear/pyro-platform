@@ -104,12 +104,10 @@ def build_sites_markers(dpt_code=None):
     # camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
     # Building alerts_markers objects and wraps them in a dl.LayerGroup object
-    icon = {
-            "iconUrl": '../assets/pyro_site_icon.png',
+    icon = {"iconUrl": '../assets/pyro_site_icon.png',
             "iconSize": [50, 50],       # Size of the icon
             "iconAnchor": [25, 45],      # Point of the icon which will correspond to marker's location
-            "popupAnchor": [0, -20]  # Point from which the popup should open relative to the iconAnchor
-            }
+            "popupAnchor": [0, -20]}  # Point from which the popup should open relative to the iconAnchor
 
     # We build a list of markers containing the info of each site/camera
     markers = []
