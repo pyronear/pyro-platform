@@ -110,7 +110,14 @@ def build_sites_markers(dpt_code=None):
         lon = row['Longitude']
         site_name = row['Tours']
         nb_device = row['Nombres Devices']
-        markers.append(dl.Marker(id=f'site_{i}',    # Necessary to set an id for each marker to reteive callbacks
+        icon = {
+            "iconUrl": '../assets/pyro_site_icon.png', # still to be changed to a cleaner path with Path
+            "iconSize": [60, 60],       # Size of the icon
+            # "iconAnchor": [20, 0]      # Point of the icon which will correspond to marker's location
+            # "popupAnchor": [-3, -76]  # Point from which the popup should open relative to the iconAnchor
+        }
+        markers.append(dl.Marker(id=f'site_{i}',    # Necessary to set an id for each marker to retrieve callbacks
+                                 icon=icon,
                                  position=(lat, lon),
                                  children=[dl.Tooltip(site_name),
                                            dl.Popup([html.H2(f'Site {site_name}'),
@@ -145,9 +152,9 @@ def build_alerts_elements(value, alert_metadata):
         )
         # Building alerts_markers objects and wraps them in a dl.LayerGroup object
         icon = {
-            "iconUrl": 'https://marsfireengineers.com/assets/images/resources/firedetection.png',
-            "iconSize": [40, 40],       # Size of the icon
-            "iconAnchor": [20, 20]      # Point of the icon which will correspond to marker's location
+            "iconUrl": '../assets/pyro_alert_icon.png', # still to be changed to a cleaner path with Path
+            "iconSize": [60, 60],       # Size of the icon
+            "iconAnchor": [0, 60]      # Point of the icon which will correspond to marker's location
             # "popupAnchor": [-3, -76]  # Point from which the popup should open relative to the iconAnchor
         }
         alerts_markers = [dl.Marker(
