@@ -27,7 +27,7 @@ import dash_leaflet.express as dlx
 from navbar import Navbar
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object
+from utils import map_style, build_info_object, build_legend_box
 
 
 # ------------------------------------------------------------------------------
@@ -212,6 +212,7 @@ def build_alerts_map():
                             dl.TileLayer(id='tile_layer'),
                             build_departments_geojson(),
                             build_info_object(app_page='alerts'),
+                            build_legend_box(app_page='alerts'),
                             build_sites_markers(),
                             html.Div(id="live_alerts_marker"),
                             html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map

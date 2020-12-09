@@ -72,6 +72,60 @@ def build_info_object(app_page):
                     )
 
 
+def build_legend_box(app_page=None):
+    """
+    This function generates a legend box, whose content depends on the map chosen.
+    It takes as argument the type of map (alerts or risks chosen by the user).
+    It returns the appropriate legend for each of the two maps in the box.
+    """
+    site_img_url = '../assets/pyro_site_icon.png'
+    past_fire_img_url = '../assets/pyro_oldfire_icon.png'
+    alert_img_url = '../assets/pyro_alert_icon.png'
+
+    img_style = {'width': '4.5vh',
+                 'height': '4.5vh'}
+
+    image_div_style = {'display': 'inline-block', 'height': '22px', 'margin-left': '2px'}
+    text_div_style = {'display': 'inline-block', 'height': '22px', 'margin-left': '7px'}
+
+    if app_page == 'alerts':
+
+        # Site de surveillance
+        legend_body = [html.Div([html.Div(html.Img(src=site_img_url, style=img_style),
+                                          style=image_div_style),
+                                 html.Div(html.P('Matériel installé'),
+                                          style=text_div_style)])]
+
+        # Historique des feux
+        legend_body.append(html.Div([html.Div(html.Img(src=past_fire_img_url, style=img_style),
+                                              style=image_div_style),
+                                     html.Div(html.P('Feu passé'),
+                                              style=text_div_style)]))
+
+        # Alerte
+        legend_body.append(html.Div([html.Div(html.Img(src=alert_img_url, style=img_style),
+                                              style=image_div_style),
+                                     html.Div(html.P('Alerte en cours'),
+                                              style=text_div_style)]))
+
+    elif app_page == 'risks':
+        legend_body = [html.Div([html.Div(html.Img(src=past_fire_img_url, style=img_style),
+                                          style=image_div_style),
+                                 html.Div(html.P('Feu passé'),
+                                          style=text_div_style)])]
+
+    legend_id = 'legend_' + app_page
+
+    return html.Div(children=legend_body,
+                    id=legend_id,
+                    className='info',
+                    style={'position': 'absolute',
+                           'bottom': '30px',
+                           'right': '10px',
+                           'z-index': '1000'}
+                    )
+
+
 # Block dedicated to fetching the positions of past fires and building the related map attribute
 # Fetching the positions of past fires in a given department
 def get_old_fire_positions(dpt_code=None):
