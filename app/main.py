@@ -163,6 +163,20 @@ def region_click_alerts(feature, radio_button_value):
         else:
             return None
 
+@app.callback(Output('acknowledge_alert_div_{}'.format(alert_id), 'children'),
+              [Input('acknowledge_alert_checkbox_{}'.format(alert_id), 'checked')])
+def acknowledge_alert(checkbox_checked):
+    if not checkbox_checked:
+        return [dbc.FormGroup([dbc.Checkbox(id='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                            className="form-check-input"),
+                               dbc.Label("Confirmer la prise en compte de l'alerte",
+                                         html_for='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                         className="form-check-label")],
+                              check=True,
+                              inline=True)]
+    elif checkbox_checked:
+        return [html.P("Prise en compte de l'alerte confirmée")]
+
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
