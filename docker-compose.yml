@@ -3,7 +3,7 @@ version: '3.7'
 services:
   web:
     build: .
-    command: python main.py
+    command: python main.py --host 0.0.0.0
     volumes:
       - ./app/:/usr/src/app/
     ports:
