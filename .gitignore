@@ -132,5 +132,5 @@ dmypy.json
 .DS_Store
 .github/.DS_Store
 
-#cached files
+# Dash cache
 app/.cache
