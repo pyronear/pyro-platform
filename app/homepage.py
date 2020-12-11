@@ -82,6 +82,23 @@ def choose_map_style(n_clicks):
     return button_content_map, map_object, slider
 
 
+# This function creates the button that allows users to display or not historic fires
+def build_historic_fires_radio_button():
+
+    historic_fires_radio_button = dcc.RadioItems(
+        options=[
+            {'label': 'Oui', 'value': 1},
+            {'label': 'Non', 'value': 0},
+        ],
+        value=1,
+        labelStyle={'display': 'inline-block',
+                    'margin': '0 10px'},
+        id='historic_fires_radio_button'
+    )
+
+    return html.Center(historic_fires_radio_button)
+
+
 #This function returns the user selection area in the left side bar
 def user_selection_area():
 
@@ -91,6 +108,10 @@ def user_selection_area():
             html.P(build_layer_style_button()),                          # Changes layer view style btn
             dcc.Markdown('---'),
             html.P(build_map_style_button()),                            # Changes map style btn
+            dcc.Markdown('---'),
+            html.Center(dcc.Markdown("Afficher l'historique des feux :")),
+            html.P(build_historic_fires_radio_button()),
+            dcc.Markdown('---'),
             html.P(id="hp_slider"),                                      # Opacity sliders for risks map
             html.P(id="hp_alert_frame_metadata")                         # Displays alert_frame and alert_metadata
             ]
