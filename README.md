@@ -35,6 +35,16 @@ pip install -r pyro-platform/requirements.txt
 
 ## Usage
 
+Beforehand, you will need to set a few environment variables either manually or by writing an `.env` file in the root directory of this project, like in the example below:
+
+```
+API_URL=http://my-api.myhost.com
+API_LOGIN=my_secret_login
+API_PWD=my_very_secret_password
+
+```
+Those values will allow your web server to connect to our [API](https://github.com/pyronear/pyro-api), which is mandatory for your local server to be fully operational.
+
 #### Plain dash server
 
 You can run the web server using the following commands:
