@@ -40,7 +40,7 @@ app.layout = html.Div([dcc.Location(id='url', refresh=False),
 #Cache configuration
 cache = Cache(app.server, config={
     'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': 'cached-data-dir',
+    'CACHE_DIR': '.cache',
     'CACHE_DEFAULT_TIMEOUT': 60
 })
 # ------------------------------------------------------------------------------
