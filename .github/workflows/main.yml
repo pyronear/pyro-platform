@@ -45,6 +45,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build & run docker
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          API_LOGIN: ${{ secrets.API_LOGIN }}
+          API_PWD: ${{ secrets.API_PWD }}
         run: docker-compose up -d --build
       - name: Ping app inside the container
         run: nc -vz localhost 8050

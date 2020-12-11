@@ -11,9 +11,13 @@ ENV PYTHONUNBUFFERED 1
 COPY ./requirements.txt /usr/src/app/requirements.txt
 
 # install dependencies
-RUN pip install --upgrade pip setuptools wheel \
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git \
+    && pip install --upgrade pip setuptools wheel \
     && pip install -r /usr/src/app/requirements.txt \
-    && rm -rf /root/.cache/pip
+    && apt-get purge --autoremove -y git \
+    && rm -rf /root/.cache/pip \
+    && rm -rf /var/lib/apt/lists/*
 
 # copy project
 COPY app/ /usr/src/app/
