@@ -29,7 +29,9 @@ from utils import build_live_alerts_metadata
 # ------------------------------------------------------------------------------
 # Before moving to the app layout
 
-# This function creates a radio button for debug purposes, it simulates an alert event that will be later caught by the API
+
+# This function creates a radio button for debug purposes, it simulates an alert event that will be
+# ater caught by the API
 def build_alert_radio_button():
 
     alert_radio_button = dcc.RadioItems(
@@ -96,7 +98,7 @@ def build_historic_fires_radio_button():
 #This function returns the user selection area in the left side bar
 def user_selection_area():
 
-    return [html.Div(build_alert_radio_button(), style={'display': 'none'}), # Change none for debug purposes
+    return [html.Div(build_alert_radio_button(), style={'display': 'none'}),
             dcc.Markdown('---'),
             html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # Map filters added here
             html.P(build_layer_style_button()),                          # Changes layer view style btn
@@ -199,7 +201,7 @@ def Homepage():
                     # interval object handling api calls every 10 seconds
                     dcc.Interval(
                         id='interval-component',
-                        interval=10*1000, # in milliseconds
+                        interval=10 * 1000,  # in milliseconds
                         n_intervals=0),
                     html.Div(id='img_url', style={'display': 'none'})],
                     md=9),

@@ -175,8 +175,6 @@ def build_alerts_elements(img_url, alert_status, alert_metadata):
         alert_button = ""
         alerts_markers_layer = ""
 
-
-
     return img_url, alert_button, alerts_markers_layer
 
 
