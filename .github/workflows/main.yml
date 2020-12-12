@@ -85,16 +85,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Set env variables
+      - name: Run gunicorn
         env:
           API_URL: ${{ secrets.API_URL }}
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          echo API_URL=${API_URL} > .env
-          echo API_LOGIN=${API_LOGIN} >> .env
-          echo API_PWD=${API_PWD} >> .env
-      - name: Run gunicorn
-        run: screen -d -m gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
+          screen -dmS temp-screen
+          screen -S temp-screen -p 0 -X stuff "export API_URL=$API_URL^M"
+          screen -S temp-screen -p 0 -X stuff "export API_LOGIN=$API_LOGIN^M"
+          screen -S temp-screen -p 0 -X stuff "export API_PWD=$API_PWD^M"
+          screen -S temp-screen -p 0 -X stuff "gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server^M"
       - name: Ping the gunicorn process port
         run: nc -vz localhost 8050
