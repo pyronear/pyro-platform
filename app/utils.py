@@ -12,6 +12,7 @@ import datetime as dt
 import dash_html_components as html
 import dash_leaflet as dl
 
+
 # ------------------------------------------------------------------------------
 # Content  : Those functions aim at returning either the name of :
 #  the hovered department
