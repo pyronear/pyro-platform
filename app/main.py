@@ -40,6 +40,8 @@ from services import api_client
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
+# Gunicorn will be looking for the server attribute of this module
+server = app.server
 
 # We create a rough layout that will be filled by the first callback based on the url path
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
