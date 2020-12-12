@@ -30,8 +30,7 @@ from utils import build_live_alerts_metadata
 # Before moving to the app layout
 
 
-# This function creates a radio button for debug purposes, it simulates an alert event that will be
-# ater caught by the API
+# This function creates a radio button for debug purposes, it simulates an alert event
 def build_alert_radio_button():
 
     alert_radio_button = dcc.RadioItems(
