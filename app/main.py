@@ -259,7 +259,7 @@ def fetch_alert_status_metadata(n_intervals):
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
     all_alerts = pd.DataFrame(response)
-    live_alerts = all_alerts.loc[all_alerts['is_acknowledged'] is False]
+    live_alerts = all_alerts.loc[all_alerts['is_acknowledged'] == False]
 
     # Defining alert status
     if live_alerts.empty:
@@ -290,7 +290,8 @@ def define_alert_status_debug(value=None, n_intervals=None):
     else:
         alert_status = 1
 
-    return build_alerts_elements(alert_status, alert_metadata)'''
+    return build_alerts_elements(alert_status, alert_metadata)
+'''
 
 
 @app.callback(Output('hp_alert_frame_metadata', 'children'),
