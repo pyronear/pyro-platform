@@ -85,11 +85,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run gunicorn
+      - name: Run gunicorn & ping the process
         env:
           API_URL: ${{ secrets.API_URL }}
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
-        run: gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
-      - name: Ping the gunicorn process port
-        run: nc -vz localhost 8050
+        run: |
+          screen -d -m gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
+          nc -vz localhost 8050
