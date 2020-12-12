@@ -135,14 +135,14 @@ def build_sites_markers(dpt_code=None):
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map
 
 # This function creates alerts-related elements such as alert_button, alert_markers
-def build_alerts_elements(value, alert_metadata):
+def build_alerts_elements(img_url, alert_status, alert_metadata):
 
     # Fetching alert status and reusable metadata
     alert_lat = alert_metadata["lat"]
     alert_lon = alert_metadata["lon"]
     alert_id = str(alert_metadata["id"])
 
-    if value == 0:
+    if alert_status == 1:
         # Building the button that allows users to zoom towards the alert marker
         alert_button = dbc.Button(
             children="Départ de feu, cliquez-ici !",
@@ -175,7 +175,9 @@ def build_alerts_elements(value, alert_metadata):
         alert_button = ""
         alerts_markers_layer = ""
 
-    return alert_button, alerts_markers_layer
+
+
+    return img_url, alert_button, alerts_markers_layer
 
 
 # This function either triggers a zoom towards the alert point each time the alert button is clicked

@@ -26,24 +26,18 @@ from graphs import generate_meteo_fig
 # Importing utils fetched API data
 from utils import build_live_alerts_metadata
 
-
 # ------------------------------------------------------------------------------
 # Before moving to the app layout
 
-#Fetching reusable alert metadata
-alert_metadata = build_live_alerts_metadata()
-frame_url = alert_metadata["media_url"]
-
-
-# This function creates a radio button in order to simulate an alert event that will be later caught by the API
+# This function creates a radio button for debug purposes, it simulates an alert event that will be later caught by the API
 def build_alert_radio_button():
 
     alert_radio_button = dcc.RadioItems(
         options=[
-            {'label': 'no alert', 'value': 1},
-            {'label': 'alert', 'value': 0},
+            {'label': 'no alert', 'value': 0},
+            {'label': 'alert', 'value': 1},
         ],
-        value=1,
+        value=0,
         labelStyle={'display': 'inline-block'},
         id='alert_radio_button'
     )
@@ -102,7 +96,7 @@ def build_historic_fires_radio_button():
 #This function returns the user selection area in the left side bar
 def user_selection_area():
 
-    return [build_alert_radio_button(),
+    return [html.Div(build_alert_radio_button(), style={'display': 'none'}), # Change none for debug purposes
             dcc.Markdown('---'),
             html.H5(("Filtres Carte"), style={'text-align': 'center'}),  # Map filters added here
             html.P(build_layer_style_button()),                          # Changes layer view style btn
@@ -118,13 +112,12 @@ def user_selection_area():
 
 
 # Displays alert_frame and metadata related to a specific alert_markers after a click on display_alert_frame_btn
-def display_alerts_frames(feature=None, alert_metadata=None):
+def display_alerts_frames(feature=None, alert_metadata=None, img_url=None):
 
     # Fetching alert status and reusable metadata
     alert_metadata = build_live_alerts_metadata()
     alert_lat = alert_metadata["lat"]
     alert_lon = alert_metadata["lon"]
-    alert_frame = alert_metadata["media_url"]
     alert_device = (alert_metadata["device_id"])
     alert_site = alert_metadata["site_name"]
     alert_azimuth = alert_metadata["azimuth"]
@@ -141,8 +134,8 @@ def display_alerts_frames(feature=None, alert_metadata=None):
         frame_title = html.H5("Image de détection", style={'text-align': 'center'})
         alert_frame = html.Img(
             id='alert_frame',
-            src=frame_url,
-            style=frame_style,)
+            src=img_url,
+            style=frame_style)
         separator2 = dcc.Markdown('---')
         alert_metadata_title = html.H5("Données de détection", style={'text-align': 'center'})
         alert_metadata = html.Div(
@@ -200,10 +193,16 @@ def Homepage():
                     user_selection_area(),
                     id='user_selection_column',
                     md=3),
-                dbc.Col(
+                dbc.Col([
                     # map object added here
                     html.Div(build_alerts_map(), id='hp_map'),
-                    md=9)
+                    # interval object handling api calls every 10 seconds
+                    dcc.Interval(
+                        id='interval-component',
+                        interval=10*1000, # in milliseconds
+                        n_intervals=0),
+                    html.Div(id='img_url', style={'display': 'none'})],
+                    md=9),
             ]
         ),
         # meteo graphs added here
