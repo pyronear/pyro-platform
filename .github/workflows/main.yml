@@ -61,3 +61,31 @@ jobs:
         run: docker-compose up -d --build
       - name: Ping app inside the container
         run: nc -vz localhost 8050
+
+  docker-gunicorn:
+    runs-on: ubuntu-latest
+    needs: install-deps
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+          architecture: x64
+      - name: Cache python modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-deps-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ matrix.python-version }}-
+            ${{ runner.os }}-deps-
+            ${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run gunicorn
+        run: screen -d -m gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
+      - name: Ping the gunicorn process port
+        run: nc -vz localhost 8050
