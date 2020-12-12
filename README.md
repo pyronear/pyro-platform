@@ -50,8 +50,7 @@ Those values will allow your web server to connect to our [API](https://github.c
 You can run the web server using the following commands:
 
 ```bash
-cd app
-python main.py
+python app/main.py
 ```
 
 Then your Dash app will be available at http://localhost:8050/
