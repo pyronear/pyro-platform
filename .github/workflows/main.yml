@@ -90,6 +90,6 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
-        run: screen -d -m gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
+        run: gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server
       - name: Ping the gunicorn process port
         run: nc -vz localhost 8050
