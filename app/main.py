@@ -164,6 +164,7 @@ def region_click_alerts(feature, radio_button_value):
         else:
             return None
 
+
 @app.callback(Output('acknowledge_alert_div_{}'.format(alert_id), 'children'),
               [Input('acknowledge_alert_checkbox_{}'.format(alert_id), 'checked')])
 def acknowledge_alert(checkbox_checked):
