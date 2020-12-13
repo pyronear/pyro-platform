@@ -168,7 +168,19 @@ def build_alerts_elements(img_url, alert_status, alert_metadata):
                     html.Button("Afficher les données de détection",
                                 id=("display_alert_frame_btn{}".format(alert_id)),  # Setting a unique btn id
                                 n_clicks=0,
-                                className="btn btn-danger")
+                                className="btn btn-danger"),
+                    # Adding an alert acknowledgement checkbox which has value False by default
+                    # And takes value True once checked
+                    dcc.Markdown("---"),
+                    html.Div(id='acknowledge_alert_div_{}'.format(alert_id),
+                             children=[
+                                dbc.FormGroup([dbc.Checkbox(id='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                                            className="form-check-input"),
+                                               dbc.Label("Confirmer la prise en compte de l'alerte",
+                                                         html_for='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                                         className="form-check-label")],
+                                              check=True,
+                                              inline=True)])
                 ])])]
         alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id='alerts_markers')
     else:

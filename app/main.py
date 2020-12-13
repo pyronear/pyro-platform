@@ -164,6 +164,21 @@ def region_click_alerts(feature, radio_button_value):
         else:
             return None
 
+
+@app.callback(Output('acknowledge_alert_div_{}'.format(alert_id), 'children'),
+              [Input('acknowledge_alert_checkbox_{}'.format(alert_id), 'checked')])
+def acknowledge_alert(checkbox_checked):
+    if not checkbox_checked:
+        return [dbc.FormGroup([dbc.Checkbox(id='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                            className="form-check-input"),
+                               dbc.Label("Confirmer la prise en compte de l'alerte",
+                                         html_for='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                         className="form-check-label")],
+                              check=True,
+                              inline=True)]
+    elif checkbox_checked:
+        return [html.P("Prise en compte de l'alerte confirmée")]
+
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
 
@@ -311,10 +326,10 @@ def display_alert_frame_metadata(n_clicks_marker, img_url):
 
 @app.callback(
     Output('interval-component', 'disabled'),
-    [Input("display_alert_frame_btn{}".format(alert_id), 'n_clicks')])
+    [Input("alert_marker_{}".format(alert_id), 'n_clicks')])
 def callback_func_start_stop_interval(n_clicks):
     '''
-    This one detects the number of clicks the user made on a display_alert_frame_btn.
+    This one detects the number of clicks the user made on an alert marker.
     If 1 click is made, the function disables the interval component.
     '''
     if n_clicks is not None and n_clicks > 0:
