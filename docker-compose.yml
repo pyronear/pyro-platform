@@ -3,8 +3,12 @@ version: '3.7'
 services:
   web:
     build: .
-    command: python main.py
+    command: python main.py --host 0.0.0.0
     volumes:
       - ./app/:/usr/src/app/
     ports:
       - "8050:8050"
+    environment:
+      - API_URL=${API_URL}
+      - API_LOGIN=${API_LOGIN}
+      - API_PWD=${API_PWD}
