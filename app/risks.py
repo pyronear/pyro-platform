@@ -45,7 +45,7 @@ for department in departments['features']:
     dpt_name = department['properties']['nom']
     geocode_list = [dpt['geocode'] for dpt in risk_json]
     if dpt_name in geocode_list:
-        risk_json_index = geocode_list.index(dpt_name) # We retrieve the index of the corresponding department in the risk_json object
+        risk_json_index = geocode_list.index(dpt_name)
         department['properties']['score'] = risk_json[risk_json_index]['score']
     else:
         department['properties']['score'] = 0
