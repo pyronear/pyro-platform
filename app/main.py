@@ -325,10 +325,10 @@ def display_alert_frame_metadata(n_clicks_marker, img_url):
 
 @app.callback(
     Output('interval-component', 'disabled'),
-    [Input("display_alert_frame_btn{}".format(alert_id), 'n_clicks')])
+    [Input("alert_marker_{}".format(alert_id), 'n_clicks')])
 def callback_func_start_stop_interval(n_clicks):
     '''
-    This one detects the number of clicks the user made on a display_alert_frame_btn.
+    This one detects the number of clicks the user made on an alert marker.
     If 1 click is made, the function disables the interval component.
     '''
     if n_clicks is not None and n_clicks > 0:
