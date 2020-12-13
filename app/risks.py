@@ -14,6 +14,7 @@ import numpy as np
 from pathlib import Path
 import json
 import requests
+import config as cfg
 
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
@@ -36,11 +37,7 @@ with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') 
     departments = json.load(response)
 
 # We fetch the deparment risk score json and store it in the risk_json variable
-# When FG finishes his PR, we'll be able to retrieve data from the API
-# response = requests.get("http://pyro-risks.herokuapp.com/risk/fr/2020-09-01")
-# risk_json = response.json()
-with open(Path(__file__).parent.joinpath('data', 'risk.json'), 'rb') as risk:
-    risk_json = json.load(risk)
+risk_json = requests.get(cfg.PYRORISK_FALLBACK).json()
 
 # We add to each department in the geojson a new property called "score" that corresponds to the risk level
 for department in departments['features']:
@@ -50,7 +47,7 @@ for department in departments['features']:
         risk_json_index = geocode_list.index(dpt_name) # We retrieve the index of the corresponding department in the risk_json object
         department['properties']['score'] = risk_json[risk_json_index]['score']
     else:
-        department['properties']['score'] = 1
+        department['properties']['score'] = 0
 
 
 # Preparing the choropleth map, fetching the departments GeoJSON and building the related map attribute
