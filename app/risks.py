@@ -37,7 +37,7 @@ with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') 
     departments = json.load(response)
 
 # We fetch the deparment risk score json and store it in the risk_json variable
-# risk_json = requests.get("http://pyro-risks.herokuapp.com/risk/fr/2020-09-01").json()
+# When everything is validated, we'll request the data directly from the API
 risk_json = requests.get(cfg.PYRORISK_FALLBACK).json()
 
 # We add to each department in the geojson a new property called "score" that corresponds to the risk level
