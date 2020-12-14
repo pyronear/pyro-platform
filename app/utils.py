@@ -99,7 +99,7 @@ def build_legend_box(app_page=None):
         # Historique des feux
         legend_body.append(html.Div([html.Div(html.Img(src=past_fire_img_url, style=img_style),
                                               style=image_div_style),
-                                     html.Div(html.P('Feu passé'),
+                                     html.Div(html.P('Incendie passé'),
                                               style=text_div_style)]))
 
         # Alerte
@@ -111,7 +111,7 @@ def build_legend_box(app_page=None):
     elif app_page == 'risks':
         legend_body = [html.Div([html.Div(html.Img(src=past_fire_img_url, style=img_style),
                                           style=image_div_style),
-                                 html.Div(html.P('Feu passé'),
+                                 html.Div(html.P('Incendie passé'),
                                           style=text_div_style)])]
 
     legend_id = 'legend_' + app_page
@@ -165,7 +165,7 @@ def get_old_fire_positions(dpt_code=None):
                                       position=(lat, lon),
                                       icon=icon,
                                       children=[dl.Tooltip(f"Date: {date}"),
-                                                dl.Popup([html.H2(f'Feu du {date}'),
+                                                dl.Popup([html.H4(f'Incendie du {date}'),
                                                           html.P(f'Commune : {location}'),
                                                           html.P(f'Type : {daynight}')])
                                                 ]

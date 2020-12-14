@@ -26,6 +26,13 @@ from utils import build_historic_markers, build_legend_box
 import config as cfg
 
 from flask_caching import Cache
+
+# Pandas, to read API json responses
+import pandas as pd
+
+# Client API import
+from services import api_client
+
 # ------------------------------------------------------------------------------
 # App instantiation and overall layout
 
@@ -33,6 +40,8 @@ from flask_caching import Cache
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
+# Gunicorn will be looking for the server attribute of this module
+server = app.server
 
 # We create a rough layout that will be filled by the first callback based on the url path
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
@@ -105,20 +114,6 @@ def dpt_hover_alerts(hovered_department):
         return build_info_box()
 
 
-@app.callback(Output('hp_alert_frame_metadata', 'children'),
-              [Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks')])
-@cache.memoize()
-def display_alert_frame_metadata(n_clicks_marker):
-    '''
-    This one detects the number of clicks the user made on an alert popup button.
-    If 1 click is made, the function returns the image of the corresponding alert.
-    '''
-    if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker, alert_metadata)
-    else:
-        return display_alerts_frames()
-
-
 # @app.callback(Output('sites_markers', 'children'), [Input('geojson_departments', 'click_feature')])
 # def region_click(feature):
 #     '''
@@ -168,6 +163,21 @@ def region_click_alerts(feature, radio_button_value):
             return build_historic_markers(dpt_code=feature['properties']['code'])
         else:
             return None
+
+
+@app.callback(Output('acknowledge_alert_div_{}'.format(alert_id), 'children'),
+              [Input('acknowledge_alert_checkbox_{}'.format(alert_id), 'checked')])
+def acknowledge_alert(checkbox_checked):
+    if not checkbox_checked:
+        return [dbc.FormGroup([dbc.Checkbox(id='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                            className="form-check-input"),
+                               dbc.Label("Confirmer la prise en compte de l'alerte",
+                                         html_for='acknowledge_alert_checkbox_{}'.format(alert_id),
+                                         className="form-check-label")],
+                              check=True,
+                              inline=True)]
+    elif checkbox_checked:
+        return [html.P("Prise en compte de l'alerte confirmée")]
 
 # ------------------------------------------------------------------------------
 # Callbacks related to the "Niveau de Risque" page
@@ -254,14 +264,78 @@ def change_zoom_center(n_clicks=None):
     return define_map_zoom_center(n_clicks, alert_metadata)
 
 
-@app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
-              [Input('alert_radio_button', 'value')])
-@cache.memoize()
-def define_alert_status(value=None):
-    if value is None:
-        value = 0
+@app.callback(
+    [Output('img_url', 'children'), Output('live_alert_header_btn', 'children'),
+     Output('live_alerts_marker', 'children')],
+    Input('interval-component', 'n_intervals'))
+def fetch_alert_status_metadata(n_intervals):
+    '''
+    This callback takes as input the interval-component which acts as a timer,
+    scheduling API metadata fetches and defining alert status
+    '''
+    # Fetching live alerts where is_acknowledged is False
+    response = api_client.get_ongoing_alerts().json()
+    all_alerts = pd.DataFrame(response)
+    live_alerts = all_alerts.loc[~all_alerts['is_acknowledged']]
 
-    return build_alerts_elements(value, alert_metadata)
+    # Defining alert status
+    if live_alerts.empty:
+        alert_status = 0
+        img_url = ""
+        return build_alerts_elements(img_url, alert_status, alert_metadata)
+    else:
+        alert_status = 1
+        # Fetching last alert
+        last_alert = live_alerts.loc[live_alerts['id'].idxmax()]
+
+        # Fetching last alert frame url
+        img_url = api_client.get_media_url(last_alert['media_id']).json()["url"]
+        return build_alerts_elements(img_url, alert_status, alert_metadata)
+
+
+'''
+To be uncommented for debug purposes
+@app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
+              [Input('alert_radio_button', 'value'), Input('interval-component', 'n_intervals')])
+def define_alert_status_debug(value=None, n_intervals=None):
+
+    This callback takes as input the alert_radio_button for debug purposes and defines the alert status
+    depending on the associated values
+
+    if value is None:
+        alert_status = 0
+    else:
+        alert_status = 1
+
+    return build_alerts_elements(alert_status, alert_metadata)
+'''
+
+
+@app.callback(Output('hp_alert_frame_metadata', 'children'),
+              Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks'), State('img_url', 'children'))
+def display_alert_frame_metadata(n_clicks_marker, img_url):
+    '''
+    This one detects the number of clicks the user made on an alert popup button.
+    If 1 click is made, the function returns the image of the corresponding alert.
+    '''
+    if (n_clicks_marker + 1) % 2 == 0:
+        return display_alerts_frames(n_clicks_marker, alert_metadata, img_url)
+    else:
+        return display_alerts_frames()
+
+
+@app.callback(
+    Output('interval-component', 'disabled'),
+    [Input("alert_marker_{}".format(alert_id), 'n_clicks')])
+def callback_func_start_stop_interval(n_clicks):
+    '''
+    This one detects the number of clicks the user made on an alert marker.
+    If 1 click is made, the function disables the interval component.
+    '''
+    if n_clicks is not None and n_clicks > 0:
+        return True
+    else:
+        return False
 
 
 # ------------------------------------------------------------------------------
