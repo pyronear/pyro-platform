@@ -10,9 +10,11 @@ The main item is the RisksApp function that returns the corresponding page layou
 # NumPy to generate the random scores from 0 to 1 that we are using so far, as well as the classes
 import numpy as np
 
-# Useful imports to open and read the GeoJSON file
+# Useful imports to open and read the GeoJSON file, and to get risk data from the API
 from pathlib import Path
 import json
+import requests
+import config as cfg
 
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
@@ -34,10 +36,19 @@ from utils import map_style, build_info_object, build_legend_box
 with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
     departments = json.load(response)
 
+# We fetch the deparment risk score json and store it in the risk_json variable
+# When everything is validated, we'll request the data directly from the API
+risk_json = requests.get(cfg.PYRORISK_FALLBACK).json()
 
-# We add to each department in the geojson a new property called "score" that corresponds to the random risk level
+# We add to each department in the geojson a new property called "score" that corresponds to the risk level
 for department in departments['features']:
-    department['properties']['score'] = np.random.rand()
+    dpt_name = department['properties']['nom']
+    geocode_list = [dpt['geocode'] for dpt in risk_json]
+    if dpt_name in geocode_list:
+        risk_json_index = geocode_list.index(dpt_name)
+        department['properties']['score'] = risk_json[risk_json_index]['score']
+    else:
+        department['properties']['score'] = 0
 
 
 # Preparing the choropleth map, fetching the departments GeoJSON and building the related map attribute
