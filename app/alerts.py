@@ -3,14 +3,9 @@ The following Python file is dedicated to the "Alerts and Infrastructure" view o
 
 After a first block dedicated to imports, the content section is divided between:
 
-- a map layer block used to switch between the schematic and satellite background layers;
-
 - a departments block used to read the local geojson file and create the corresponding object on the map;
-
 - a sites markers block used to instantiate markers corresponding to detection units on the field;
-
 - a fire alerts block used to create alert-related objects and the interactive zoom;
-
 - a final block mobilising previously defined functions to instantiate the "Alertes et Infrastructure" map.
 
 Most functions defined below are called in the main.py file, in the alerts callbacks.
@@ -42,49 +37,6 @@ from utils import map_style, build_info_object, build_legend_box
 
 # ------------------------------------------------------------------------------
 # CONTENT
-
-# ------------------------------------------------------------------------------
-# Map layer
-# The following block is used to determine what layer we use for the map and enable the user to change it.
-
-def build_layer_style_button():
-    '''
-    This function creates and returns the button allowing users to change the map
-    background layer (either topographic/schematic or satellite).
-    '''
-    button = html.Button(children='Activer la vue satellite',
-                         id='layer_style_button',
-                         className="btn btn-warning")
-
-    return html.Center(button)
-
-
-def choose_layer_style(n_clicks):
-    '''
-    This function takes as input the number of clicks on the button defined above
-    and returns:
-
-    - the appropriate message for the button (changed at each click);
-    - the background layer style to use (URL and attribution).
-    '''
-
-    # Because we start with the topographic view, if the number of clicks is even, this means
-    # that we are still using the topographic view and we may want to activate the satellite one.
-    if n_clicks % 2 == 0:
-        button_content = 'Activer la vue satellite'
-        layer_url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-        layer_attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-
-    # If the number of clicks is odd, this means we are using the satellite view
-    # and may want to come back to the topographic one.
-    else:
-        button_content = 'Revenir à la vue schématique'
-        layer_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        layer_attribution = ("Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, "
-                             "Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community")
-
-    return button_content, layer_url, layer_attribution
-
 
 # ------------------------------------------------------------------------------
 # Departments
@@ -295,8 +247,8 @@ def build_alerts_map():
                         children=[
                             dl.TileLayer(id='tile_layer'),
                             build_departments_geojson(),
-                            build_info_object(app_page='alerts'),
-                            build_legend_box(app_page='alerts'),
+                            build_info_object(map_type='alerts'),
+                            build_legend_box(map_type='alerts'),
                             build_sites_markers(),
                             html.Div(id="live_alerts_marker"),
                             html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map

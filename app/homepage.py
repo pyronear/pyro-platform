@@ -15,7 +15,7 @@ import dash_html_components as html
 from navbar import Navbar
 
 # Importing alerts map and layer style button from alerts.py
-from alerts import build_alerts_map, build_layer_style_button
+from alerts import build_alerts_map
 
 # Importing risks map opacity slider from risks.py
 from risks import build_risks_map, build_opacity_slider
@@ -24,7 +24,7 @@ from risks import build_risks_map, build_opacity_slider
 from graphs import generate_meteo_fig
 
 # Importing utils fetched API data
-from utils import build_live_alerts_metadata
+from utils import build_layer_style_button, build_live_alerts_metadata
 
 # ------------------------------------------------------------------------------
 # Before moving to the app layout

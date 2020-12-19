@@ -47,10 +47,10 @@ from homepage import Homepage
 
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
-from alerts import choose_layer_style, define_map_zoom_center, build_alerts_elements
+from alerts import define_map_zoom_center, build_alerts_elements
 from risks import build_risks_geojson_and_colorbar
-from utils import build_info_box, build_info_object, build_live_alerts_metadata,\
-    build_historic_markers, build_legend_box
+from utils import choose_layer_style, build_info_box, build_info_object,\
+    build_live_alerts_metadata, build_historic_markers, build_legend_box
 
 
 # ------------------------------------------------------------------------------
@@ -239,8 +239,8 @@ def change_color_opacity(opacity_level):
     return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
-            build_info_object(app_page='risks'),
-            build_legend_box(app_page='risks'),
+            build_info_object(map_type='risks'),
+            build_legend_box(map_type='risks'),
             html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
             ]
 
