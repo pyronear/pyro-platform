@@ -1,9 +1,15 @@
 '''
-The following file gathers a few items (variables, functions...) that are common to both dashboards.
+The following file gathers several items (variables, functions...) that are common to both views of the dashboard.
 
+Following a first section dedicated to imports, the content section is made of 5 code blocks:
 
-- a map layer block used to switch between the schematic and satellite background layers;
+- a map layer block, used to switch between the schematic and satellite background layers;
+- an information box block, used to build the info object at the top-right of the map and fill it in;
+- a legend block, used to build the legend box at the bottom right of each map with the relevant indications;
+- a past fires block, which fetches information from the dedicated csv file and adds related markers to the map;
+- a block for API calls, designed to gather information about ongoing alerts and build the site markers.
 
+NB: some sections and/or functions still have to be completed, especially API calls.
 '''
 
 # ------------------------------------------------------------------------------

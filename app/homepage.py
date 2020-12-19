@@ -195,12 +195,13 @@ def Homepage():
                     id='user_selection_column',
                     md=3),
                 dbc.Col([
-                    # map object added here
+                    # Map object added here
                     html.Div(build_alerts_map(), id='hp_map'),
-                    # interval object handling api calls every 10 seconds
+
+                    # Interval object triggering api calls every 10 seconds
                     dcc.Interval(
                         id='interval-component',
-                        interval=10 * 1000,  # in milliseconds
+                        interval=10 * 1000,  # Timestep in milliseconds
                         n_intervals=0),
                     html.Div(id='img_url', style={'display': 'none'})],
                     md=9),
