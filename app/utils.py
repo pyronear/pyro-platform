@@ -15,12 +15,14 @@ NB: some sections and/or functions still have to be completed, especially API ca
 # ------------------------------------------------------------------------------
 # IMPORTS
 
+# Useful imports to open and read the 'historic_fires.csv' file
 from pathlib import Path
-
 import pandas as pd
 
+# Useful import to reformat the date information associated with past fires
 import datetime as dt
 
+# Various modules provided by Dash to build app components
 import dash_html_components as html
 import dash_leaflet as dl
 

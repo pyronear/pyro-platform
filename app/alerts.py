@@ -24,7 +24,7 @@ import pandas as pd
 # Useful import to read the GeoJSON file
 import json
 
-# Various modules provided by Dash to build the page layout
+# Various modules provided by Dash to build app components
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
