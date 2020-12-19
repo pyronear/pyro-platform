@@ -1,7 +1,9 @@
-"""The following is dedicated to the navigation bar at the top of the web application.
+'''
+The following is dedicated to the navigation bar at the top of the web application.
 
 Its main component is the Navbar function that instantiates the navigation bar.
-"""
+'''
+
 
 # ------------------------------------------------------------------------------
 # Imports
@@ -9,17 +11,25 @@ Its main component is the Navbar function that instantiates the navigation bar.
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 
+
 # ------------------------------------------------------------------------------
 # Content
-
 
 # Pyronear Logo
 pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
 
 def Navbar(dropdown=False):
+    '''
+    This function allows to instantiate the navigation bar at the top of the web-app.
 
-    # Not used right now but can be reactivated later for other purposes such as log out
+    It takes 'dropdown' as an input, a boolean set by default to False, which indicates
+    whether to include or not in the navigation bar a Dropdown menu. For now, such a
+    menu is not used but it could be reactivated for other purposes such as the log in.
+
+    The returned 'navbar' object is an instantiation of the class dbc.Navbar.
+    '''
+
     # Dropdown menu
     if dropdown is True:
         dropdown = dbc.DropdownMenu(
