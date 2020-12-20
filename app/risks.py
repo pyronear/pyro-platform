@@ -11,7 +11,7 @@ Most functions defined below are called in the main.py file, in the risks callba
 '''
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # NumPy to generate the score classes in the color scale
@@ -29,17 +29,14 @@ import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
-# From navbar.py to add the navigation bar at the top of the page
-from navbar import Navbar
-
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
 from utils import map_style, build_info_object, build_legend_box
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Departments and risk score acquisition
 # The following block fetches risk scores from the data science team and adds them up to the departments geojson.
 # NB: for now, scores are acquired from a static json file on GitHub; the API call is still to be implemented.
@@ -65,7 +62,7 @@ for department in departments['features']:
         department['properties']['score'] = 0
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Choropleth map attributes
 # The following block is used to instantiate the various Dash Leaflet objects needed to build the choropleth map.
 
@@ -135,7 +132,7 @@ def build_opacity_slider():
     return html.Center(slider_div)
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Map instantiation
 # The last block gathers previously defined functions to output the "Risk Score" map.
 

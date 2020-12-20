@@ -12,7 +12,7 @@ Most functions defined below are called in the main.py file, in the alerts callb
 '''
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # Useful import to open local files (positions of cameras and department GeoJSON)
@@ -35,10 +35,10 @@ import dash_leaflet.express as dlx
 from utils import map_style, build_info_object, build_legend_box
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Departments
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
@@ -65,7 +65,7 @@ def build_departments_geojson():
     return geojson
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
 # The following block is used to fetch and display on the map the positions of detection units.
 
@@ -116,7 +116,7 @@ def build_sites_markers(dpt_code=None):
     return dl.MarkerClusterGroup(children=markers, id='sites_markers')
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
@@ -233,7 +233,7 @@ def define_map_zoom_center(n_clicks, alert_metadata):
     return center, zoom
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Map instantiation
 # The last block gathers previously defined functions to output the "Alerts and Infrastructure" map.
 

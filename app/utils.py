@@ -12,7 +12,7 @@ Following a first section dedicated to imports, the content section is made of 5
 NB: some sections and/or functions still have to be completed, especially API calls.
 '''
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # Useful imports to open and read the 'historic_fires.csv' file
@@ -27,10 +27,10 @@ import dash_html_components as html
 import dash_leaflet as dl
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Diverse
 # The following block is used for the definition of small variables and/or functions.
 
@@ -40,7 +40,7 @@ map_style = {'width': '100%',
              'display': 'block'}
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Map layer
 # The following block is used to determine what layer we use for the map and enable the user to change it.
 
@@ -82,7 +82,7 @@ def choose_layer_style(n_clicks):
     return button_content, layer_url, layer_attribution
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Information box
 # The following block is used to build the box in the top-right corner and fill it in with the relevant information.
 
@@ -129,7 +129,7 @@ def build_info_object(map_type):
                     )
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Legend
 # The following block is used to build the legend in the bottom-right corner of the map.
 
@@ -189,7 +189,7 @@ def build_legend_box(map_type=None):
                     )
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Past fires
 # The following block is used to fetch the positions of past fires and build the related map attribute.
 
@@ -252,7 +252,7 @@ def build_historic_markers(dpt_code=None):
                          id='historic_fires_markers')
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # API calls
 # The following block is used to fetch alerts and sites data from the database.
 # NB: for now, this is still a drafted response; proper API calls still have to be implemented

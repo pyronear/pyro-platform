@@ -21,7 +21,7 @@ It is built around 4 main sections:
 '''
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # General imports
@@ -53,7 +53,7 @@ from utils import choose_layer_style, build_info_box, build_info_object,\
     build_live_alerts_metadata, build_historic_markers, build_legend_box
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
@@ -80,10 +80,10 @@ alert_metadata = build_live_alerts_metadata()
 alert_id = alert_metadata["id"]
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
 
 @app.callback(
@@ -126,7 +126,7 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Alertes and Infrastructure" view
 
 @app.callback(
@@ -205,7 +205,7 @@ def acknowledge_alert(checkbox_checked):
         return [html.P("Prise en compte de l'alerte confirmée")]
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Risk Score" page
 
 @app.callback(
@@ -270,7 +270,7 @@ def click_department_risks(feature, radio_button_value):
             return None
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the homepage
 
 @app.callback(
@@ -424,7 +424,7 @@ def callback_func_start_stop_interval(n_clicks):
 #     return build_alerts_elements(alert_status, alert_metadata)
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # RUNNING THE WEB-APP SERVER
 
 if __name__ == '__main__':
