@@ -367,7 +367,8 @@ def fetch_alert_status_metadata(n_intervals):
 
 
 @app.callback(
-    Output('hp_alert_frame_metadata', 'children'),
+    [Output('hp_alert_frame_metadata', 'children'),
+     Output('display_alert_frame_btn{}'.format(alert_id), 'children')],
     Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks'),
     State('img_url', 'children')
 )
@@ -384,9 +385,9 @@ def display_alert_frame_metadata(n_clicks_marker, img_url):
     If an even number of clicks has been made, the space on the left of the map is left blank.
     '''
     if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker, alert_metadata, img_url)
+        return display_alerts_frames(n_clicks_marker, alert_metadata, img_url), 'Masquer les données de détection'
     else:
-        return display_alerts_frames()
+        return display_alerts_frames(), 'Afficher les données de détection'
 
 
 @app.callback(
