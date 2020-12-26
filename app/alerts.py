@@ -120,7 +120,7 @@ def build_sites_markers(dpt_code=None):
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
-def build_alerts_elements(img_url, alert_status, alert_metadata):
+def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
     '''
     This function is used in the main.py file to create alerts-related elements such as the alert button (banner)
     or the alert markers on the map.
@@ -129,15 +129,19 @@ def build_alerts_elements(img_url, alert_status, alert_metadata):
 
     - 'img_url': the URL address of the alert frame to be displayed on the left of the map;
     - 'alert_status': a binary variable indicating whether or not there is an ongoing alert to display;
-    - 'alert_metadata': a dictionary containing
+    - 'alert_metadata': a dictionary containing;
+    - 'map_style': the type of map in place, either 'alerts' or 'risks'.
 
     All these inputs are instantiated in the main.py file via a call to the API.
 
-    The function returns:
+    In the base case, the function returns:
 
     - the URL address of the image to be displayed on the left of the map;
     - the alert button (banner above the map);
     - the alert markers displayed on the map.
+
+    But if the style of map in place is 'risks', we want to display neither the alert button (banner above the map), nor
+    the alert markers. So in this case, the second and third outputs of the function are both a void string.
     '''
 
     # Fetching alert status and reusable metadata
@@ -199,6 +203,10 @@ def build_alerts_elements(img_url, alert_status, alert_metadata):
     else:
         alert_button = ""
         alerts_markers_layer = ""
+
+    if map_style == 'risks':
+        alert_button = ''
+        alerts_markers_layer = ''
 
     return img_url, alert_button, alerts_markers_layer
 

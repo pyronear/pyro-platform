@@ -151,7 +151,8 @@ def build_risks_map():
                                   colorbar,
                                   build_info_object(map_type='risks'),
                                   build_legend_box(map_type='risks'),
-                                  html.Div(id='fire_markers_risks')  # Will contain past fire markers of the risks map
+                                  html.Div(id='fire_markers_risks'),  # Will contain past fire markers of the risks map
+                                  html.Div(id='live_alerts_marker')
                                   ],
                         style=map_style,           # Reminder: map_style is imported from utils.py
                         id='map')

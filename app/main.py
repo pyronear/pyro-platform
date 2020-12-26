@@ -241,7 +241,8 @@ def change_color_opacity(opacity_level):
             colorbar,
             build_info_object(map_type='risks'),
             build_legend_box(map_type='risks'),
-            html.Div(id='fire_markers_risks')  # Will contain the past fire markers of the risks map
+            html.Div(id='fire_markers_risks'),  # Will contain the past fire markers of the risks map
+            html.Div(id='live_alerts_marker')
             ]
 
 
@@ -277,7 +278,8 @@ def click_department_risks(feature, radio_button_value):
     [Output('map_style_button', 'children'),
      Output('hp_map', 'children'),
      Output('hp_slider', 'children')],
-    Input('map_style_button', 'n_clicks'))
+    Input('map_style_button', 'n_clicks')
+)
 def change_map_style(n_clicks=None):
     '''
     -- Moving between alerts and risks views --
@@ -323,9 +325,10 @@ def change_zoom_center(n_clicks=None):
     [Output('img_url', 'children'),
      Output('live_alert_header_btn', 'children'),
      Output('live_alerts_marker', 'children')],
-    Input('interval-component', 'n_intervals')
+    Input('interval-component', 'n_intervals'),
+    State('map_style_button', 'children')
 )
-def fetch_alert_status_metadata(n_intervals):
+def fetch_alert_status_metadata(n_intervals, map_style_button_label):
     '''
     -- Fetching and refreshing alerts data --
 
@@ -343,6 +346,13 @@ def fetch_alert_status_metadata(n_intervals):
     scheduling API metadata fetches and defining alert status
     '''
 
+    # Deducing the style of the map in place from the map style button label
+    if 'risques' in map_style_button_label.lower():
+        map_style = 'alerts'
+
+    elif 'alertes' in map_style_button_label.lower():
+        map_style = 'risks'
+
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
     all_alerts = pd.DataFrame(response)
@@ -352,7 +362,7 @@ def fetch_alert_status_metadata(n_intervals):
     if live_alerts.empty:
         alert_status = 0
         img_url = ""
-        return build_alerts_elements(img_url, alert_status, alert_metadata)
+        return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
 
     else:
         alert_status = 1
@@ -363,7 +373,7 @@ def fetch_alert_status_metadata(n_intervals):
         # Fetching the URL address of the frame associated with the last alert
         img_url = api_client.get_media_url(last_alert['media_id']).json()["url"]
 
-        return build_alerts_elements(img_url, alert_status, alert_metadata)
+        return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
 
 
 @app.callback(
