@@ -335,6 +335,10 @@ def fetch_alert_status_metadata(n_intervals, map_style_button_label):
     This callback takes as input the 'n_intervals' attribute of the interval component,
     which acts as a timer with the number of intervals increasing by 1 every 10 seconds.
 
+    It also takes as input the label of the button that allows users to change the style of the map (but as a 'State'
+    mode, so that the callback is not triggered by a change in this label), in order to deduce the style of the map that
+    the user is currently looking at.
+
     Each time it is triggered, the callback makes a call to the API to get all ongoing alerts,
     filters out those which have been already acknowledged and returns several elements:
 
