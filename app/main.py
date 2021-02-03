@@ -318,7 +318,7 @@ def click_department_risks(feature, radio_button_value):
      State('current_map_style', 'children')]
 )
 @cache.memoize()
-def switch_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
+def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
     '''
     -- Moving between alerts and risks views (1/3) --
 
@@ -347,7 +347,7 @@ def switch_map_style_alert_button(n_clicks, map_style_button_label, current_map_
     Output('switch_map_view_1', 'children'),
     Input('map_style_button', 'n_clicks')
 )
-def switch_map_style_usual(n_clicks):
+def change_map_style_usual_button(n_clicks):
     '''
     -- Moving between alerts and risks views (2/3) --
 
@@ -377,7 +377,7 @@ def switch_map_style_usual(n_clicks):
     [State('map_style_button', 'children'),
      State('current_map_style', 'children')]
 )
-def change_map_style(map_style_button_input, alert_button_input, map_style_button_label, current_map_style):
+def change_map_style_main(map_style_button_input, alert_button_input, map_style_button_label, current_map_style):
     '''
     -- Moving between alerts and risks views --
 
