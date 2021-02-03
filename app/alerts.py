@@ -140,8 +140,8 @@ def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
     - the alert button (banner above the map);
     - the alert markers displayed on the map.
 
-    But if the style of map in place is 'risks', we want to display neither the alert button (banner above the map), nor
-    the alert markers. So in this case, the second and third outputs of the function are both a void string.
+    But if the style of map in place is 'risks', we don't want to display neither the alert markers.
+    So in this case, the third output of the function is a void string.
     '''
 
     # Fetching alert status and reusable metadata
@@ -155,7 +155,7 @@ def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
             children="Départ de feu, cliquez-ici !",
             color="danger",
             block=True,
-            id='alert_button'
+            id=f'alert_button_{map_style}'
         )
 
         # Format of the alert marker icon
@@ -205,7 +205,6 @@ def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
         alerts_markers_layer = ""
 
     if map_style == 'risks':
-        alert_button = ''
         alerts_markers_layer = ''
 
     return img_url, alert_button, alerts_markers_layer

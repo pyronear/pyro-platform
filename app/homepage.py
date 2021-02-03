@@ -104,6 +104,7 @@ def choose_map_style(n_clicks):
         button_content_map = 'Afficher les niveaux de risques'
         map_object = build_alerts_map()
         slider = ' '
+        map_style_in_use = 'alerts'
 
     # If the number of clicks is odd, this means we are using the "Risk Scores" map
     # and we may want to come back to the "Alerts and Infrastructure" one
@@ -111,8 +112,9 @@ def choose_map_style(n_clicks):
         button_content_map = 'Revenir à la carte Alertes'
         map_object = build_risks_map()
         slider = build_opacity_slider()
+        map_style_in_use = 'risks'
 
-    return button_content_map, map_object, slider
+    return button_content_map, map_object, slider, map_style_in_use
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -318,6 +320,13 @@ def Homepage():
                         id='interval-component',
                         interval=10 * 1000,  # Timestep in milliseconds
                         n_intervals=0),
+
+                    # Two placeholders updated by callbacks in main.py to trigger a change in map style
+                    html.Div(id='switch_map_view_1'),   # Associated with the main map style button
+                    html.Div(id='switch_map_view_2'),   # Associated with the alert banner in risks mode
+
+                    # Simple placeholder - Source of truth for the map style being viewed
+                    html.Div(id='current_map_style', children='alerts'),
 
                     # Hidden html.Div storing the URL address of the detection frame of the latest alert
                     html.Div(id='img_url', style={'display': 'none'})],

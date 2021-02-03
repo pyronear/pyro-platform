@@ -35,6 +35,7 @@ from services import api_client
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
@@ -127,7 +128,7 @@ def change_layer_style(n_clicks=None):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Callbacks related to the "Alertes and Infrastructure" view
+# Callbacks related to the "Alerts and Infrastructure" view
 
 @app.callback(
     Output('alerts_info', 'children'),
@@ -205,6 +206,45 @@ def acknowledge_alert(checkbox_checked):
         return [html.P("Prise en compte de l'alerte confirmée")]
 
 
+@app.callback(
+    [Output('map', 'center'),
+     Output('map', 'zoom')],
+    Input("alert_button_alerts", "n_clicks"),
+    State('map_style_button', 'children')
+)
+@cache.memoize()
+def change_zoom_center(n_clicks, map_style_button_label):
+    '''
+    -- Zooming on the alert from the banner --
+
+    This callback is triggered by the number of clicks on the alert banner.
+
+    It also takes as argument the message displayed on the button which allows the user to choose either the "alerts" or
+    "risks" mode for the map, so as to identify which map the user is currently viewing.
+
+    - If the number of clicks is strictly above 0 and we are viewing the "alerts" map, it triggers a zoom on the alert
+    marker. To do so, it relies on the define_map_zoom_center function, imported from alerts.
+
+    - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
+    '''
+
+    # Deducing the style of the map in place from the map style button label
+    if 'risques' in map_style_button_label.lower():
+        map_style = 'alerts'
+
+    elif 'alertes' in map_style_button_label.lower():
+        map_style = 'risks'
+
+    if n_clicks is None:
+        n_clicks = 0
+
+    if map_style == 'alerts':
+        return define_map_zoom_center(n_clicks, alert_metadata)
+
+    elif map_style == 'risks':
+        raise PreventUpdate
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Risk Score" page
 
@@ -271,21 +311,85 @@ def click_department_risks(feature, radio_button_value):
             return None
 
 
+@app.callback(
+    Output('switch_map_view_2', 'children'),
+    Input('alert_button_risks', 'n_clicks'),
+    [State('map_style_button', 'children'),
+     State('current_map_style', 'children')]
+)
+@cache.memoize()
+def switch_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
+    '''
+    -- Moving between alerts and risks views (1/3) --
+
+    This callback detects clicks on the alert banner associated with the risks view of the map and updates the
+    "switch_map_view_2" object (an HTML placeholder built by via the Homepage function which is defined in homepage.py).
+    This update will itself trigger the "change_map_style" callback defined below.
+
+    It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
+    effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
+    '''
+
+    if n_clicks is None:
+        raise PreventUpdate
+
+    if current_map_style == 'risks':
+        return 'switch map style'
+
+    elif current_map_style == 'alerts':
+        raise PreventUpdate
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the homepage
 
 @app.callback(
-    [Output('map_style_button', 'children'),
-     Output('hp_map', 'children'),
-     Output('hp_slider', 'children')],
+    Output('switch_map_view_1', 'children'),
     Input('map_style_button', 'n_clicks')
 )
-def change_map_style(n_clicks=None):
+def switch_map_style_usual(n_clicks):
     '''
-    -- Moving between alerts and risks views --
+    -- Moving between alerts and risks views (2/3) --
 
     This callback detects clicks on the button used to change the style of the map, ie.
     to switch from the "Alerts and Infrastructure" to the "Risk Scores" view and vice-versa.
+
+    If a click is detected, it updates the "switch_map_view_1" object (an HTML placeholder built by via the Homepage
+    function which is defined in homepage.py) and this update will itself trigger the "change_map_style" callback
+    defined below.
+
+    NB: because two buttons (the one considered here and the alert banner in risks mode) can lead to a change of the map
+    view, the number of clicks on the map style button is not a reliable indicator of the map being viewed by the user.
+    '''
+    if n_clicks is None:
+        raise PreventUpdate
+
+    return n_clicks
+
+
+@app.callback(
+    [Output('map_style_button', 'children'),
+     Output('hp_map', 'children'),
+     Output('hp_slider', 'children'),
+     Output('current_map_style', 'children')],
+    [Input('switch_map_view_1', 'children'),
+     Input('switch_map_view_2', 'children')],
+    [State('map_style_button', 'children'),
+     State('current_map_style', 'children')]
+)
+def change_map_style(map_style_button_input, alert_button_input, map_style_button_label, current_map_style):
+    '''
+    -- Moving between alerts and risks views --
+
+    This callback is the one that actually updates the map view based on user's choice.
+
+    It can be triggered:
+    - either by a click on the main map style button in the user selection area on the left of the page;
+    - or by a click on the alert banner under risks mode.
+
+    This determines the two Inputs of this callback (see the two callbacks above).
+
+    This callback also takes as a State argument the map style currently being viewed.
 
     It relies on the choose_map_style function, imported from homepage.
 
@@ -295,30 +399,27 @@ def change_map_style(n_clicks=None):
     - the right map object;
     - the slider object if relevant.
     '''
-    if n_clicks is None:
-        n_clicks = 0
 
-    return choose_map_style(n_clicks)
+    # Deducing from the map style button label, the argument that we should pass to the choose_map_style function
+    if current_map_style == 'alerts':
+        arg = 1
 
+    elif current_map_style == 'risks':
+        arg = 0
 
-@app.callback(
-    [Output('map', 'center'),
-     Output('map', 'zoom')],
-    Input("alert_button", "n_clicks")
-)
-@cache.memoize()
-def change_zoom_center(n_clicks=None):
-    '''
-    -- Zooming on the alert from the banner --
+    ctx = dash.callback_context
 
-    This callback takes as input the number of clicks on the alert banner.
-    If the number of clicks is strictly above 0, it triggers a zoom on the alert marker.
-    It relies on the define_map_zoom_center function, imported from alerts.
-    '''
-    if n_clicks is None:
-        n_clicks = 0
+    if not ctx.triggered:
+        raise PreventUpdate
 
-    return define_map_zoom_center(n_clicks, alert_metadata)
+    else:
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if input_id == 'switch_map_view_1':
+        return choose_map_style(arg)
+
+    elif input_id == 'switch_map_view_2':
+        return choose_map_style(0)
 
 
 @app.callback(
@@ -365,7 +466,9 @@ def fetch_alert_status_metadata(n_intervals, map_style_button_label):
     # Defining the alert status
     if live_alerts.empty:
         alert_status = 0
+
         img_url = ""
+
         return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
 
     else:
