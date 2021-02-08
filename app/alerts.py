@@ -1,4 +1,4 @@
-'''
+"""
 The following Python file is dedicated to the "Alerts and Infrastructure" view of the dashboard.
 
 After a first block dedicated to imports, the content section is divided between:
@@ -9,7 +9,7 @@ After a first block dedicated to imports, the content section is divided between
 - a final block mobilising previously defined functions to instantiate the "Alertes et Infrastructure" map.
 
 Most functions defined below are called in the main.py file, in the alerts callbacks.
-'''
+"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -43,10 +43,10 @@ from utils import map_style, build_info_object, build_legend_box
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
 def build_departments_geojson():
-    '''
+    """
     This function reads the departments.geojson file in the /data folder thanks to the json module
     and returns an interactive dl.GeoJSON object containing its information, to be displayed on the map.
-    '''
+    """
 
     # We read the json file in the data folder and store it in the departments variable
     with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
@@ -70,7 +70,7 @@ def build_departments_geojson():
 # The following block is used to fetch and display on the map the positions of detection units.
 
 def build_sites_markers(dpt_code=None):
-    '''
+    """
     This function reads through the 'cameras.csv' file in the /data folder, that contains all the
     information about the sites equipped with detection units.
 
@@ -79,7 +79,7 @@ def build_sites_markers(dpt_code=None):
     NB: certain parts of the function, which we do not use at the moment and that were initially
     designed to bind the display of site markers to a click on the corresponding department, are
     commented for now but could prove useful later on.
-    '''
+    """
 
     # As long as the user does not click on a department, dpt_code is None and we return no device
     # if not dpt_code:
@@ -121,7 +121,7 @@ def build_sites_markers(dpt_code=None):
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
 def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
-    '''
+    """
     This function is used in the main.py file to create alerts-related elements such as the alert button (banner)
     or the alert markers on the map.
 
@@ -142,7 +142,7 @@ def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
 
     But if the style of map in place is 'risks', we don't want to display neither the alert markers.
     So in this case, the third output of the function is a void string.
-    '''
+    """
 
     # Fetching alert status and reusable metadata
     alert_lat = alert_metadata["lat"]
@@ -211,7 +211,7 @@ def build_alerts_elements(img_url, alert_status, alert_metadata, map_style):
 
 
 def define_map_zoom_center(n_clicks, alert_metadata):
-    '''
+    """
     This function has two purposes:
 
     - it first sets the default zoom and center parameters for the map;
@@ -223,7 +223,7 @@ def define_map_zoom_center(n_clicks, alert_metadata):
     - the metadata dictionary linked to the corresponding alert.
 
     It returns coordinates around which to center the map and a zoom level.
-    '''
+    """
 
     # Fetching alert status and reusable metadata
     alert_lat = alert_metadata["lat"]
@@ -245,10 +245,10 @@ def define_map_zoom_center(n_clicks, alert_metadata):
 # The last block gathers previously defined functions to output the "Alerts and Infrastructure" map.
 
 def build_alerts_map():
-    '''
+    """
     The following function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
-    '''
+    """
     map_object = dl.Map(center=[46.5, 2],     # Determines the point around which the map is initially centered
                         zoom=6,               # Determines the initial level of zoom around the center point
                         children=[

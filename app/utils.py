@@ -1,4 +1,4 @@
-'''
+"""
 The following file gathers several items (variables, functions...) that are common to both views of the dashboard.
 
 Following a first section dedicated to imports, the content section is made of 5 code blocks:
@@ -10,7 +10,7 @@ Following a first section dedicated to imports, the content section is made of 5
 - a block for API calls, designed to gather information about ongoing alerts and build the site markers.
 
 NB: some sections and/or functions still have to be completed, especially API calls.
-'''
+"""
 
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
@@ -45,10 +45,10 @@ map_style = {'width': '100%',
 # The following block is used to determine what layer we use for the map and enable the user to change it.
 
 def build_layer_style_button():
-    '''
+    """
     This function creates and returns the button allowing users to change the map
     background layer (either topographic/schematic or satellite).
-    '''
+    """
     button = html.Button(children='Activer la vue satellite',
                          id='layer_style_button',
                          className="btn btn-warning")
@@ -57,12 +57,12 @@ def build_layer_style_button():
 
 
 def choose_layer_style(n_clicks):
-    '''
+    """
     This function takes as input the number of clicks on the button defined above and returns:
 
     - the appropriate message for the button (changed at each click);
     - the background layer style to use (URL and attribution).
-    '''
+    """
 
     # Because we start with the topographic view, if the number of clicks is even, this means
     # that we are still using the topographic view and we may want to activate the satellite one.
@@ -87,7 +87,7 @@ def choose_layer_style(n_clicks):
 # The following block is used to build the box in the top-right corner and fill it in with the relevant information.
 
 def build_info_box(feature=None):
-    '''
+    """
     This function creates the HTML components of the information box.
 
     It takes as argument the polygon hovered by the user in the departments GeoJSON object, if any.
@@ -96,7 +96,7 @@ def build_info_box(feature=None):
 
     - the title of the information box and the name of the hovered when relevant;
     - the title of the information box and a generic message when there is no department being hovered.
-    '''
+    """
     header_dept = [html.H4('Département sélectionné :')]
 
     if feature:
@@ -134,13 +134,13 @@ def build_info_object(map_type):
 # The following block is used to build the legend in the bottom-right corner of the map.
 
 def build_legend_box(map_type=None):
-    '''
+    """
     This function generates a legend box, whose content depends on the view chosen.
 
     It takes as argument the type of the map ('alerts' or 'risks' chosen by the user).
 
     It returns the appropriate legend for each of the two maps in the box, with a dedicated id.
-    '''
+    """
     site_img_url = '../assets/pyro_site_icon.png'
     past_fire_img_url = '../assets/pyro_oldfire_icon.png'
     alert_img_url = '../assets/pyro_alert_icon.png'
@@ -195,14 +195,14 @@ def build_legend_box(map_type=None):
 
 # Fetching the positions of past fires in a given department
 def build_historic_markers(dpt_code=None):
-    '''
+    """
     This function reads through the 'historic_fires.csv' file stored in the /data folder.
 
     It takes as input a department code (as a character string), which will correspond to the department
     on which the user chooses to click and it returns past fires (as markers on the map) for this area.
 
     More precisely, it returns a dl.LayerGroup object that gathers all relevant past fire markers.
-    '''
+    """
 
     # As long as the user does not click on a department, dpt_code is None and we return no fire marker
     if not dpt_code:
@@ -258,12 +258,12 @@ def build_historic_markers(dpt_code=None):
 # NB: for now, this is still a drafted response; proper API calls still have to be implemented
 
 def build_live_alerts_metadata():
-    '''
+    """
     This function is used to fetch all metadata available in the DB about ongoing alerts via the API client.
 
 
     NB: for now, it is simply a handwritten example of API response and still needs to be written down.
-    '''
+    """
 
     alert_metadata = {
         "id": 0,

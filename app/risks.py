@@ -1,4 +1,4 @@
-'''
+"""
 The following file is dedicated to the "Risk Score" view of the dashboard.
 
 Following a first section dedicated to imports, the content section is made of 3 blocks:
@@ -8,7 +8,7 @@ Following a first section dedicated to imports, the content section is made of 3
 - a final block mobilising previously defined functions to instantiate the "Risk Score" map.
 
 Most functions defined below are called in the main.py file, in the risks callbacks.
-'''
+"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ for department in departments['features']:
 # The following block is used to instantiate the various Dash Leaflet objects needed to build the choropleth map.
 
 def build_risks_geojson_and_colorbar(opacity_level=0.75):
-    '''
+    """
     This function creates the main attributes specific to the choropleth map.
 
     It simply takes as input an opacity level, which defaults to 0.75, for coloring the departments.
@@ -76,7 +76,7 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
     - a dl.GeoJSON object that allows to displays the departments' boundaries and respective risk score categories;
     - a colorbar object that distinguishes, as shades of yellow and red, 8 categories of risk score from 0 to 1.
-    '''
+    """
 
     # First step is to prepare the choropleth map by building the color scale corresponding to score risks
     # To define 8 risk levels between 0 and 1, we need to choose 9 floats that will serve as borders
@@ -112,11 +112,11 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
 
 def build_opacity_slider():
-    '''
+    """
     This function instantiates the slider located in the blank space on the left of the map,
     that allows the user to choose the most appropriate color opacity level when displaying
     the risk score associated with the various departments.
-    '''
+    """
 
     slider_title = dcc.Markdown("Choisissez le niveau d'opacité des aplats de couleurs :")
 
@@ -137,10 +137,10 @@ def build_opacity_slider():
 # The last block gathers previously defined functions to output the "Risk Score" map.
 
 def build_risks_map():
-    '''
+    """
     This function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Risk Score" view.
-    '''
+    """
 
     geojson, colorbar = build_risks_geojson_and_colorbar()
 

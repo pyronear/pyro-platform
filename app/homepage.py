@@ -1,4 +1,4 @@
-'''
+"""
 The following Python file is dedicated to the homepage of the web application.
 
 The main item of this module is the Homepage function that returns the core layout of the web application.
@@ -14,7 +14,7 @@ More precisely, after a first block dedicated to imports, the content section is
 - an app layout block where the Homepage function is defined.
 
 Most functions defined below are designed to be called in the main.py file.
-'''
+"""
 
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
@@ -48,11 +48,11 @@ from utils import build_layer_style_button, build_live_alerts_metadata
 # The following block is used to create the radio button that allows to simulate alerts.
 
 def build_alert_radio_button():
-    '''
+    """
     -- For debug purposes only --
 
     This function instantiates a radio button which allows, for debug purposes, to simulate an alert event.
-    '''
+    """
     alert_radio_button = dcc.RadioItems(
         options=[
             {'label': 'no alert', 'value': 0},
@@ -71,9 +71,9 @@ def build_alert_radio_button():
 # The following block is used to determine which map style (risks or alerts) to use and allow the user to change it.
 
 def build_map_style_button():
-    '''
+    """
     This function instantiates the button which allows users to change the style of the map.
-    '''
+    """
     button = html.Button(children='Afficher les niveaux de risques',
                          id='map_style_button',
                          className='btn btn-warning')
@@ -83,7 +83,7 @@ def build_map_style_button():
 
 # This function takes as input the number of clicks on the button defined above and returns the layer style to use
 def choose_map_style(n_clicks):
-    '''
+    """
     This function allows, depending on user's choice, to display the right style of map and button content.
 
     It takes as input (thanks to a callback in main.py) the number of clicks on the button defined above and returns:
@@ -96,7 +96,7 @@ def choose_map_style(n_clicks):
     - the appropriate message for the button defined above;
     - the chosen map object;
     - and the slider object (simply a void string if the alerts view was chosen).
-    '''
+    """
 
     # Because we start with the alerts map, if the number of clicks is even, this means that
     # we are still using the "Alerts and Infrastructure" map and we may want to switch to the "Risk Scores" one
@@ -122,11 +122,11 @@ def choose_map_style(n_clicks):
 # The following block is used to build the radio button with which users choose to display or not past fires.
 
 def build_historic_fires_radio_button():
-    '''
+    """
     This function allows users to select whether to display past fires as markers on the map.
 
     It instantiates and returns the appropriate radio button (inside a html.Center wrapping).
-    '''
+    """
 
     historic_fires_radio_button = dcc.RadioItems(
         options=[
@@ -148,12 +148,12 @@ def build_historic_fires_radio_button():
 
 #This function returns the user selection area in the left side bar
 def build_user_selection_area():
-    '''
+    """
     This function builds upon all the methods defined above to output the user selection area,
     common to both alerts and risks views and placed in the blank space on the left of the map.
 
     It returns a list of Dash core and HTML components to be used below in the Homepage function.
-    '''
+    """
     return [html.Div(build_alert_radio_button(), style={'display': 'none'}),
             dcc.Markdown('---'),
 
@@ -186,7 +186,7 @@ def build_user_selection_area():
 # The following block is used to display the metadata and the detection frame associated with a given alert.
 
 def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
-    '''
+    """
     This function builds the components that display the detection image and metadata related to a given alert
     in the blank space on the left of the map, whenever the user clicks on an alert marker and on the following button.
 
@@ -197,7 +197,7 @@ def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
     - 'img_url': URL address of the image based on which the detection unit has triggered an alert.
 
     It then returns an html.Div component that contains several elements (detection frame and metadata).
-    '''
+    """
 
     # If there is no alert_metadata argument to reuse, we instantiate it with a function imported from utils.py
     if alert_metadata is None:
@@ -257,11 +257,11 @@ def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
 # The following block builds upon functions defined in graphs.py and is used to display or hide meteo graphs.
 
 def display_meteo_graphs(display=False):
-    '''
+    """
     This function takes a boolean, 'display', as argument which indicates whether to display or hide
     graphs related to meteorological indicators. To do so, it builds upon the generate_meteo_fig defined
     in the graphs.py file.
-    '''
+    """
     if display is True:
         # If the 'display' argument is True, graphs are instantiated and returned
         return dbc.Row(
@@ -287,11 +287,11 @@ def display_meteo_graphs(display=False):
 # The following block gathers elements defined above and returns them via the Homepage function
 
 def Homepage():
-    '''
+    """
     The following function is used in the main.py file to build the layout of the web application.
 
     It builds upon methods defined above or in alerts.py or navbar.py files to instantiate the various components.
-    '''
+    """
 
     # Body container
     body = dbc.Container([
