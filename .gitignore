@@ -134,3 +134,6 @@ dmypy.json
 
 # Dash cache
 app/.cache
+
+# Documentation
+app/documentation

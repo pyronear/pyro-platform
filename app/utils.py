@@ -1,23 +1,38 @@
-"""The following file gathers a few items (variables, functions...) that are common to both dashboards."""
+"""
+The following file gathers several items (variables, functions...) that are common to both views of the dashboard.
 
-# ------------------------------------------------------------------------------
-# Imports
+Following a first section dedicated to imports, the content section is made of 5 code blocks:
 
+- a map layer block, used to switch between the schematic and satellite background layers;
+- an information box block, used to build the info object at the top-right of the map and fill it in;
+- a legend block, used to build the legend box at the bottom right of each map with the relevant indications;
+- a past fires block, which fetches information from the dedicated csv file and adds related markers to the map;
+- a block for API calls, designed to gather information about ongoing alerts and build the site markers.
+
+NB: some sections and/or functions still have to be completed, especially API calls.
+"""
+
+# ----------------------------------------------------------------------------------------------------------------------
+# IMPORTS
+
+# Useful imports to open and read the 'historic_fires.csv' file
 from pathlib import Path
-
 import pandas as pd
 
+# Useful import to reformat the date information associated with past fires
 import datetime as dt
 
+# Various modules provided by Dash to build app components
 import dash_html_components as html
 import dash_leaflet as dl
 
 
-# ------------------------------------------------------------------------------
-# Content  : Those functions aim at returning either the name of :
-#  the hovered department
-#  the hovered camera (marker)
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# CONTENT
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Diverse
+# The following block is used for the definition of small variables and/or functions.
 
 map_style = {'width': '100%',
              'height': '90vh',
@@ -25,11 +40,62 @@ map_style = {'width': '100%',
              'display': 'block'}
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Map layer
+# The following block is used to determine what layer we use for the map and enable the user to change it.
+
+def build_layer_style_button():
+    """
+    This function creates and returns the button allowing users to change the map
+    background layer (either topographic/schematic or satellite).
+    """
+    button = html.Button(children='Activer la vue satellite',
+                         id='layer_style_button',
+                         className="btn btn-warning")
+
+    return html.Center(button)
+
+
+def choose_layer_style(n_clicks):
+    """
+    This function takes as input the number of clicks on the button defined above and returns:
+
+    - the appropriate message for the button (changed at each click);
+    - the background layer style to use (URL and attribution).
+    """
+
+    # Because we start with the topographic view, if the number of clicks is even, this means
+    # that we are still using the topographic view and we may want to activate the satellite one.
+    if n_clicks % 2 == 0:
+        button_content = 'Activer la vue satellite'
+        layer_url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        layer_attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+    # If the number of clicks is odd, this means we are using the satellite view
+    # and may want to come back to the topographic one.
+    else:
+        button_content = 'Revenir à la vue schématique'
+        layer_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        layer_attribution = ('Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, '
+                             'Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community')
+
+    return button_content, layer_url, layer_attribution
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Information box
+# The following block is used to build the box in the top-right corner and fill it in with the relevant information.
+
 def build_info_box(feature=None):
     """
-    This function generates an information box about the hovered department.
-    It takes as argument the geojson hovered by the user
-    It returns the appropriate message for each element in the box.
+    This function creates the HTML components of the information box.
+
+    It takes as argument the polygon hovered by the user in the departments GeoJSON object, if any.
+
+    It returns:
+
+    - the title of the information box and the name of the hovered when relevant;
+    - the title of the information box and a generic message when there is no department being hovered.
     """
     header_dept = [html.H4('Département sélectionné :')]
 
@@ -40,23 +106,14 @@ def build_info_box(feature=None):
     return header_dept + [html.P('Faites glisser votre curseur sur un département')]
 
 
-def build_popup(feature=None):
+def build_info_object(map_type):
     """
-    This function extract info to display from the geojson object
-    It takes as argument the geojson clicked by user
-    It returns the popup with the appropriate info for each markers on the map.
-    """
-    if feature is not None:
-        coord = 'Coordonnées de la caméra : {}'.format(feature['geometry']['coordinates'])
-        return [dl.Popup(coord)]
+    This function builds upon the build_info_box function defined above.
 
-
-def build_info_object(app_page):
+    It takes as input the type of map considered (either 'alerts' or 'risks') and returns
+    an information box object located in the top-right corner of the map with a relevant id.
     """
-    This function takes as input the page of interest and outputs the relevant
-    information box located at the top right of the map.
-    """
-    if app_page == 'alerts':
+    if map_type == 'alerts':
         object_id = 'alerts_info'
 
     else:
@@ -72,11 +129,17 @@ def build_info_object(app_page):
                     )
 
 
-def build_legend_box(app_page=None):
+# ----------------------------------------------------------------------------------------------------------------------
+# Legend
+# The following block is used to build the legend in the bottom-right corner of the map.
+
+def build_legend_box(map_type=None):
     """
-    This function generates a legend box, whose content depends on the map chosen.
-    It takes as argument the type of map (alerts or risks chosen by the user).
-    It returns the appropriate legend for each of the two maps in the box.
+    This function generates a legend box, whose content depends on the view chosen.
+
+    It takes as argument the type of the map ('alerts' or 'risks' chosen by the user).
+
+    It returns the appropriate legend for each of the two maps in the box, with a dedicated id.
     """
     site_img_url = '../assets/pyro_site_icon.png'
     past_fire_img_url = '../assets/pyro_oldfire_icon.png'
@@ -88,7 +151,7 @@ def build_legend_box(app_page=None):
     image_div_style = {'display': 'inline-block', 'height': '22px', 'margin-left': '2px'}
     text_div_style = {'display': 'inline-block', 'height': '22px', 'margin-left': '7px'}
 
-    if app_page == 'alerts':
+    if map_type == 'alerts':
 
         # Site de surveillance
         legend_body = [html.Div([html.Div(html.Img(src=site_img_url, style=img_style),
@@ -108,13 +171,13 @@ def build_legend_box(app_page=None):
                                      html.Div(html.P('Alerte en cours'),
                                               style=text_div_style)]))
 
-    elif app_page == 'risks':
+    elif map_type == 'risks':
         legend_body = [html.Div([html.Div(html.Img(src=past_fire_img_url, style=img_style),
                                           style=image_div_style),
                                  html.Div(html.P('Incendie passé'),
                                           style=text_div_style)])]
 
-    legend_id = 'legend_' + app_page
+    legend_id = 'legend_' + map_type
 
     return html.Div(children=legend_body,
                     id=legend_id,
@@ -126,17 +189,29 @@ def build_legend_box(app_page=None):
                     )
 
 
-# Block dedicated to fetching the positions of past fires and building the related map attribute
+# ----------------------------------------------------------------------------------------------------------------------
+# Past fires
+# The following block is used to fetch the positions of past fires and build the related map attribute.
+
 # Fetching the positions of past fires in a given department
-def get_old_fire_positions(dpt_code=None):
+def build_historic_markers(dpt_code=None):
+    """
+    This function reads through the 'historic_fires.csv' file stored in the /data folder.
+
+    It takes as input a department code (as a character string), which will correspond to the department
+    on which the user chooses to click and it returns past fires (as markers on the map) for this area.
+
+    More precisely, it returns a dl.LayerGroup object that gathers all relevant past fire markers.
+    """
 
     # As long as the user does not click on a department, dpt_code is None and we return no fire marker
     if not dpt_code:
         return None
 
-    # We read the csv file that locates the old fires and filter for the department of interest
+    # We read the csv file that locates the old fires
     old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'historic_fires.csv'), ',')
-    # Below it allows us to filter by department with a click on the map
+
+    # The line below allows us to filter for the department of interest
     old_fire_positions = old_fire_positions[old_fire_positions['Département'] == int(dpt_code)].copy()
 
     icon = {"iconUrl": '../assets/pyro_oldfire_icon.png',
@@ -172,24 +247,23 @@ def get_old_fire_positions(dpt_code=None):
                                       )
                             )
 
-    return fire_markers
+    # We gather all markers stored in the fire_markers list in a dl.LayerGroup object, which is returned
+    return dl.LayerGroup(children=fire_markers,
+                         id='historic_fires_markers')
 
 
-# Once we have the positions of past fires, we output another GeoJSON object gathering these locations
-def build_historic_markers(dpt_code=None):
-    fire_markers = dl.LayerGroup(children=get_old_fire_positions(dpt_code), id='historic_fires_markers')
-
-    return fire_markers
-
-# ------------------------------------------------------------------------------
-# Content  : Those functions aim at fetching API data and more specifically :
-#  query alerts db to build alert metadata
-#  query devices db to devices alert metadata
-#  for now this is still a drafted response, proper API calls will be done soon
-# ------------------------------------------------------------------------------
-
+# ----------------------------------------------------------------------------------------------------------------------
+# API calls
+# The following block is used to fetch alerts and sites data from the database.
+# NB: for now, this is still a drafted response; proper API calls still have to be implemented
 
 def build_live_alerts_metadata():
+    """
+    This function is used to fetch all metadata available in the DB about ongoing alerts via the API client.
+
+
+    NB: for now, it is simply a handwritten example of API response and still needs to be written down.
+    """
 
     alert_metadata = {
         "id": 0,
