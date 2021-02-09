@@ -322,8 +322,8 @@ def Homepage():
                         n_intervals=0),
 
                     # Two placeholders updated by callbacks in main.py to trigger a change in map style
-                    html.Div(id='switch_map_view_1'),   # Associated with the main map style button
-                    html.Div(id='switch_map_view_2'),   # Associated with the alert banner in risks mode
+                    html.Div(id='map_style_btn_switch_view'),   # Associated with the main map style button
+                    html.Div(id='alert_btn_switch_view'),   # Associated with the alert banner in risks mode
 
                     # Simple placeholder - Source of truth for the map style being viewed
                     html.Div(id='current_map_style', children='alerts'),

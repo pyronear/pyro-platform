@@ -312,7 +312,7 @@ def click_department_risks(feature, radio_button_value):
 
 
 @app.callback(
-    Output('switch_map_view_2', 'children'),
+    Output('alert_btn_switch_view', 'children'),
     Input('alert_button_risks', 'n_clicks'),
     [State('map_style_button', 'children'),
      State('current_map_style', 'children')]
@@ -323,8 +323,8 @@ def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_
     -- Moving between alerts and risks views (1/3) --
 
     This callback detects clicks on the alert banner associated with the risks view of the map and updates the
-    "switch_map_view_2" object (an HTML placeholder built by via the Homepage function which is defined in homepage.py).
-    This update will itself trigger the "change_map_style" callback defined below.
+    "alert_btn_switch_view" object (an HTML placeholder built by via the Homepage function which is defined in
+    homepage.py). This update will itself trigger the "change_map_style" callback defined below.
 
     It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
     effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
@@ -343,7 +343,7 @@ def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_
 # Callbacks related to the homepage
 
 @app.callback(
-    Output('switch_map_view_1', 'children'),
+    Output('map_style_btn_switch_view', 'children'),
     Input('map_style_button', 'n_clicks')
 )
 def change_map_style_usual_button(n_clicks):
@@ -353,9 +353,9 @@ def change_map_style_usual_button(n_clicks):
     This callback detects clicks on the button used to change the style of the map, ie.
     to switch from the "Alerts and Infrastructure" to the "Risk Scores" view and vice-versa.
 
-    If a click is detected, it updates the "switch_map_view_1" object (an HTML placeholder built by via the Homepage
-    function which is defined in homepage.py) and this update will itself trigger the "change_map_style" callback
-    defined below.
+    If a click is detected, it updates the "map_style_btn_switch_view" object (an HTML placeholder built by via the
+    Homepage function which is defined in homepage.py) and this update will itself trigger the "change_map_style"
+    callback defined below.
 
     NB: because two buttons (the one considered here and the alert banner in risks mode) can lead to a change of the map
     view, the number of clicks on the map style button is not a reliable indicator of the map being viewed by the user.
@@ -371,8 +371,8 @@ def change_map_style_usual_button(n_clicks):
      Output('hp_map', 'children'),
      Output('hp_slider', 'children'),
      Output('current_map_style', 'children')],
-    [Input('switch_map_view_1', 'children'),
-     Input('switch_map_view_2', 'children')],
+    [Input('map_style_btn_switch_view', 'children'),
+     Input('alert_btn_switch_view', 'children')],
     [State('map_style_button', 'children'),
      State('current_map_style', 'children')]
 )
@@ -414,10 +414,10 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     else:
         input_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    if input_id == 'switch_map_view_1':
+    if input_id == 'map_style_btn_switch_view':
         return choose_map_style(arg)
 
-    elif input_id == 'switch_map_view_2':
+    elif input_id == 'alert_btn_switch_view':
         return choose_map_style(0)
 
 
