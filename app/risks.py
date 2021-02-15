@@ -18,7 +18,7 @@ Most functions defined below are called in the main.py file, in the risks callba
 import numpy as np
 
 # Useful imports to open and read the GeoJSON file and get risk data from the API
-from pathlib import Path
+from urllib.request import urlopen
 import json
 import requests
 import config as cfg
@@ -41,9 +41,9 @@ from utils import map_style, build_info_object, build_legend_box
 # The following block fetches risk scores from the data science team and adds them up to the departments geojson.
 # NB: for now, scores are acquired from a static json file on GitHub; the API call is still to be implemented.
 
-# We fetch the json file locally, in the /data folder, and store it in the departments variable
-with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
-    departments = json.load(response)
+# We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
+with urlopen(cfg.GEOJSON_FILE) as response:
+    departments = json.loads(response.read())
 
 # We fetch the department risk score json and store it in the risk_json variable
 # When everything is validated, we'll request the data directly from the API
