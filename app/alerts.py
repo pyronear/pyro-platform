@@ -20,8 +20,7 @@ from pathlib import Path
 import pandas as pd
 
 # Useful imports to read the GeoJSON file from Pyro-Risk release
-import json
-from urllib.request import urlopen
+import requests
 import config as cfg
 
 # Various modules provided by Dash to build app components
@@ -43,8 +42,7 @@ from utils import map_style, build_info_object, build_legend_box
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
 # We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
-with urlopen(cfg.GEOJSON_FILE) as response:
-    departments = json.loads(response.read())
+departments = requests.get(cfg.GEOJSON_FILE).json()
 
 
 def build_departments_geojson():
