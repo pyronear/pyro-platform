@@ -1,7 +1,7 @@
-"""The following file is dedicated to storing graphs functions.
+"""
+The following file is dedicated to graph functions.
 
-These graphs will be called from homepage.py
-in order to plot them right under the homepage map
+These graphs will be called from homepage.py in order to optionally plot them right under the map.
 """
 
 import plotly.graph_objects as go
@@ -9,6 +9,9 @@ import numpy as np
 
 
 def generate_meteo_fig():
+    """
+    This function allows to instantiate a Plotly figure with three graphs, populated for now with random observations.
+    """
     np.random.seed(1)
 
     N = 100
