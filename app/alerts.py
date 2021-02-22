@@ -70,15 +70,14 @@ def build_departments_geojson():
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
-# We import the cameras's positions from the API that locates the cameras
+# The following block is used to fetch and display on the map the positions of detection units.
 
+# We import the cameras's positions from the API that locates the cameras
 # Fetching the response in a variable
 response = api_client.get_sites()
 
 # Getting the json data out of the response
 camera_positions = response.json()
-
-# The following block is used to fetch and display on the map the positions of detection units.
 
 def build_sites_markers(dpt_code=None):
     """
