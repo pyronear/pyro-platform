@@ -34,8 +34,7 @@ import dash_leaflet.express as dlx
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
 from utils import map_style, build_info_object, build_legend_box
 
-# Importing the Client class and 
-from pyroclient import Client
+# Importing a pre-instantiated client
 from services import api_client
 
 
@@ -71,7 +70,6 @@ def build_departments_geojson():
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
-
 # We import the cameras's positions from the API that locates the cameras
 
 # Fetching the response in a variable
@@ -112,12 +110,12 @@ def build_sites_markers(dpt_code=None):
     # We build a list of markers containing the info of each site/camera
     markers = []
     for row in camera_positions:
-        id = row['id']
+        site_id = row['id']
         lat = row['lat']
         lon = row['lon']
         site_name = row['name']
         # nb_device = row['Nombres Devices']
-        markers.append(dl.Marker(id=f'site_{id}',    # Necessary to set an id for each marker to receive callbacks
+        markers.append(dl.Marker(id=f'site_{site_id}',    # Necessary to set an id for each marker to receive callbacks
                                  position=(lat, lon),
                                  icon=icon,
                                  children=[dl.Tooltip(site_name),
