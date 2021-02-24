@@ -78,6 +78,8 @@ response = api_client.get_sites()
 
 # Getting the json data out of the response
 camera_positions = response.json()
+
+
 def build_sites_markers(dpt_code=None):
     """
     This function reads the site markers by making the API, that contains all the
