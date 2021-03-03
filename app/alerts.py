@@ -20,14 +20,13 @@ Most functions defined below are called in the main.py file, in the alerts callb
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
-# Useful import to open local files (positions of cameras and department GeoJSON)
+# Useful imports to open remaining local file (positions of cameras)
 from pathlib import Path
-
-# Pandas, to read the csv file with the positions of cameras on the field
 import pandas as pd
 
-# Useful import to read the GeoJSON file
-import json
+# Useful imports to read the GeoJSON file from Pyro-Risk release
+import requests
+import config as cfg
 
 # Various modules provided by Dash to build app components
 import dash_core_components as dcc
@@ -50,15 +49,15 @@ from services import api_client
 # Departments
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
+# We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
+departments = requests.get(cfg.GEOJSON_FILE).json()
+
+
 def build_departments_geojson():
     """
     This function reads the departments.geojson file in the /data folder thanks to the json module
     and returns an interactive dl.GeoJSON object containing its information, to be displayed on the map.
     """
-
-    # We read the json file in the data folder and store it in the departments variable
-    with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
-        departments = json.load(response)
 
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
     geojson = dl.GeoJSON(data=departments,
