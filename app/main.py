@@ -55,6 +55,7 @@ from homepage import Homepage
 from homepage import choose_map_style, display_alerts_frames
 from alerts import define_map_zoom_center, build_alerts_elements
 from risks import build_risks_geojson_and_colorbar
+from alert_screen import alert_screen
 from utils import choose_layer_style, build_info_box, build_info_object,\
     build_live_alerts_metadata, build_historic_markers, build_legend_box
 
@@ -72,7 +73,7 @@ server = app.server   # Gunicorn will be looking for the server attribute of thi
 
 # We create a rough layout, filled with the content of the homepage
 app.layout = html.Div([dcc.Location(id='url', refresh=False),
-                       html.Div(id='page-content', children=Homepage())])
+                       html.Div(id='page-content')])
 
 # Cache configuration
 cache = Cache(app.server, config={
@@ -91,6 +92,22 @@ alert_id = alert_metadata["id"]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
+
+@app.callback(
+    Output("page-content", "children"),
+    Input("url", "pathname"),
+)
+def display_page(pathname):
+    """
+    This callback takes the url path as input and returns the corresponding page layout,
+    thanks to the instantiation functions built in the various .py files.
+    """
+    if pathname == "/alert_screen":
+        return alert_screen(alert_metadata)
+
+    else:
+        return Homepage()
+
 
 @app.callback(
     Output("navbar-collapse", "is_open"),
