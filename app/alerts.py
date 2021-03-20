@@ -1,3 +1,8 @@
+# Copyright (C) 2021, Pyronear contributors.
+
+# This program is licensed under the Apache License version 2.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+
 """
 The following Python file is dedicated to the "Alerts and Infrastructure" view of the dashboard.
 
@@ -15,14 +20,13 @@ Most functions defined below are called in the main.py file, in the alerts callb
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
-# Useful import to open local files (positions of cameras and department GeoJSON)
+# Useful imports to open remaining local file (positions of cameras)
 from pathlib import Path
-
-# Pandas, to read the csv file with the positions of cameras on the field
 import pandas as pd
 
-# Useful import to read the GeoJSON file
-import json
+# Useful imports to read the GeoJSON file from Pyro-Risk release
+import requests
+import config as cfg
 
 # Various modules provided by Dash to build app components
 import dash_core_components as dcc
@@ -34,6 +38,9 @@ import dash_leaflet.express as dlx
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
 from utils import map_style, build_info_object, build_legend_box
 
+# Importing a pre-instantiated client
+from services import api_client
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -42,15 +49,15 @@ from utils import map_style, build_info_object, build_legend_box
 # Departments
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
+# We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
+departments = requests.get(cfg.GEOJSON_FILE).json()
+
+
 def build_departments_geojson():
     """
     This function reads the departments.geojson file in the /data folder thanks to the json module
     and returns an interactive dl.GeoJSON object containing its information, to be displayed on the map.
     """
-
-    # We read the json file in the data folder and store it in the departments variable
-    with open(Path(__file__).parent.joinpath('data', 'departements.geojson'), 'rb') as response:
-        departments = json.load(response)
 
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
     geojson = dl.GeoJSON(data=departments,
@@ -69,9 +76,17 @@ def build_departments_geojson():
 # Sites markers
 # The following block is used to fetch and display on the map the positions of detection units.
 
+# We import the cameras's positions from the API that locates the cameras
+# Fetching the response in a variable
+response = api_client.get_sites()
+
+# Getting the json data out of the response
+camera_positions = response.json()
+
+
 def build_sites_markers(dpt_code=None):
     """
-    This function reads through the 'cameras.csv' file in the /data folder, that contains all the
+    This function reads the site markers by making the API, that contains all the
     information about the sites equipped with detection units.
 
     It then returns a dl.MarkerClusterGroup object that gathers all relevant site markers.
@@ -85,8 +100,7 @@ def build_sites_markers(dpt_code=None):
     # if not dpt_code:
     #     return None
 
-    # We read the csv file that locates the cameras and filter for the department of interest
-    camera_positions = pd.read_csv(Path(__file__).parent.joinpath('data', 'cameras.csv'), ';')
+    # We filter for the department of interest
     # camera_positions = camera_positions[camera_positions['Département'] == int(dpt_code)].copy()
 
     # Building alerts_markers objects and wraps them in a dl.LayerGroup object
@@ -99,18 +113,19 @@ def build_sites_markers(dpt_code=None):
 
     # We build a list of markers containing the info of each site/camera
     markers = []
-    for i, row in camera_positions.iterrows():
-        lat = row['Latitude']
-        lon = row['Longitude']
-        site_name = row['Tours']
-        nb_device = row['Nombres Devices']
-        markers.append(dl.Marker(id=f'site_{i}',    # Necessary to set an id for each marker to receive callbacks
+    for row in camera_positions:
+        site_id = row['id']
+        lat = row['lat']
+        lon = row['lon']
+        site_name = row['name']
+        # nb_device = row['Nombres Devices']
+        markers.append(dl.Marker(id=f'site_{site_id}',    # Necessary to set an id for each marker to receive callbacks
                                  position=(lat, lon),
                                  icon=icon,
                                  children=[dl.Tooltip(site_name),
                                            dl.Popup([html.H2(f'Site {site_name}'),
                                                      html.P(f'Coordonnées : ({lat}, {lon})'),
-                                                     html.P(f'Nombre de caméras : {nb_device}')])]))
+                                                     html.P(f'Nombre de caméras : {4}')])]))
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
     return dl.MarkerClusterGroup(children=markers, id='sites_markers')
