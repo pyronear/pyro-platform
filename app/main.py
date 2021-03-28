@@ -57,6 +57,7 @@ from utils import choose_layer_style, build_info_box, build_info_object, \
     build_live_alerts_metadata, build_historic_markers, build_legend_box
 
 import time
+import pandas as pd
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -197,17 +198,21 @@ def manage_login_feedback(n_clicks, username, password):
         return True, form_feedback, ''
 
     else:
-        try:
-            # Verification of username-password pair
 
-            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
-            form_feedback.append('ok')
+        correspondences = pd.read_csv('data/login_correspondences.csv')
 
-            return False, form_feedback, get_site_devices_data(client=api_client)
-
-        except:
+        if username not in correspondences['username'].values or password not in correspondences['password'].values:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
             return True, form_feedback, ''
+
+        elif password != correspondences[correspondences['username'] == username]['password'][0]:
+            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
+            return True, form_feedback, ''
+
+        else:
+            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
+            form_feedback.append('ok')
+            return False, form_feedback, get_site_devices_data(client=api_client)
 
 
 @app.callback(
