@@ -45,7 +45,7 @@ from flask_caching import Cache
 
 import config as cfg  # Cf. config.py file
 from alert_screen import AlertScreen, build_no_alert_detected_screen, build_alert_detected_screen
-from alerts import define_map_zoom_center, build_alerts_elements
+from alerts import define_map_zoom_center, build_alerts_elements, get_site_devices_data
 # From homepage.py, we import the main layout instantiation function
 from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
@@ -83,6 +83,9 @@ app.layout = html.Div(
         dcc.Store(id="store_live_alerts_data", storage_type="memory"),
         dcc.Store(id="last_displayed_event_id", storage_type="memory"),
         dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
+
+        # Storage component which contains data relative to site devices
+        dcc.Store(id="site_devices_data_storage", storage_type="session")
     ]
 )
 
@@ -177,20 +180,21 @@ def update_alert_data(interval):
 
 @app.callback(
     [Output('login_modal', 'is_open'),
-     Output('form_feedback_area', 'children')],
+     Output('form_feedback_area', 'children'),
+     Output('site_devices_data_storage', 'data')],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
      State('password_input', 'value')]
 )
 def manage_login_feedback(n_clicks, username, password):
     if n_clicks is None:
-        return True, None
+        return True, None, ''
 
     form_feedback = [dcc.Markdown('---')]
 
     if username is None or password is None or len(username) == 0 or len(password) == 0:
         form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
-        return True, form_feedback
+        return True, form_feedback, ''
 
     else:
         try:
@@ -199,11 +203,11 @@ def manage_login_feedback(n_clicks, username, password):
             form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
             form_feedback.append('ok')
 
-            return False, form_feedback
+            return False, form_feedback, get_site_devices_data(client=api_client)
 
         except:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-            return True, form_feedback
+            return True, form_feedback, ''
 
 
 @app.callback(

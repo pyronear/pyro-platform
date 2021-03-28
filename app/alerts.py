@@ -71,6 +71,20 @@ def build_departments_geojson():
     # We simply return the GeoJSON object for now
     return geojson
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Site devices
+# The following block is used to load the data relative to site devices.
+# It is called in main.py by the callback that is itself triggered by the user's login.
+
+def get_site_devices_data(client):
+    response = client.get_sites()
+
+    sites = response.json()
+
+    data = {site['id']: client.get_site_devices(site['id']).json() for site in sites}
+
+    return data
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
@@ -129,6 +143,34 @@ def build_sites_markers(dpt_code=None):
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
     return dl.MarkerClusterGroup(children=markers, id='sites_markers')
+
+
+def build_vision_polygon(site_lat, site_lon, yaw, opening_angle, distKm):
+
+    center = [site_lat, site_lon]
+
+    points1 = []
+    points2 = []
+
+    for i in reversed(range(1, opening_angle+1)):
+        yaw1 = (yaw - i/2) % 360
+        yaw2 = (yaw + i/2) % 360
+
+        point = geodesic(kilometers=distKm).destination(Point(site_lat, site_lon), yaw1)
+        points1.append([point.latitude, point.longitude])
+
+        point = geodesic(kilometers=distKm).destination(Point(site_lat, site_lon), yaw2)
+        points2.append([point.latitude, point.longitude])
+
+    points = [center] + points1 + list(reversed(points2))
+
+    polygon= dl.Polygon(
+        color="#ff7800",
+        opacity=0.5,
+        positions=points
+    )
+
+    return polygon
 
 
 # ----------------------------------------------------------------------------------------------------------------------
