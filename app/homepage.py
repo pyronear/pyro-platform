@@ -286,6 +286,72 @@ def display_meteo_graphs(display=False):
         # If the 'display' argument is False, the function returns a void string
         return ''
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Login modal
+# The following block defines the build_login_modal, which allows to instantiate the modal opened at the beginning of
+# each session for the user to enter his/her credentials.
+
+def build_login_modal():
+    """
+    This function simply creates and returns the login modal, which opens up at the beginning of each session to obtain
+    the credentials of the user.
+    """
+    return dbc.Modal(
+        [
+            dbc.ModalBody(
+                [
+                    html.Center(
+                        dbc.Col(
+                            [
+                                html.Div(style={'height': '10px'}),
+                                html.Img(src=pyro_logo, width="190px"),
+                                html.Div(style={'height': '30px'}),
+                                dbc.FormGroup(
+                                    [
+                                        dbc.Input(
+                                            id='username_input',
+                                            type='text',
+                                            placeholder="UTILISATEUR",
+                                            style={'width': '250px'},
+                                            autoFocus=True
+                                        )
+                                    ],
+                                ),
+                                dbc.FormGroup(
+                                    [
+                                        dbc.Input(
+                                            id='password_input',
+                                            type='password',
+                                            placeholder='MOT DE PASSE',
+                                            style={'width': '250px'},
+                                        )
+                                    ],
+                                ),
+                            ],
+                            align='center'
+                        ),
+                    ),
+                    html.Div(style={'height': '15px'}),
+                    html.Center(
+                        dbc.Button(
+                            "Connexion",
+                            id='send_form_button',
+                            color='primary',
+                            className='ml-3'
+                        ),
+                    ),
+                    html.Div(style={'height': '15px'}),
+                    html.Div(id='form_feedback_area')
+                ],
+                style={'background': '#F8FAFF'}
+            ),
+        ],
+        id="login_modal",
+        backdrop='static',
+        keyboard=False,
+        style={"max-width": "none", "width": "500px"}
+    )
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
@@ -332,6 +398,9 @@ def Homepage():
                     md=9),
             ]
         ),
+
+        # Login modal added here
+        build_login_modal(),
 
         # Meteo graphs added here
         display_meteo_graphs(display=False)

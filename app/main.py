@@ -56,6 +56,8 @@ from services import api_client
 from utils import choose_layer_style, build_info_box, build_info_object, \
     build_live_alerts_metadata, build_historic_markers, build_legend_box
 
+import time
+
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
 
@@ -171,6 +173,65 @@ def update_alert_data(interval):
     live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
 
     return live_alerts.to_json()
+
+
+@app.callback(
+    [Output('login_modal', 'is_open'),
+     Output('form_feedback_area', 'children')],
+    Input('send_form_button', 'n_clicks'),
+    [State('username_input', 'value'),
+     State('password_input', 'value')]
+)
+def manage_login_feedback(n_clicks, username, password):
+    if n_clicks is None:
+        return True, None
+
+    form_feedback = [dcc.Markdown('---')]
+
+    if username is None or password is None or len(username) == 0 or len(password) == 0:
+        form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
+        return True, form_feedback
+
+    else:
+        try:
+            # Verification of username-password pair
+
+            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
+            form_feedback.append('ok')
+
+            return False, form_feedback
+
+        except:
+            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
+            return True, form_feedback
+
+
+@app.callback(
+    Output('login_modal', 'is_open'),
+    Input('form_feedback_area', 'children')
+)
+def close_login_modal(feedback):
+    if feedback is None:
+        raise PreventUpdate
+
+    if 'ok' in feedback:
+        time.sleep(2)
+        return False
+
+    else:
+        raise PreventUpdate
+
+
+@app.callback(
+    Output('login_background', 'children'),
+    Input('login_modal', 'is_open')
+)
+def clean_login_background(is_modal_opened):
+    if is_modal_opened:
+        raise PreventUpdate
+
+    else:
+        return ''
 
 
 # ----------------------------------------------------------------------------------------------------------------------
