@@ -41,6 +41,10 @@ from utils import map_style, build_info_object, build_legend_box
 # Importing a pre-instantiated client
 from services import api_client
 
+# Imports allowing to build the vision angle of the cameras
+from geopy import Point
+from geopy.distance import geodesic
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
