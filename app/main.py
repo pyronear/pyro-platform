@@ -180,7 +180,8 @@ def update_alert_data(interval):
 
 
 @app.callback(
-    [Output('form_feedback_area', 'children'),
+    [Output('login_modal', 'is_open'),
+     Output('form_feedback_area', 'children'),
      Output('site_devices_data_storage', 'data')],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
@@ -188,46 +189,29 @@ def update_alert_data(interval):
 )
 def manage_login_feedback(n_clicks, username, password):
     if n_clicks is None:
-        return None, ''
+        return True, None, ''
 
     form_feedback = [dcc.Markdown('---')]
 
     if username is None or password is None or len(username) == 0 or len(password) == 0:
         form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
-        return form_feedback, ''
+        return True, form_feedback, ''
 
     else:
-
-        correspondences = pd.read_csv('data/login_correspondences.csv')
+        correspondences = pd.read_csv('app/data/login_correspondences.csv')
 
         if username not in correspondences['username'].values or password not in correspondences['password'].values:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-            return form_feedback, ''
+            return True, form_feedback, ''
 
         elif password != correspondences[correspondences['username'] == username]['password'][0]:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-            return form_feedback, ''
+            return True, form_feedback, ''
 
         else:
             form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
             form_feedback.append('ok')
-            return form_feedback, get_site_devices_data(client=api_client)
-
-
-@app.callback(
-    Output('login_modal', 'is_open'),
-    Input('form_feedback_area', 'children')
-)
-def close_login_modal(feedback):
-    if feedback is None:
-        raise PreventUpdate
-
-    if 'ok' in feedback:
-        time.sleep(2)
-        return False
-
-    else:
-        raise PreventUpdate
+            return False, form_feedback, get_site_devices_data(client=api_client)
 
 
 @app.callback(
@@ -756,6 +740,9 @@ def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_i
     Created from the x frames we received each time there is an alert related to the same event.
     The urls of these images are stored in a dictionary "images_url_current_alert".
     """
+    if n_intervals is None:
+        raise PreventUpdate
+
     if last_displayed_event_id not in dict_images_url_current_alert.keys():
         raise PreventUpdate
 

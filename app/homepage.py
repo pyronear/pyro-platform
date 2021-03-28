@@ -48,6 +48,9 @@ from utils import build_layer_style_button, build_live_alerts_metadata
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
 
+# Pyronear - Horizontal Logo
+pyro_logo = 'https://pyronear.org/img/logo_letters.png'
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Alert simulation
 # The following block is used to create the radio button that allows to simulate alerts.
@@ -347,7 +350,7 @@ def build_login_modal():
             ),
         ],
         id="login_modal",
-        backdrop='static',
+        # backdrop='static',
         keyboard=False,
         style={"max-width": "none", "width": "500px"}
     )
