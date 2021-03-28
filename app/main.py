@@ -180,8 +180,7 @@ def update_alert_data(interval):
 
 
 @app.callback(
-    [Output('login_modal', 'is_open'),
-     Output('form_feedback_area', 'children'),
+    [Output('form_feedback_area', 'children'),
      Output('site_devices_data_storage', 'data')],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
@@ -189,13 +188,13 @@ def update_alert_data(interval):
 )
 def manage_login_feedback(n_clicks, username, password):
     if n_clicks is None:
-        return True, None, ''
+        return None, ''
 
     form_feedback = [dcc.Markdown('---')]
 
     if username is None or password is None or len(username) == 0 or len(password) == 0:
         form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
-        return True, form_feedback, ''
+        return form_feedback, ''
 
     else:
 
@@ -203,16 +202,16 @@ def manage_login_feedback(n_clicks, username, password):
 
         if username not in correspondences['username'].values or password not in correspondences['password'].values:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-            return True, form_feedback, ''
+            return form_feedback, ''
 
         elif password != correspondences[correspondences['username'] == username]['password'][0]:
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-            return True, form_feedback, ''
+            return form_feedback, ''
 
         else:
             form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
             form_feedback.append('ok')
-            return False, form_feedback, get_site_devices_data(client=api_client)
+            return form_feedback, get_site_devices_data(client=api_client)
 
 
 @app.callback(
