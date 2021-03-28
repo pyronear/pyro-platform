@@ -271,12 +271,12 @@ def build_live_alerts_metadata():
     """
 
     alert_metadata = {
-        "id": 0,
+        "id": 112,
         "created_at": "2020-11-25T15:22:21.690Z",
         "media_url": "https://photos.lci.fr/images/613/344/photo-incendie-generac-gard-e8f2d9-0@1x.jpeg",
         "lat": 44.765181,
         "lon": 4.51488,
-        "event_id": 0,
+        "event_id": 79,
         "azimuth": "49.2°",
         "site_name": "Serre de pied de Boeuf",
         "type": "start",

@@ -10,7 +10,7 @@ It can be launched from the root of the repository by running in a Terminal wind
 
 "python app/main.py"
 
-It is built around 4 main sections:
+It is built around 5 main sections:
 
 - Imports
 
@@ -21,43 +21,40 @@ It is built around 4 main sections:
     - The "Alerts and Infrastructure" view
     - The "Risk Score" view
     - The homepage
+    - The alert screen page
 
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # General imports
-import pandas as pd
-from flask_caching import Cache
-import config as cfg  # Cf. config.py file
-
-# Importing the pyro-API client
-from services import api_client
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
-from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
-
+import dash_bootstrap_components as dbc
 # Various modules provided by Dash to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+import pandas as pd
+from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
+from flask_caching import Cache
 
+import config as cfg  # Cf. config.py file
+from alert_screen import AlertScreen, build_no_alert_detected_screen, build_alert_detected_screen
+from alerts import define_map_zoom_center, build_alerts_elements
 # From homepage.py, we import the main layout instantiation function
 from homepage import Homepage
-
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
-from alerts import define_map_zoom_center, build_alerts_elements
 from risks import build_risks_geojson_and_colorbar
-from utils import choose_layer_style, build_info_box, build_info_object,\
+# Importing the pyro-API client
+from services import api_client
+from utils import choose_layer_style, build_info_box, build_info_object, \
     build_live_alerts_metadata, build_historic_markers, build_legend_box
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -68,11 +65,24 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
 # We define a few attributes of the app object
 app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
-server = app.server   # Gunicorn will be looking for the server attribute of this module
+server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-# We create a rough layout, filled with the content of the homepage
-app.layout = html.Div([dcc.Location(id='url', refresh=False),
-                       html.Div(id='page-content', children=Homepage())])
+# We create a rough layout, filled with the content of the homepage/alert page
+app.layout = html.Div(
+    [
+        dcc.Location(id="url", refresh=False),
+        html.Div(id="page-content", style={"height": "100%"}),
+        # Interval component to generate call to API every 10 seconds
+        dcc.Interval(
+            id="interval-component-homepage",
+            interval=10 * 1000
+        ),
+        # Hidden div to keep a record of live alerts data
+        dcc.Store(id="store_live_alerts_data", storage_type="memory"),
+        dcc.Store(id="last_displayed_event_id", storage_type="memory"),
+        dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
+    ]
+)
 
 # Cache configuration
 cache = Cache(app.server, config={
@@ -91,6 +101,21 @@ alert_id = alert_metadata["id"]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
+
+@app.callback(
+    Output("page-content", "children"),
+    Input("url", "pathname")
+)
+def display_page(pathname):
+    """
+    This callback takes the url path as input and returns the corresponding page layout,
+    thanks to the instantiation functions built in the various .py files.
+    """
+    if pathname == "/alert_screen":
+        return AlertScreen()
+    else:
+        return Homepage()
+
 
 @app.callback(
     Output("navbar-collapse", "is_open"),
@@ -130,6 +155,22 @@ def change_layer_style(n_clicks=None):
         n_clicks = 0
 
     return choose_layer_style(n_clicks)
+
+
+@app.callback(
+    Output("store_live_alerts_data", "data"),
+    Input('interval-component-homepage', 'n_intervals')
+)
+def update_alert_data(interval):
+    """
+    The following function is used to update the div containing live alert data from API.
+    """
+    # Fetching live alerts where is_acknowledged is False
+    response = api_client.get_ongoing_alerts().json()
+    all_alerts = pd.DataFrame(response)
+    live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
+
+    return live_alerts.to_json()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -427,45 +468,49 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
 
 
 @app.callback(
-    [Output('img_url', 'children'),
-     Output('live_alert_header_btn', 'children'),
-     Output('live_alerts_marker', 'children')],
-    Input('interval-component', 'n_intervals'),
-    State('map_style_button', 'children')
+    [
+        Output("img_url", "children"),
+        Output("live_alert_header_btn", "children"),
+        Output("live_alerts_marker", "children"),
+    ],
+    Input("store_live_alerts_data", "data"),
+    State("map_style_button", "children")
 )
-def fetch_alert_status_metadata(n_intervals, map_style_button_label):
+def update_style_components_with_alert_metadata(
+        live_alerts, map_style_button_label
+):
     """
-    -- Fetching and refreshing alerts data --
+    -- Updating style components with corresponding alerts data --
 
-    This callback takes as input the 'n_intervals' attribute of the interval component,
-    which acts as a timer with the number of intervals increasing by 1 every 10 seconds.
+    This callback takes as input "live_alerts" which is the json object containing all live alerts. This json is
+    retrieved thanks to every 10s call to the API.
 
     It also takes as input the label of the button that allows users to change the style of the map (but as a 'State'
     mode, so that the callback is not triggered by a change in this label), in order to deduce the style of the map that
     the user is currently looking at.
 
-    Each time it is triggered, the callback makes a call to the API to get all ongoing alerts,
-    filters out those which have been already acknowledged and returns several elements:
+    Each time it is triggered, the callback uses the data of all ongoing alerts which are stored in
+    "store_live_alerts_data" and returns several elements:
 
     - it stores the URL address of the frame associated with the last alert;
-    - it creates the elements that signall the alert around the map (banner);
+    - it creates the elements that signal the alert around the map (banner);
     - and instantiates the alert markers on the map.
 
     To build these elements, it relies on the build_alerts_elements imported from alerts.
-    scheduling API metadata fetches and defining alert status
     """
 
     # Deducing the style of the map in place from the map style button label
-    if 'risques' in map_style_button_label.lower():
-        map_style = 'alerts'
+    if "risques" in map_style_button_label.lower():
+        map_style = "alerts"
 
-    elif 'alertes' in map_style_button_label.lower():
-        map_style = 'risks'
+    elif "alertes" in map_style_button_label.lower():
+        map_style = "risks"
 
-    # Fetching live alerts where is_acknowledged is False
-    response = api_client.get_ongoing_alerts().json()
-    all_alerts = pd.DataFrame(response)
-    live_alerts = all_alerts.loc[~all_alerts['is_acknowledged']]
+    # Get live alerts data
+    if live_alerts is None:
+        raise PreventUpdate
+
+    live_alerts = pd.read_json(live_alerts)
 
     # Defining the alert status
     if live_alerts.empty:
@@ -479,10 +524,10 @@ def fetch_alert_status_metadata(n_intervals, map_style_button_label):
         alert_status = 1
 
         # Fetching the last alert
-        last_alert = live_alerts.loc[live_alerts['id'].idxmax()]
+        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
 
         # Fetching the URL address of the frame associated with the last alert
-        img_url = api_client.get_media_url(last_alert['media_id']).json()["url"]
+        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
 
         return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
 
@@ -512,7 +557,7 @@ def display_alert_frame_metadata(n_clicks_marker, img_url):
 
 
 @app.callback(
-    Output('interval-component', 'disabled'),
+    Output('interval-component-homepage', 'disabled'),
     Input("alert_marker_{}".format(alert_id), 'n_clicks')
 )
 def callback_func_start_stop_interval(n_clicks):
@@ -547,10 +592,120 @@ def callback_func_start_stop_interval(n_clicks):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Callbacks related to alert_screen page
+@app.callback(
+    [
+        Output("core_layout_alert_screen", "children"),
+        Output("core_layout_alert_screen", "style"),
+        Output("last_displayed_event_id", "data"),
+    ],
+    Input("interval-component-alert-screen", "n_intervals"),
+    [
+        State("store_live_alerts_data", "data"),
+        State("last_displayed_event_id", "data"),
+    ],
+)
+def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
+    """
+    -- Update elements related to the Alert Screen page when the interval component "alert-screen" is triggered --
+    """
+    if live_alerts is None:
+        style_to_display = build_no_alert_detected_screen()
+        return (
+            [{}],
+            style_to_display,
+            last_displayed_event_id
+        )
+
+    else:
+        # Fetching the last alert
+        live_alerts = pd.read_json(live_alerts)
+        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
+        last_event_id = str(last_alert["event_id"])
+
+        # Fetching the URL address of the frame associated with the last alert
+        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+
+        if last_event_id == last_displayed_event_id:
+            # the alert is related to an event id which has already been displayed
+            # need to send the img_url to the GIF
+            raise PreventUpdate
+        else:
+            # new event, not been displayed yet
+            layout_div, style_to_display = build_alert_detected_screen(
+                img_url, alert_metadata, last_alert
+            )
+            return layout_div, style_to_display, last_event_id
+
+
+@app.callback(
+    Output("images_url_current_alert", "data"),
+    Input("interval-component-homepage", "n_intervals"),
+    [
+        State("store_live_alerts_data", "data"),
+        State("images_url_current_alert", "data")
+    ],
+)
+def update_dict_of_images(n_intervals, live_alerts, dict_images_url_current_alert):
+    """
+    -- Update the dictionary of images of ongoing events --
+
+    Dict where keys are event id and value is a list of all urls related to the same event.
+    These url come from the API calls, triggered by "interval-component-homepage".
+    """
+    if live_alerts is None:
+        raise PreventUpdate
+
+    else:
+        # Fetching the last alert
+        live_alerts = pd.read_json(live_alerts)
+        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
+        last_event_id = str(last_alert["event_id"])
+
+        # Fetching the URL address of the frame associated with the last alert
+        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+
+        if last_event_id not in dict_images_url_current_alert.keys():
+            dict_images_url_current_alert[last_event_id] = []
+        dict_images_url_current_alert[last_event_id].append(img_url)
+
+        return dict_images_url_current_alert
+
+
+@app.callback(
+    Output("alert_frame", "src"),
+    Input("interval-component-img-refresh", "n_intervals"),
+    [
+        State("last_displayed_event_id", "data"),
+        State("images_url_current_alert", "data")
+    ]
+)
+def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_images_url_current_alert):
+    """
+    -- Create a pseudo GIF --
+
+    Created from the x frames we received each time there is an alert related to the same event.
+    The urls of these images are stored in a dictionary "images_url_current_alert".
+    """
+    if last_displayed_event_id not in dict_images_url_current_alert.keys():
+        raise PreventUpdate
+
+    list_url_images = dict_images_url_current_alert[last_displayed_event_id]
+    # Only for demo purposes: will be removed afterwards
+    list_url_images = [
+        "http://placeimg.com/625/225/nature",
+        "http://placeimg.com/625/225/animals",
+        "http://placeimg.com/625/225/nature"
+    ]
+    return list_url_images[n_intervals % len(list_url_images)]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # RUNNING THE WEB-APP SERVER
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description='Pyronear web-app',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
