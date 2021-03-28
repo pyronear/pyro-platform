@@ -369,6 +369,15 @@ def Homepage():
         # Markdown separator below the navigation bar
         dbc.Row(dcc.Markdown('---')),
 
+        html.Center(
+                html.Div(
+                    id='login_background',
+                    children=[
+                        html.Img(src='assets/background.png', width="100%")
+                    ]
+                )
+            ),
+
         # Optional radio button to simulate alert events in debugging mode
         dbc.Row(dbc.Col(id='live_alert_header_btn')),
 
