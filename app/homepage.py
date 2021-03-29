@@ -51,6 +51,7 @@ from utils import build_layer_style_button, build_live_alerts_metadata
 # Pyronear - Horizontal Logo
 pyro_logo = 'https://pyronear.org/img/logo_letters.png'
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Alert simulation
 # The following block is used to create the radio button that allows to simulate alerts.
@@ -289,6 +290,7 @@ def display_meteo_graphs(display=False):
         # If the 'display' argument is False, the function returns a void string
         return ''
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Login modal
 # The following block defines the build_login_modal, which allows to instantiate the modal opened at the beginning of
@@ -298,41 +300,42 @@ def build_login_modal():
     """
     This function simply creates and returns the login modal, which opens up at the beginning of each session to obtain
     the credentials of the user.
+
+    Notice the backdrop='static' and keyboard=False arguments passed at the very bottom of the instantiation of the mo-
+    dal object which prevent the user from closing the modal respectively by clicking next to it and by pressing the
+    Escape key.
     """
     return dbc.Modal(
         [
             dbc.ModalBody(
                 [
                     html.Center(
-                        dbc.Col(
-                            [
-                                html.Div(style={'height': '10px'}),
-                                html.Img(src=pyro_logo, width="190px"),
-                                html.Div(style={'height': '30px'}),
-                                dbc.FormGroup(
-                                    [
-                                        dbc.Input(
-                                            id='username_input',
-                                            type='text',
-                                            placeholder="UTILISATEUR",
-                                            style={'width': '250px'},
-                                            autoFocus=True
-                                        )
-                                    ],
-                                ),
-                                dbc.FormGroup(
-                                    [
-                                        dbc.Input(
-                                            id='password_input',
-                                            type='password',
-                                            placeholder='MOT DE PASSE',
-                                            style={'width': '250px'},
-                                        )
-                                    ],
-                                ),
-                            ],
-                            align='center'
-                        ),
+                        [
+                            html.Div(style={'height': '10px'}),
+                            html.Img(src=pyro_logo, width="190px"),
+                            html.Div(style={'height': '30px'}),
+                            dbc.FormGroup(
+                                [
+                                    dbc.Input(
+                                        id='username_input',
+                                        type='text',
+                                        placeholder="UTILISATEUR",
+                                        style={'width': '250px'},
+                                        autoFocus=True
+                                    )
+                                ],
+                            ),
+                            dbc.FormGroup(
+                                [
+                                    dbc.Input(
+                                        id='password_input',
+                                        type='password',
+                                        placeholder='MOT DE PASSE',
+                                        style={'width': '250px'},
+                                    )
+                                ],
+                            ),
+                        ],
                     ),
                     html.Div(style={'height': '15px'}),
                     html.Center(
@@ -344,13 +347,20 @@ def build_login_modal():
                         ),
                     ),
                     html.Div(style={'height': '15px'}),
+
+                    # HTML Div, void for now, which will store the feedback message printed once the user enters
+                    # credentials (giving an indication of the error if credentials are not recognised)
                     html.Div(id='form_feedback_area')
                 ],
                 style={'background': '#F8FAFF'}
             ),
         ],
         id="login_modal",
-        # backdrop='static',
+
+        # Prevents the user from closing the modal by clicking next to it
+        backdrop='static',
+
+        # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,
         style={"max-width": "none", "width": "500px"}
     )
@@ -372,14 +382,17 @@ def Homepage():
         # Markdown separator below the navigation bar
         dbc.Row(dcc.Markdown('---')),
 
+        # We add an HTML Div which displays the login background image as long as the user has not entered valid creden-
+        # tials (so that he / she cannot see what lies behind on the platform before being connected)
         html.Center(
-                html.Div(
-                    id='login_background',
-                    children=[
-                        html.Img(src='assets/background.png', width="100%")
-                    ]
-                )
-            ),
+            html.Div(
+                id='login_background',
+                children=[
+                    # The background image is directly stored in the /assets folder
+                    html.Img(src='assets/background.png', width="100%")
+                ]
+            )
+        ),
 
         # Optional radio button to simulate alert events in debugging mode
         dbc.Row(dbc.Col(id='live_alert_header_btn')),

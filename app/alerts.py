@@ -66,7 +66,7 @@ def build_departments_geojson():
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
     geojson = dl.GeoJSON(data=departments,
                          id='geojson_departments',
-                         zoomToBoundsOnClick=True,
+                         zoomToBoundsOnClick=False,
                          hoverStyle=dict(weight=3,
                                          color='#666',
                                          dashArray='')
@@ -75,12 +75,16 @@ def build_departments_geojson():
     # We simply return the GeoJSON object for now
     return geojson
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Site devices
 # The following block is used to load the data relative to site devices.
 # It is called in main.py by the callback that is itself triggered by the user's login.
 
 def get_site_devices_data(client):
+    """
+    This short function takes as input a pre-instantiated Pyro-API client and returns the site devices data as a dict.
+    """
     response = client.get_sites()
 
     sites = response.json()
@@ -149,26 +153,44 @@ def build_sites_markers(dpt_code=None):
     return dl.MarkerClusterGroup(children=markers, id='sites_markers')
 
 
-def build_vision_polygon(site_lat, site_lon, yaw, opening_angle, distKm):
+def build_vision_polygon(site_lat, site_lon, yaw, opening_angle, dist_km):
+    """
+    This function allows to build the vision angle of a camera, ie. the zone covered by the detection device.
+
+    It takes as input:
+
+    - site_lat, the latitude of the detection device;
+
+    - site_lon, the longitude of the detection device;
+
+    - yaw, the orientation of the device expressed in degrees;
+
+    - opening_angle, the width of the zone covered by the device expressed in degrees;
+
+    - dist_km, the distance that the detection device is able to cover in kilometers.
+
+    The function then builds and returns the zone covered by the detection device as a Dash Leaflet Polygon, which can
+    be represented on the map.
+    """
 
     center = [site_lat, site_lon]
 
     points1 = []
     points2 = []
 
-    for i in reversed(range(1, opening_angle+1)):
-        yaw1 = (yaw - i/2) % 360
-        yaw2 = (yaw + i/2) % 360
+    for i in reversed(range(1, opening_angle + 1)):
+        yaw1 = (yaw - i / 2) % 360
+        yaw2 = (yaw + i / 2) % 360
 
-        point = geodesic(kilometers=distKm).destination(Point(site_lat, site_lon), yaw1)
+        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), yaw1)
         points1.append([point.latitude, point.longitude])
 
-        point = geodesic(kilometers=distKm).destination(Point(site_lat, site_lon), yaw2)
+        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), yaw2)
         points2.append([point.latitude, point.longitude])
 
     points = [center] + points1 + list(reversed(points2))
 
-    polygon= dl.Polygon(
+    polygon = dl.Polygon(
         color="#ff7800",
         opacity=0.5,
         positions=points
