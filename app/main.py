@@ -48,6 +48,13 @@ import dash_leaflet as dl
 # Pandas to read the login correspondences file
 import pandas as pd
 
+# Import used to decrypt the login correspondences file
+from simplecrypt import decrypt
+
+# Used to build a temporary csv file out of the decrypted string
+from io import StringIO
+
+
 # --- Imports from other Python files
 
 import config as cfg  # Cf. config.py file
@@ -67,12 +74,6 @@ from utils import choose_layer_style, build_info_box, build_info_object, build_l
 
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
-
-# Import used to decrypt the login correspondences file
-from simplecrypt import decrypt
-
-# Used to build a temporary csv file out of the decrypted string
-from io import StringIO
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -256,7 +257,7 @@ def manage_login_modal(n_clicks, username, password):
 
     else:
         # We open the encrypted file
-        enc_file = open('app/data/login_correspondences.enc','rb').read()
+        enc_file = open('app/data/login_correspondences.enc', 'rb').read()
 
         # We decrypt the file with the password stored in the git-ignored .env file
         csv_text = decrypt(cfg.LOGIN_CORRESPONDENCES_KEY, enc_file).decode('utf8')
@@ -307,6 +308,12 @@ def manage_login_modal(n_clicks, username, password):
     Input('login_modal', 'is_open')
 )
 def clean_login_background(is_modal_opened):
+    """
+    --- Erasing the login backrgound image when credentials are validated ---
+
+    This callback is triggered by the login modal being closed, ie. indirectly by the user entering a valid username /
+    password pair and removes the login background image from the home pag layout.
+    """
     if is_modal_opened:
         raise PreventUpdate
 
