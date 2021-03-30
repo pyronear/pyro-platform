@@ -9,3 +9,4 @@ Flask-Caching>=1.3.3
 pyroclient@git+https://github.com/pyronear/pyro-api.git#egg=pyroclient&subdirectory=client
 python-dotenv>=0.15.0
 pycryptodome>=3.10.1
+geopy>=2.1.0
