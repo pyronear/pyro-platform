@@ -68,7 +68,7 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import define_map_zoom_center, build_alerts_elements, get_site_devices_data
+from alerts import build_alerts_elements, get_site_devices_data #, define_map_zoom_center
 from utils import choose_layer_style, build_info_box, build_info_object, build_live_alerts_metadata, \
     build_historic_markers, build_legend_box
 
