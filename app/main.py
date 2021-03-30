@@ -68,6 +68,12 @@ from utils import choose_layer_style, build_info_box, build_info_object, build_l
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
 
+# Import used to decrypt the login correspondences file
+from simplecrypt import decrypt
+
+# Used to build a temporary csv file out of the decrypted string
+from io import StringIO
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -249,7 +255,17 @@ def manage_login_modal(n_clicks, username, password):
         return True, form_feedback, '', [10, 10], 3
 
     else:
-        correspondences = pd.read_csv('app/data/login_correspondences.csv')
+        # We open the encrypted file
+        enc_file = open('app/data/login_correspondences.enc','rb').read()
+
+        # We decrypt the file with the password stored in the git-ignored .env file
+        csv_text = decrypt(cfg.LOGIN_CORRESPONDENCES_KEY, enc_file).decode('utf8')
+
+        # We create a temporary csv out of the decrypted string
+        correspondences = StringIO(csv_text)
+
+        # We read the resulting csv as a Pandas DataFrame
+        correspondences = pd.read_csv(correspondences)
 
         if username not in correspondences['username'].values or password not in correspondences['password'].values:
             # If either the username or the password is not found in the corresponding field of the login corresponden-
