@@ -601,14 +601,18 @@ def callback_func_start_stop_interval(n_clicks):
     ],
     Input("interval-component-alert-screen", "n_intervals"),
     [
+        State("url", "pathname"),
         State("store_live_alerts_data", "data"),
         State("last_displayed_event_id", "data"),
     ],
 )
-def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
+def update_alert_screen(n_intervals, pathname, live_alerts, last_displayed_event_id):
     """
     -- Update elements related to the Alert Screen page when the interval component "alert-screen" is triggered --
     """
+    if not pathname == "/alert-screen":
+        last_displayed_event_id = None
+
     if live_alerts is None:
         style_to_display = build_no_alert_detected_screen()
         return (
@@ -690,6 +694,9 @@ def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_i
     if last_displayed_event_id not in dict_images_url_current_alert.keys():
         raise PreventUpdate
 
+    if n_intervals is None:
+        raise PreventUpdate
+
     list_url_images = dict_images_url_current_alert[last_displayed_event_id]
     # Only for demo purposes: will be removed afterwards
     list_url_images = [
@@ -697,6 +704,7 @@ def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_i
         "http://placeimg.com/625/225/animals",
         "http://placeimg.com/625/225/nature"
     ]
+
     return list_url_images[n_intervals % len(list_url_images)]
 
 
