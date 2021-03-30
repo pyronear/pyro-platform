@@ -15,7 +15,7 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y git \
     && pip install --upgrade pip setuptools wheel \
     && pip install -r /usr/src/app/requirements.txt \
-    && pip install simple-crypt --no-deps \
+    && pip install simple-crypt==4.1.7 --no-deps \
     && apt-get purge --autoremove -y git \
     && rm -rf /root/.cache/pip \
     && rm -rf /var/lib/apt/lists/*
