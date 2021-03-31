@@ -58,6 +58,26 @@ def Navbar(dropdown=False):
         className="mx-auto order-0",
         style={'color': 'white', 'align': 'center', 'justify': 'center'})
 
+    # Alert monitoring screen, to be displayed in CODIS
+    alert_screen_button = dbc.NavLink(
+        children=[
+            html.Div(
+                children=[
+                    html.I(
+                        className="mx-auto order-0",
+                    ),
+                    html.Span("Ecran de monitoring"),
+                ]
+            )
+        ],
+        href="alert_screen",
+        style={
+            "font-size": "15px",
+            "color": "white",
+        },
+        className="btn btn-warning"
+    )
+
     # Navbar
     navbar = dbc.Navbar(
         [
@@ -73,6 +93,7 @@ def Navbar(dropdown=False):
             ),
             dbc.NavbarToggler(id="navbar-toggler"),
             dbc.Collapse([user_item, dropdown], id="navbar-collapse", navbar=True),
+            html.Div(alert_screen_button)
         ],
         color="black",
         dark=True,

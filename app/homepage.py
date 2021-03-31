@@ -320,12 +320,6 @@ def Homepage():
                     # Map object added here
                     html.Div(build_alerts_map(), id='hp_map'),
 
-                    # Interval object triggering api calls every 10 seconds
-                    dcc.Interval(
-                        id='interval-component',
-                        interval=10 * 1000,  # Timestep in milliseconds
-                        n_intervals=0),
-
                     # Two placeholders updated by callbacks in main.py to trigger a change in map style
                     html.Div(id='map_style_btn_switch_view'),   # Associated with the main map style button
                     html.Div(id='alert_btn_switch_view'),   # Associated with the alert banner in risks mode
