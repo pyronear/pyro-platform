@@ -86,9 +86,7 @@ def get_site_devices_data(client):
     This short function takes as input a pre-instantiated Pyro-API client and returns the site devices data as a dict.
     """
     response = client.get_sites()
-
     sites = response.json()
-
     data = {site['id']: client.get_site_devices(site['id']).json() for site in sites}
 
     return data

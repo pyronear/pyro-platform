@@ -101,7 +101,6 @@ app.layout = html.Div(
         dcc.Store(id="store_live_alerts_data", storage_type="memory"),
         dcc.Store(id="last_displayed_event_id", storage_type="memory"),
         dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
-
         # Storage component which contains data relative to site devices
         dcc.Store(id="site_devices_data_storage", storage_type="session")
     ]
@@ -191,6 +190,10 @@ def update_alert_data(interval):
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
     all_alerts = pd.DataFrame(response)
+
+    if all_alerts.empty:
+        raise PreventUpdate
+
     live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
 
     return live_alerts.to_json()
