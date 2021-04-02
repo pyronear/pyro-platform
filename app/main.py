@@ -29,32 +29,52 @@ It is built around 5 main sections:
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
-# General imports
+# --- General imports
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import dash
-import dash_bootstrap_components as dbc
-# Various modules provided by Dash to build the page layout
-import dash_core_components as dcc
-import dash_html_components as html
-import dash_leaflet as dl
-import pandas as pd
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
+
+# Flask caching import
 from flask_caching import Cache
 
+# Various modules provided by Dash and Dash Leaflet to build the page layout
+import dash_core_components as dcc
+import dash_html_components as html
+import dash_bootstrap_components as dbc
+import dash_leaflet as dl
+
+# Pandas to read the login correspondences file
+import pandas as pd
+
+# Import used to decrypt the login correspondences file
+from simplecrypt import decrypt
+
+# Used to build a temporary csv file out of the decrypted string
+from io import StringIO
+
+
+# --- Imports from other Python files
+
 import config as cfg  # Cf. config.py file
+
+# From alert_screen.py, we import the main layout instantiation function and some others needed for interactivity
 from alert_screen import AlertScreen, build_no_alert_detected_screen, build_alert_detected_screen
-from alerts import define_map_zoom_center, build_alerts_elements
+
 # From homepage.py, we import the main layout instantiation function
 from homepage import Homepage
+
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-# Importing the pyro-API client
+from alerts import build_alerts_elements, get_site_devices_data   # , define_map_zoom_center
+from utils import choose_layer_style, build_info_box, build_info_object, build_live_alerts_metadata, \
+    build_historic_markers, build_legend_box
+
+# Importing the pre-instantiated Pyro-API client
 from services import api_client
-from utils import choose_layer_style, build_info_box, build_info_object, \
-    build_live_alerts_metadata, build_historic_markers, build_legend_box
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -81,6 +101,8 @@ app.layout = html.Div(
         dcc.Store(id="store_live_alerts_data", storage_type="memory"),
         dcc.Store(id="last_displayed_event_id", storage_type="memory"),
         dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
+        # Storage component which contains data relative to site devices
+        dcc.Store(id="site_devices_data_storage", storage_type="session")
     ]
 )
 
@@ -168,9 +190,138 @@ def update_alert_data(interval):
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
     all_alerts = pd.DataFrame(response)
+
+    if all_alerts.empty:
+        raise PreventUpdate
+
     live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
 
     return live_alerts.to_json()
+
+
+@app.callback(
+    [Output('login_modal', 'is_open'),
+     Output('form_feedback_area', 'children'),
+     Output('site_devices_data_storage', 'data'),
+     Output('map', 'center'),
+     Output('map', 'zoom')],
+    Input('send_form_button', 'n_clicks'),
+    [State('username_input', 'value'),
+     State('password_input', 'value')]
+)
+def manage_login_modal(n_clicks, username, password):
+    """
+    --- Managing the login modal ---
+
+    This callback is triggered by clicks on the connection button in the login modal and also takes as input the user-
+    name, as well as the password, entered by the user via the login form.
+
+    It updates the following output:
+
+    - the "is_open" attribute of the login modal, a boolean which indicates whether the modal is open or not;
+
+    - the "children" attribute of the HTML Div that stores feedback associated with user's input in the login form;
+
+    - the "data" attribute of the dcc.Store component which saves site devices data, fetched from the API once the user
+    successfully logs in;
+
+    - the "center" and "zoom" attributes of the map object, so that the user directly ends up on the map zoomed on his /
+    her department after logging in (this relies on the center_lat, center_lon and zoom fields in the login_correspon-
+    dences.csv file).
+
+    The logic is the following:
+
+    - the callback runs a series of checks on the username / password pair;
+
+    - as soon as one check is not satisfied, True is returned for the "is_open" attribute of the login modal, such that
+    it remains open and arbitrary values are returned for the other outputs;
+
+    - if all checks are successful, the login modal is closed (by returning False for the "is_open" attribute of the lo-
+    gin modal), site devices data is fetched from the API and the right outputs are returned
+    """
+
+    # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
+    # nection button yet (the user arrives on the page)
+    if n_clicks is None:
+        return True, None, '', [10, 10], 3
+
+    # We instantiate the form feedback output
+    form_feedback = [dcc.Markdown('---')]
+
+    # First check verifies whether both a username and a password have been provided
+    if username is None or password is None or len(username) == 0 or len(password) == 0:
+        # If either the username or the password is missing, the condition is verified
+
+        # We add the appropriate feedback
+        form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
+
+        # The login modal remains open; other outputs are updated with arbitrary values
+        return True, form_feedback, '', [10, 10], 3
+
+    else:
+        # We open the encrypted file
+        enc_file = open('app/data/login_correspondences.enc', 'rb').read()
+
+        # We decrypt the file with the password stored in the git-ignored .env file
+        csv_text = decrypt(cfg.LOGIN_CORRESPONDENCES_KEY, enc_file).decode('utf8')
+
+        # We create a temporary csv out of the decrypted string
+        correspondences = StringIO(csv_text)
+
+        # We read the resulting csv as a Pandas DataFrame
+        correspondences = pd.read_csv(correspondences)
+
+        if username not in correspondences['username'].values or password not in correspondences['password'].values:
+            # If either the username or the password is not found in the corresponding field of the login corresponden-
+            # ces csv file, the condition is verified
+
+            # We add the appropriate feedback
+            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
+
+            # The login modal remains open; other outputs are updated with arbitrary values
+            return True, form_feedback, '', [10, 10], 3
+
+        elif password != correspondences[correspondences['username'] == username]['password'][0]:
+            # If the password provided does not correspond to the username in the csv file, the condition is verified
+
+            # We add the appropriate feedback
+            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
+
+            # The login modal remains open; other outputs are updated with arbitrary values
+            return True, form_feedback, '', [10, 10], 3
+
+        else:
+            # All checks are successful and we add the appropriate feedback
+            # (although the login modal does not remain open long enough for it to be readable by the user)
+            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
+
+            # We fetch the latitude and longitude of the point around which we want to center the map
+            lat = correspondences[correspondences['username'] == username]['center_lat'][0]
+            lon = correspondences[correspondences['username'] == username]['center_lon'][0]
+
+            # We fetch the zoom level for the map display
+            zoom = correspondences[correspondences['username'] == username]['zoom'][0]
+
+            # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
+            return False, form_feedback, get_site_devices_data(client=api_client), [lat, lon], zoom
+
+
+@app.callback(
+    Output('login_background', 'children'),
+    Input('login_modal', 'is_open')
+)
+def clean_login_background(is_modal_opened):
+    """
+    --- Erasing the login backrgound image when credentials are validated ---
+
+    This callback is triggered by the login modal being closed, ie. indirectly by the user entering a valid username /
+    password pair and removes the login background image from the home pag layout.
+    """
+    if is_modal_opened:
+        raise PreventUpdate
+
+    else:
+        return ''
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -252,43 +403,43 @@ def acknowledge_alert(checkbox_checked):
         return [html.P("Prise en compte de l'alerte confirmée")]
 
 
-@app.callback(
-    [Output('map', 'center'),
-     Output('map', 'zoom')],
-    Input("alert_button_alerts", "n_clicks"),
-    State('map_style_button', 'children')
-)
-@cache.memoize()
-def change_zoom_center(n_clicks, map_style_button_label):
-    """
-    -- Zooming on the alert from the banner --
+# @app.callback(
+#     [Output('map', 'center'),
+#      Output('map', 'zoom')],
+#     Input("alert_button_alerts", "n_clicks"),
+#     State('map_style_button', 'children')
+# )
+# @cache.memoize()
+# def change_zoom_center(n_clicks, map_style_button_label):
+#     """
+#     -- Zooming on the alert from the banner --
 
-    This callback is triggered by the number of clicks on the alert banner.
+#     This callback is triggered by the number of clicks on the alert banner.
 
-    It also takes as argument the message displayed on the button which allows the user to choose either the "alerts" or
-    "risks" mode for the map, so as to identify which map the user is currently viewing.
+#     It also takes as argument the message displayed on the button which allows the user to choose either the "alerts"
+#     or "risks" mode for the map, so as to identify which map the user is currently viewing.
 
-    - If the number of clicks is strictly above 0 and we are viewing the "alerts" map, it triggers a zoom on the alert
-    marker. To do so, it relies on the define_map_zoom_center function, imported from alerts.
+#     - If the number of clicks is strictly above 0 and we are viewing the "alerts" map, it triggers a zoom on the alert
+#     marker. To do so, it relies on the define_map_zoom_center function, imported from alerts.
 
-    - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
-    """
+#     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
+#     """
 
-    # Deducing the style of the map in place from the map style button label
-    if 'risques' in map_style_button_label.lower():
-        map_style = 'alerts'
+#     # Deducing the style of the map in place from the map style button label
+#     if 'risques' in map_style_button_label.lower():
+#         map_style = 'alerts'
 
-    elif 'alertes' in map_style_button_label.lower():
-        map_style = 'risks'
+#     elif 'alertes' in map_style_button_label.lower():
+#         map_style = 'risks'
 
-    if n_clicks is None:
-        n_clicks = 0
+#     if n_clicks is None:
+#         n_clicks = 0
 
-    if map_style == 'alerts':
-        return define_map_zoom_center(n_clicks, alert_metadata)
+#     if map_style == 'alerts':
+#         return define_map_zoom_center(n_clicks, alert_metadata)
 
-    elif map_style == 'risks':
-        raise PreventUpdate
+#     elif map_style == 'risks':
+#         raise PreventUpdate
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -687,6 +838,9 @@ def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_i
     Created from the x frames we received each time there is an alert related to the same event.
     The urls of these images are stored in a dictionary "images_url_current_alert".
     """
+    if n_intervals is None:
+        raise PreventUpdate
+
     if last_displayed_event_id not in dict_images_url_current_alert.keys():
         raise PreventUpdate
 

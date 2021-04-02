@@ -1,5 +1,5 @@
 # Pyronear Platform
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e4490e06eaf41a3a5faea69dad5caa9)](https://www.codacy.com/gh/pyronear/pyro-platform/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=pyronear/pyro-platform&amp;utm_campaign=Badge_Grade) ![Build Status](https://github.com/pyronear/pyro-platform/workflows/dash-project/badge.svg) 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e4490e06eaf41a3a5faea69dad5caa9)](https://www.codacy.com/gh/pyronear/pyro-platform/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=pyronear/pyro-platform&amp;utm_campaign=Badge_Grade) ![Build Status](https://github.com/pyronear/pyro-platform/workflows/dash-project/badge.svg)
 
 The building blocks of our wildfire detection & monitoring API.
 
@@ -47,7 +47,14 @@ Those values will allow your web server to connect to our [API](https://github.c
 
 #### Plain dash server
 
-You can run the web server using the following commands:
+You can start by installing the requirements of the project:
+
+```bash
+pip install -r requirements.txt
+pip install simple-crypt==4.1.7 --no-deps
+```
+
+You can then run the web server using the following commands:
 
 ```bash
 python app/main.py
