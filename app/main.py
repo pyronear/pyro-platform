@@ -32,6 +32,8 @@ It is built around 5 main sections:
 # --- General imports
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
+import os
+
 import dash
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -53,7 +55,6 @@ from simplecrypt import decrypt
 
 # Used to build a temporary csv file out of the decrypted string
 from io import StringIO
-
 
 # --- Imports from other Python files
 
@@ -239,7 +240,6 @@ def manage_login_modal(n_clicks, username, password):
     - if all checks are successful, the login modal is closed (by returning False for the "is_open" attribute of the lo-
     gin modal), site devices data is fetched from the API and the right outputs are returned
     """
-
     # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
     # nection button yet (the user arrives on the page)
     if n_clicks is None:
@@ -260,7 +260,8 @@ def manage_login_modal(n_clicks, username, password):
 
     else:
         # We open the encrypted file
-        enc_file = open('app/data/login_correspondences.enc', 'rb').read()
+        with open(os.path.join(os.path.dirname(__file__), "data/login_correspondences.enc"), 'rb') as file:
+            enc_file = file.read()
 
         # We decrypt the file with the password stored in the git-ignored .env file
         csv_text = decrypt(cfg.LOGIN_CORRESPONDENCES_KEY, enc_file).decode('utf8')
