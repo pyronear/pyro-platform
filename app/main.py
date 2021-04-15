@@ -303,7 +303,7 @@ def manage_login_modal(n_clicks, username, password):
             zoom = group_correspondences[group_id]['zoom']
 
             # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-            return False, form_feedback, [44.73, 4.27], 9
+            return False, form_feedback, [lat, lon], zoom
 
 
 @app.callback(
