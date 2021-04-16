@@ -358,7 +358,7 @@ def build_login_modal():
         id="login_modal",
 
         # Prevents the user from closing the modal by clicking next to it
-        # backdrop='static',
+        backdrop='static',
 
         # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,

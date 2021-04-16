@@ -265,16 +265,19 @@ def manage_login_modal(n_clicks, username, password):
         return True, form_feedback, [10, 10], 3
 
     else:
-
+        # This is the route of the API that we are going to use for the credential check
         login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
 
+        # We create a mini-dictionary with the credentials passsed by the user
         data = {
             'username': username,
             'password': password
         }
 
+        # We make the HTTP request to the login route of the API
         response = requests.post(login_route_url, data=data).json()
 
+        # Boolean that indicates whether the authentication was successful or not
         check = ('access_token' in response.keys())
 
         if not check:
