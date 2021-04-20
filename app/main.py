@@ -32,8 +32,6 @@ It is built around 5 main sections:
 # --- General imports
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
-import os
-
 import dash
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -52,6 +50,10 @@ import pandas as pd
 
 # Import used to make the API call in the login callback
 import requests
+
+# Various utils
+import os
+import json
 
 # --- Imports from other Python files
 
@@ -114,16 +116,6 @@ cache = Cache(app.server, config={
 # Fetching reusable alert metadata
 alert_metadata = build_live_alerts_metadata()
 alert_id = alert_metadata["id"]
-
-# We define the coordinates of the point on which to center the map, as well as the appropriate zoom level for each
-# group of users (which will be used in the manage_login_modal callback below)
-group_correspondences = {
-    1: {
-        'center_lat': 44.73,
-        'center_lon': 4.27,
-        'zoom': 9
-    }
-}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -295,7 +287,14 @@ def manage_login_modal(n_clicks, username, password):
             form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
             # For now the group_id is not fetched, we equalize it artificially to 1
-            group_id = 1
+            group_id = '1'
+
+            # We load the group correspondences stored in a dedicated JSON file in the data folder
+            path = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(path, 'data', 'group_correspondences.json')
+
+            with open(path, 'r') as file:
+                group_correspondences = json.load(file)
 
             # We fetch the latitude and longitude of the point around which we want to center the map
             # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
