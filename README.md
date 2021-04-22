@@ -51,7 +51,6 @@ You can start by installing the requirements of the project:
 
 ```bash
 pip install -r requirements.txt
-pip install simple-crypt==4.1.7 --no-deps
 ```
 
 You can then run the web server using the following commands:
@@ -60,7 +59,7 @@ You can then run the web server using the following commands:
 python app/main.py
 ```
 
-Then your Dash app will be available at http://localhost:8050/
+Then your Dash app will be available at http://localhost:8050/.
 
 #### Dockerized dash server
 

@@ -48,12 +48,12 @@ import dash_leaflet as dl
 # Pandas to read the login correspondences file
 import pandas as pd
 
-# Import used to decrypt the login correspondences file
-from simplecrypt import decrypt
+# Import used to make the API call in the login callback
+import requests
 
-# Used to build a temporary csv file out of the decrypted string
-from io import StringIO
-
+# Various utils
+import os
+import json
 
 # --- Imports from other Python files
 
@@ -102,7 +102,7 @@ app.layout = html.Div(
         dcc.Store(id="last_displayed_event_id", storage_type="memory"),
         dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
         # Storage component which contains data relative to site devices
-        dcc.Store(id="site_devices_data_storage", storage_type="session")
+        dcc.Store(id="site_devices_data_storage", storage_type="session", data=get_site_devices_data(client=api_client))
     ]
 )
 
@@ -202,7 +202,6 @@ def update_alert_data(interval):
 @app.callback(
     [Output('login_modal', 'is_open'),
      Output('form_feedback_area', 'children'),
-     Output('site_devices_data_storage', 'data'),
      Output('map', 'center'),
      Output('map', 'zoom')],
     Input('send_form_button', 'n_clicks'),
@@ -239,11 +238,10 @@ def manage_login_modal(n_clicks, username, password):
     - if all checks are successful, the login modal is closed (by returning False for the "is_open" attribute of the lo-
     gin modal), site devices data is fetched from the API and the right outputs are returned
     """
-
     # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
     # nection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, None, '', [10, 10], 3
+        return True, None, [10, 10], 3
 
     # We instantiate the form feedback output
     form_feedback = [dcc.Markdown('---')]
@@ -256,54 +254,58 @@ def manage_login_modal(n_clicks, username, password):
         form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
         # The login modal remains open; other outputs are updated with arbitrary values
-        return True, form_feedback, '', [10, 10], 3
+        return True, form_feedback, [10, 10], 3
 
     else:
-        # We open the encrypted file
-        enc_file = open('app/data/login_correspondences.enc', 'rb').read()
+        # This is the route of the API that we are going to use for the credential check
+        login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
 
-        # We decrypt the file with the password stored in the git-ignored .env file
-        csv_text = decrypt(cfg.LOGIN_CORRESPONDENCES_KEY, enc_file).decode('utf8')
+        # We create a mini-dictionary with the credentials passsed by the user
+        data = {
+            'username': username,
+            'password': password
+        }
 
-        # We create a temporary csv out of the decrypted string
-        correspondences = StringIO(csv_text)
+        # We make the HTTP request to the login route of the API
+        response = requests.post(login_route_url, data=data).json()
 
-        # We read the resulting csv as a Pandas DataFrame
-        correspondences = pd.read_csv(correspondences)
+        # Boolean that indicates whether the authentication was successful or not
+        check = ('access_token' in response.keys())
 
-        if username not in correspondences['username'].values or password not in correspondences['password'].values:
-            # If either the username or the password is not found in the corresponding field of the login corresponden-
-            # ces csv file, the condition is verified
-
-            # We add the appropriate feedback
-            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
-
-            # The login modal remains open; other outputs are updated with arbitrary values
-            return True, form_feedback, '', [10, 10], 3
-
-        elif password != correspondences[correspondences['username'] == username]['password'][0]:
-            # If the password provided does not correspond to the username in the csv file, the condition is verified
+        if not check:
+            # This if statement is verified if credentials are invalid
 
             # We add the appropriate feedback
             form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return True, form_feedback, '', [10, 10], 3
+            return True, form_feedback, [10, 10], 3
 
         else:
             # All checks are successful and we add the appropriate feedback
             # (although the login modal does not remain open long enough for it to be readable by the user)
             form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
+            # For now the group_id is not fetched, we equalize it artificially to 1
+            group_id = '1'
+
+            # We load the group correspondences stored in a dedicated JSON file in the data folder
+            path = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(path, 'data', 'group_correspondences.json')
+
+            with open(path, 'r') as file:
+                group_correspondences = json.load(file)
+
             # We fetch the latitude and longitude of the point around which we want to center the map
-            lat = correspondences[correspondences['username'] == username]['center_lat'][0]
-            lon = correspondences[correspondences['username'] == username]['center_lon'][0]
+            # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
+            lat = group_correspondences[group_id]['center_lat']
+            lon = group_correspondences[group_id]['center_lon']
 
             # We fetch the zoom level for the map display
-            zoom = correspondences[correspondences['username'] == username]['zoom'][0]
+            zoom = group_correspondences[group_id]['zoom']
 
             # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-            return False, form_feedback, get_site_devices_data(client=api_client), [lat, lon], zoom
+            return False, form_feedback, [lat, lon], zoom
 
 
 @app.callback(
