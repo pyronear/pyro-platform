@@ -1,50 +1,131 @@
+
+.btn-layers {
+color: #F8FAFF;
+padding: 10px 30px;
+font-size: 15px;
+background-color: #0a5253;
+width: 100%;
+border-radius: 4;
+  }
+
+.btn-layers:hover
+ {
+background: #0c7a7c;
+color: #F8FAFF;
+}
+
+.btn-alerts {
+    color: #000000;
+    background-color: #fcecc1;
+    width:100%;
+  }
+  
+.btn-alerts {
+color: #000000;
+background-color: #fcecc1;
+border-radius: 2;
+}
+
+.btn-alerts:hover,
+.btn-alerts:active,
+.btn-alerts:focus,
+.btn-alerts.active {
+background: #fcecc1;
+color: #000000;
+border-color: #f34848;
+border-width: medium;
+}
+
+.btn-header-alerts {
+color: #f34848;
+background-color: #f7e7bd;
+font-weight: bold;
+border-color: #f7e7bd;
+border-radius: 2;
+}
+
+.btn-header-alerts:hover,
+.btn-header-alerts:active,
+.btn-header-alerts:focus,
+.btn-header-alerts.active {
+/* let's darken #004E64 a bit for hover effect */
+background: #ecbd4f;
+color: #f34848;
+border-color: #ecbd4f;
+}
+
+.btn-header-hide-alerts {
+  color: #1b1919;
+  background-color: #f7e7bd;
+  font-weight: bold;
+  border-color: #f7e7bd;
+  border-radius: 2;
+  }
+  
+  .btn-header-hide-alerts:hover,
+  .btn-header-hide-alerts:active,
+  .btn-header-hide-alerts:focus,
+  .btn-header-hide-alerts.active {
+  /* let's darken #004E64 a bit for hover effect */
+  background: #ecbd4f;
+  color: #1b1919;
+  border-color: #ecbd4f;
+  }
+
 /* Firefox old */
 @-moz-keyframes blink {
-  0% {
-    opacity: 1;
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
-
-  50% {
-    opacity: 0;
+  
+  @-webkit-keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
-
-  100% {
-    opacity: 1;
+  
+  /* IE */
+  @-ms-keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
-}
-
-@-webkit-keyframes blink {
-  0% {
-    opacity: 1;
+  
+  /* Opera and prob css3 final iteration */
+  @keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
-
-  50% {
-    opacity: 0;
+  
+  .blink-image {
+    -moz-animation: blink normal 1s infinite ease-in-out; /* Firefox */
+    -webkit-animation: blink normal 1s infinite ease-in-out; /* Webkit */
+    -ms-animation: blink normal 1s infinite ease-in-out; /* IE */
+    animation: blink normal 1s infinite ease-in-out; /* Opera and prob css3 final iteration */
   }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-/* Opera and prob css3 final iteration */
-@keyframes blink {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.blink-image {
-  -moz-animation: blink normal 1s infinite ease-in-out; /* Firefox */
-  -webkit-animation: blink normal 1s infinite ease-in-out; /* Webkit */
-  -ms-animation: blink normal 1s infinite ease-in-out; /* IE */
-  animation: blink normal 1s infinite ease-in-out; /* Opera and prob css3 final iteration */
-}
