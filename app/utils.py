@@ -36,6 +36,18 @@ import dash_leaflet as dl
 # CONTENT
 
 # ----------------------------------------------------------------------------------------------------------------------
+# User Info
+# The following block is used for the definition of logged user informations
+
+
+def user_department_lat_lon():
+
+    lat_lon = [44.759629, 4.562443]
+
+    return lat_lon
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # Diverse
 # The following block is used for the definition of small variables and/or functions.
 
@@ -54,9 +66,9 @@ def build_layer_style_button():
     This function creates and returns the button allowing users to change the map
     background layer (either topographic/schematic or satellite).
     """
-    button = html.Button(children='Activer la vue satellite',
+    button = html.Button(children='Satellite',
                          id='layer_style_button',
-                         className="btn btn-warning")
+                         className="btn-layers")
 
     return html.Center(button)
 
@@ -72,14 +84,14 @@ def choose_layer_style(n_clicks):
     # Because we start with the topographic view, if the number of clicks is even, this means
     # that we are still using the topographic view and we may want to activate the satellite one.
     if n_clicks % 2 == 0:
-        button_content = 'Activer la vue satellite'
+        button_content = 'Satellite'
         layer_url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
         layer_attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
     # If the number of clicks is odd, this means we are using the satellite view
     # and may want to come back to the topographic one.
     else:
-        button_content = 'Revenir à la vue schématique'
+        button_content = 'Plan'
         layer_url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
         layer_attribution = ('Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, '
                              'Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community')
@@ -89,34 +101,19 @@ def choose_layer_style(n_clicks):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Information box
-# The following block is used to build the box in the top-right corner and fill it in with the relevant information.
+# The following block is used to build the map filters in the bottom left corner
 
-def build_info_box(feature=None):
+def build_map_filters(feature=None):
+
+    return build_layer_style_button()
+
+
+def build_filters_object(map_type):
     """
-    This function creates the HTML components of the information box.
-
-    It takes as argument the polygon hovered by the user in the departments GeoJSON object, if any.
-
-    It returns:
-
-    - the title of the information box and the name of the hovered when relevant;
-    - the title of the information box and a generic message when there is no department being hovered.
-    """
-    header_dept = [html.H4('Département sélectionné :')]
-
-    if feature:
-        return header_dept + [html.B(feature['properties']['nom'])]
-
-    # If no object is hovered, it just returns a standard statement
-    return header_dept + [html.P('Faites glisser votre curseur sur un département')]
-
-
-def build_info_object(map_type):
-    """
-    This function builds upon the build_info_box function defined above.
+    This function builds upon the build_map_filters function defined above.
 
     It takes as input the type of map considered (either 'alerts' or 'risks') and returns
-    an information box object located in the top-right corner of the map with a relevant id.
+    map filters of the map with a relevant id.
     """
     if map_type == 'alerts':
         object_id = 'alerts_info'
@@ -124,12 +121,11 @@ def build_info_object(map_type):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=build_info_box(),
+    return html.Div(children=build_map_filters(),
                     id=object_id,
-                    className='info',
                     style={'position': 'absolute',
-                           'top': '10px',
-                           'right': '10px',
+                           'bottom': '30px',
+                           'left': '10px',
                            'z-index': '1000'}
                     )
 
@@ -255,33 +251,3 @@ def build_historic_markers(dpt_code=None):
     # We gather all markers stored in the fire_markers list in a dl.LayerGroup object, which is returned
     return dl.LayerGroup(children=fire_markers,
                          id='historic_fires_markers')
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# API calls
-# The following block is used to fetch alerts and sites data from the database.
-# NB: for now, this is still a drafted response; proper API calls still have to be implemented
-
-def build_live_alerts_metadata():
-    """
-    This function is used to fetch all metadata available in the DB about ongoing alerts via the API client.
-
-
-    NB: for now, it is simply a handwritten example of API response and still needs to be written down.
-    """
-
-    alert_metadata = {
-        "id": 112,
-        "created_at": "2020-11-25T15:22:21.690Z",
-        "media_url": "https://photos.lci.fr/images/613/344/photo-incendie-generac-gard-e8f2d9-0@1x.jpeg",
-        "lat": 44.765181,
-        "lon": 4.51488,
-        "event_id": 79,
-        "azimuth": "49.2°",
-        "site_name": "Serre de pied de Boeuf",
-        "type": "start",
-        "is_acknowledged": False,
-        "device_id": 123
-    }
-
-    return alert_metadata
