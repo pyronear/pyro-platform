@@ -32,8 +32,9 @@ It is built around 5 main sections:
 # --- General imports
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
+import os
 import dash
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH
 from dash.exceptions import PreventUpdate
 
 # Flask caching import
@@ -45,6 +46,9 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
+from dash_extensions.websockets import SocketPool, run_server
+from dash_extensions import WebSocket
+
 # Pandas to read the login correspondences file
 import pandas as pd
 
@@ -52,7 +56,6 @@ import pandas as pd
 import requests
 
 # Various utils
-import os
 import json
 
 # --- Imports from other Python files
@@ -68,8 +71,9 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data   # , define_map_zoom_center
-from utils import choose_layer_style, build_info_box, build_info_object, build_live_alerts_metadata, \
+from alerts import build_alerts_elements, get_site_devices_data,\
+    build_user_alerts_selection_area
+from utils import choose_layer_style, build_filters_object,\
     build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
@@ -81,6 +85,7 @@ from services import api_client
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
+socket_pool = SocketPool(app)
 
 # We define a few attributes of the app object
 app.title = 'Pyronear - Monitoring platform'
@@ -92,19 +97,16 @@ app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"height": "100%"}),
-        # Interval component to generate call to API every 10 seconds
-        dcc.Interval(
-            id="interval-component-homepage",
-            interval=10 * 1000
-        ),
-        # Hidden div to keep a record of live alerts data
-        dcc.Store(id="store_live_alerts_data", storage_type="memory"),
-        dcc.Store(id="last_displayed_event_id", storage_type="memory"),
-        dcc.Store(id="images_url_current_alert", storage_type="session", data={}),
+
+        # Storage components which contains data relative to alerts
+        dcc.Store(id="store_live_alerts_data", storage_type="session"),
+        dcc.Store(id="last_displayed_event_id", storage_type="session"),
+        dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
         # Storage component which contains data relative to site devices
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=get_site_devices_data(client=api_client))
     ]
 )
+
 
 # Cache configuration
 cache = Cache(app.server, config={
@@ -113,16 +115,24 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 60
 })
 
-# Fetching reusable alert metadata
-alert_metadata = build_live_alerts_metadata()
-alert_id = alert_metadata["id"]
 
+# End point ping by the API for each alert being recorded. Then broadcasting message to ALL sessions
+@app.server.route("/alert/<message>")
+def broadcast_message(message):
+    socket_pool.broadcast(message)
+    return f"Message {message} broadcast."
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
+
+
+# First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
+app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
+                        Output("msg", "children"), [Input("ws", "message")])
+
 
 @app.callback(
     Output("page-content", "children"),
@@ -180,23 +190,46 @@ def change_layer_style(n_clicks=None):
 
 
 @app.callback(
-    Output("store_live_alerts_data", "data"),
-    Input('interval-component-homepage', 'n_intervals')
+    Output('store_live_alerts_data', 'data'),
+    Output('images_url_live_alerts', 'data'),
+    Input('msg', 'children')
 )
-def update_alert_data(interval):
+def update_live_alerts_data(alert):
     """
-    The following function is used to update the div containing live alert data from API.
+    The following function is used to update the store containing live_alerts data from API and
+    the dictionary of images of ongoing alerts.
+
+    It returns :
+
+    - a json containing live_alerts data where is_acknowledged is False.
+    - a dict where keys are event id and value lists of all urls related to the same event.
+
+    These url come from the API calls, triggered by the websocket message stroed in msg hidden div.
     """
+
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
+    print(response)
     all_alerts = pd.DataFrame(response)
-
     if all_alerts.empty:
         raise PreventUpdate
-
     live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
 
-    return live_alerts.to_json()
+    # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
+    dict_images_url_live_alerts = {}
+    for _, row in live_alerts.iterrows():
+        img_url = ""
+        try:
+            img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+        except Exception:
+            pass
+        if row['event_id'] not in dict_images_url_live_alerts.keys():
+            dict_images_url_live_alerts[row['event_id']] = []
+            dict_images_url_live_alerts[row['event_id']].append(img_url)
+        else:
+            dict_images_url_live_alerts[row['event_id']].append(img_url)
+
+    return live_alerts.to_json(orient='records'), dict_images_url_live_alerts
 
 
 @app.callback(
@@ -275,8 +308,8 @@ def manage_login_modal(n_clicks, username, password):
         if not check:
             # This if statement is verified if credentials are invalid
 
-            # We add the appropriate feedback
-            form_feedback.append(html.P("Nom d'utilisateur ou mot de passe erroné."))
+            # We make the HTTP request to the login route of the API
+            response = requests.post(login_route_url, data=data).json()
 
             # The login modal remains open; other outputs are updated with arbitrary values
             return True, form_feedback, [10, 10], 3
@@ -310,6 +343,7 @@ def manage_login_modal(n_clicks, username, password):
 
 @app.callback(
     Output('login_background', 'children'),
+    Output('main_navbar', 'style'),
     Input('login_modal', 'is_open')
 )
 def clean_login_background(is_modal_opened):
@@ -323,28 +357,11 @@ def clean_login_background(is_modal_opened):
         raise PreventUpdate
 
     else:
-        return ''
+        return '', {}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Alerts and Infrastructure" view
-
-@app.callback(
-    Output('alerts_info', 'children'),
-    Input('geojson_departments', 'hover_feature')
-)
-def hover_department_alerts(hovered_department):
-    """
-    -- Displaying department name in the alerts view --
-
-    This callback detects what department is being hovered by the user's cursor.
-
-    It returns the corresponding name in the info object in the upper right corner of the map.
-    """
-    if hovered_department is not None:
-        return build_info_box(hovered_department)
-    else:
-        return build_info_box()
 
 
 @app.callback(
@@ -374,8 +391,8 @@ def click_department_alerts(feature, radio_button_value):
 
 
 @app.callback(
-    Output('acknowledge_alert_div_{}'.format(alert_id), 'children'),
-    Input('acknowledge_alert_checkbox_{}'.format(alert_id), 'checked')
+    Output({'type': 'acknowledge_alert_div', 'index': MATCH}, 'children'),
+    Input({'type': 'acknowledge_alert_checkbox', 'index': MATCH}, 'children')
 )
 def acknowledge_alert(checkbox_checked):
     """
@@ -392,11 +409,13 @@ def acknowledge_alert(checkbox_checked):
     - use the client to effectively report the acknowledgement to the DB;
     - check if an alert is acknowledged or not in the DB to display the right message.
     """
+
+    ctx = dash.callback_context
+
     if not checkbox_checked:
-        return [dbc.FormGroup([dbc.Checkbox(id='acknowledge_alert_checkbox_{}'.format(alert_id),
+        return [dbc.FormGroup([dbc.Checkbox(id=ctx.triggered[0]['prop_id'].split('.')[0],
                                             className="form-check-input"),
                                dbc.Label("Confirmer la prise en compte de l'alerte",
-                                         html_for='acknowledge_alert_checkbox_{}'.format(alert_id),
                                          className="form-check-label")],
                               check=True,
                               inline=True)]
@@ -405,60 +424,47 @@ def acknowledge_alert(checkbox_checked):
         return [html.P("Prise en compte de l'alerte confirmée")]
 
 
-# @app.callback(
-#     [Output('map', 'center'),
-#      Output('map', 'zoom')],
-#     Input("alert_button_alerts", "n_clicks"),
-#     State('map_style_button', 'children')
-# )
-# @cache.memoize()
-# def change_zoom_center(n_clicks, map_style_button_label):
-#     """
-#     -- Zooming on the alert from the banner --
+@app.callback(
+    [Output('user_selection_column', 'md'),
+     Output('map_column', 'md'),
+     Output("new_alerts_selection_list", "children"),
+     Output("live_alert_header_btn", "style")],
+    Input("alert_button_alerts", "n_clicks"),
+    State('map_style_button', 'children'),
+    State("store_live_alerts_data", "data")
+)
+@cache.memoize()
+def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
+    """
+    -- Initiating the whole alert flow  --
 
-#     This callback is triggered by the number of clicks on the alert banner.
+    This callback is triggered by the number of clicks on the new alert button.
 
-#     It also takes as argument the message displayed on the button which allows the user to choose either the "alerts"
-#     or "risks" mode for the map, so as to identify which map the user is currently viewing.
+    - If the number of clicks is strictly above 0 it triggers the creation of the user_alerts_selection_area with
+    the alerts list. To do so, it relies on the build_user_alerts_selection_area and the function, imported from alerts.
 
-#     - If the number of clicks is strictly above 0 and we are viewing the "alerts" map, it triggers a zoom on the alert
-#     marker. To do so, it relies on the define_map_zoom_center function, imported from alerts.
+    - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
+     """
 
-#     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
-#     """
+    # Deducing the style of the map in place from the map style button label
+    if 'risques' in map_style_button_label.lower():
+        map_style = 'alerts'
 
-#     # Deducing the style of the map in place from the map style button label
-#     if 'risques' in map_style_button_label.lower():
-#         map_style = 'alerts'
+    elif 'alertes' in map_style_button_label.lower():
+        map_style = 'risks'
 
-#     elif 'alertes' in map_style_button_label.lower():
-#         map_style = 'risks'
+    if n_clicks is None:
+        n_clicks = 0
 
-#     if n_clicks is None:
-#         n_clicks = 0
+    if map_style == 'alerts':
+        return build_user_alerts_selection_area(n_clicks, live_alerts)
 
-#     if map_style == 'alerts':
-#         return define_map_zoom_center(n_clicks, alert_metadata)
-
-#     elif map_style == 'risks':
-#         raise PreventUpdate
+    elif map_style == 'risks':
+        raise PreventUpdate
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Risk Score" page
-
-@app.callback(
-    Output('risks_info', 'children'),
-    Input('geojson_risks', 'hover_feature')
-)
-def hover_department_risks(hovered_department):
-    """
-    -- Displaying department name in the alerts view --
-
-    This callback detects which department is being hovered on by the user's cursor.
-    It returns the corresponding name in the info object in the upper right corner of the map.
-    """
-    return build_info_box(hovered_department)
 
 
 @app.callback(
@@ -478,36 +484,11 @@ def change_color_opacity(opacity_level):
     return [dl.TileLayer(id='tile_layer'),
             geojson,
             colorbar,
-            build_info_object(map_type='risks'),
+            build_filters_object(map_type='risks'),
             build_legend_box(map_type='risks'),
             html.Div(id='fire_markers_risks'),  # Will contain the past fire markers of the risks map
             html.Div(id='live_alerts_marker')
             ]
-
-
-@app.callback(Output('fire_markers_risks', 'children'),
-              [Input('geojson_risks', 'click_feature'),
-               Input('historic_fires_radio_button', 'value')])
-def click_department_risks(feature, radio_button_value):
-    """
-    -- Displaying past fires on the risks map --
-
-    This callback detects what department the user is clicking on.
-    It returns the position of past fires in this department as markers on the map.
-
-    It relies on the get_old_fire_positions function, imported from utils.py that takes
-    a department code as input and returns a LayerGroup object gathering the markers.
-
-    It also takes as input the value of the radio button dedicated to past fires:
-
-    - if the user has selected "Non", the container of historic fire markers is left empty;
-    - if the user has selected "Yes", we fill it in with the relevant information.
-    """
-    if feature is not None:
-        if radio_button_value == 1:
-            return build_historic_markers(dpt_code=feature['properties']['code'])
-        else:
-            return None
 
 
 @app.callback(
@@ -621,32 +602,32 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
 
 
 @app.callback(
-    [
-        Output("img_url", "children"),
-        Output("live_alert_header_btn", "children"),
-        Output("live_alerts_marker", "children"),
-    ],
+    [Output('live_alert_header_btn', 'children'),
+     Output('live_alerts_marker', 'children'),
+     Output("main_navbar", "color"),
+     Output("user-div", "children")],
     Input("store_live_alerts_data", "data"),
-    State("map_style_button", "children")
+    [State('map_style_button', 'children'),
+     State('images_url_live_alerts', 'data')]
 )
-def update_style_components_with_alert_metadata(
-        live_alerts, map_style_button_label
+def update_live_alerts_components(
+        live_alerts, map_style_button_label, images_url_live_alerts
 ):
     """
     -- Updating style components with corresponding alerts data --
 
-    This callback takes as input "live_alerts" which is the json object containing all live alerts. This json is
-    retrieved thanks to every 10s call to the API.
+    This callback takes as input "live_alerts", a json object containing live_alerts data. It is triggered each time a
+    new alert is sent by the API then processed by the websocket and then stored in store_live_alerts_data.
 
-    It also takes as input the label of the button that allows users to change the style of the map (but as a 'State'
-    mode, so that the callback is not triggered by a change in this label), in order to deduce the style of the map that
-    the user is currently looking at.
+    It also takes as states the images_url_live_alerts and the label of the button that allows users to change the
+    style of the map , in order to deduce the style of the map that the user is currently looking at.
 
     Each time it is triggered, the callback uses the data of all ongoing alerts which are stored in
     "store_live_alerts_data" and returns several elements:
 
     - it stores the URL address of the frame associated with the last alert;
-    - it creates the elements that signal the alert around the map (banner);
+    - it creates the elements (alert notifications button, alerts lists within alert selection area);
+    - it changes the navabar color and title into alert mode
     - and instantiates the alert markers on the map.
 
     To build these elements, it relies on the build_alerts_elements imported from alerts.
@@ -659,41 +640,22 @@ def update_style_components_with_alert_metadata(
     elif "alertes" in map_style_button_label.lower():
         map_style = "risks"
 
-    # Get live alerts data
-    if live_alerts is None:
+    if map_style == 'alerts':
+        return build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+
+    elif map_style == 'risks':
         raise PreventUpdate
 
-    live_alerts = pd.read_json(live_alerts)
-
-    # Defining the alert status
-    if live_alerts.empty:
-        alert_status = 0
-
-        img_url = ""
-
-        return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
-
-    else:
-        alert_status = 1
-
-        # Fetching the last alert
-        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
-
-        # Fetching the URL address of the frame associated with the last alert
-        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
-
-        return build_alerts_elements(img_url, alert_status, alert_metadata, map_style)
-
+    """
+    Will be replaced by a display_alert_modal callback
 
 @app.callback(
-    [Output('hp_alert_frame_metadata', 'children'),
-     Output('display_alert_frame_btn{}'.format(alert_id), 'children')],
-    Input('display_alert_frame_btn{}'.format(alert_id), 'n_clicks'),
+    [Output({'type': 'display_alert_frame_btn', 'index': MATCH}, 'children')],
+    Input({'type': 'display_alert_frame_btn', 'index': MATCH}, 'n_clicks'),
     State('img_url', 'children')
 )
-def display_alert_frame_metadata(n_clicks_marker, img_url):
-    """
-    -- Displaying detection data and the alert frame --
+def display_alert_frame_metadata(n_clicks_marker, images_url_live_alerts):
+
 
     This callback detects the number of clicks the user has made on the button that allows
     to display the detection data and the alert frame (in the popup of the alert marker).
@@ -701,47 +663,12 @@ def display_alert_frame_metadata(n_clicks_marker, img_url):
     If an odd number of clicks has been made, the function returns the image of the corresponding alert
     and the associated metadata in the blank space on the left of the map.
 
-    If an even number of clicks has been made, the space on the left of the map is left blank.
-    """
+
     if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker, alert_metadata, img_url), 'Masquer les données de détection'
+        return display_alerts_frames(n_clicks_marker), 'Masquer les données de détection'
     else:
         return display_alerts_frames(), 'Afficher les données de détection'
-
-
-@app.callback(
-    Output('interval-component-homepage', 'disabled'),
-    Input("alert_marker_{}".format(alert_id), 'n_clicks')
-)
-def callback_func_start_stop_interval(n_clicks):
-    """
-    -- Interrupting API calls for ongoing alerts --
-
-    This callback detects the number of clicks the user made on an alert marker.
-    If at least 1 click has been made, the function disables the interval component.
-
-    NB: callback to be eliminated in the future.
-    """
-    if n_clicks is not None and n_clicks > 0:
-        return True
-    else:
-        return False
-
-
-# To be uncommented for debug purposes
-# @app.callback([Output('live_alert_header_btn', 'children'), Output('live_alerts_marker', 'children')],
-#               [Input('alert_radio_button', 'value'), Input('interval-component', 'n_intervals')])
-# def define_alert_status_debug(value=None, n_intervals=None):
-#     """
-#     This callback takes as input the alert_radio_button for debug purposes and defines the alert status
-#     depending on the associated values
-#     """
-#     if value is None:
-#         alert_status = 0
-#     else:
-#         alert_status = 1
-
-#     return build_alerts_elements(alert_status, alert_metadata)
+"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -777,7 +704,11 @@ def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
         last_event_id = str(last_alert["event_id"])
 
         # Fetching the URL address of the frame associated with the last alert
-        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+        img_url = ""
+        try:
+            img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+        except Exception:
+            pass
 
         if last_event_id == last_displayed_event_id:
             # the alert is related to an event id which has already been displayed
@@ -786,43 +717,9 @@ def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
         else:
             # new event, not been displayed yet
             layout_div, style_to_display = build_alert_detected_screen(
-                img_url, alert_metadata, last_alert
+                img_url, live_alerts, last_alert
             )
             return layout_div, style_to_display, last_event_id
-
-
-@app.callback(
-    Output("images_url_current_alert", "data"),
-    Input("interval-component-homepage", "n_intervals"),
-    [
-        State("store_live_alerts_data", "data"),
-        State("images_url_current_alert", "data")
-    ],
-)
-def update_dict_of_images(n_intervals, live_alerts, dict_images_url_current_alert):
-    """
-    -- Update the dictionary of images of ongoing events --
-
-    Dict where keys are event id and value is a list of all urls related to the same event.
-    These url come from the API calls, triggered by "interval-component-homepage".
-    """
-    if live_alerts is None:
-        raise PreventUpdate
-
-    else:
-        # Fetching the last alert
-        live_alerts = pd.read_json(live_alerts)
-        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
-        last_event_id = str(last_alert["event_id"])
-
-        # Fetching the URL address of the frame associated with the last alert
-        img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
-
-        if last_event_id not in dict_images_url_current_alert.keys():
-            dict_images_url_current_alert[last_event_id] = []
-        dict_images_url_current_alert[last_event_id].append(img_url)
-
-        return dict_images_url_current_alert
 
 
 @app.callback(
@@ -830,26 +727,26 @@ def update_dict_of_images(n_intervals, live_alerts, dict_images_url_current_aler
     Input("interval-component-img-refresh", "n_intervals"),
     [
         State("last_displayed_event_id", "data"),
-        State("images_url_current_alert", "data")
+        State("images_url_live_alerts", "data")
     ]
 )
-def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_images_url_current_alert):
+def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_images_url_live_alerts):
     """
     -- Create a pseudo GIF --
 
     Created from the x frames we received each time there is an alert related to the same event.
-    The urls of these images are stored in a dictionary "images_url_current_alert".
+    The urls of these images are stored in a dictionary "images_url_live_alerts".
     """
     if n_intervals is None:
         raise PreventUpdate
 
-    if last_displayed_event_id not in dict_images_url_current_alert.keys():
+    if last_displayed_event_id not in dict_images_url_live_alerts.keys():
         raise PreventUpdate
 
     if n_intervals is None:
         raise PreventUpdate
 
-    list_url_images = dict_images_url_current_alert[last_displayed_event_id]
+    list_url_images = dict_images_url_live_alerts[last_displayed_event_id]
     # Only for demo purposes: will be removed afterwards
     list_url_images = [
         "http://placeimg.com/625/225/nature",
@@ -872,4 +769,4 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=8050, help='Port to run the server on')
     args = parser.parse_args()
 
-    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
+    run_server(app, port=args.port)
