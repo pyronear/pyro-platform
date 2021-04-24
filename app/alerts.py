@@ -187,7 +187,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
             'index': str(event_id)
         },
         color="#ff7800",
-        opacity=0,
+        opacity=0.5,
         positions=points
     )
 
@@ -343,6 +343,189 @@ def build_user_alerts_selection_area(n_clicks, live_alerts):
         alert_button_status = {'display': 'block'}
 
     return [md_user, md_map, user_alerts_selection, alert_button_status]
+
+
+def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
+
+    number_of_images = len(urls)
+
+    return dbc.Modal(
+        id={
+            'type': 'alert_modal',
+            'index': str(event_id)
+        },
+        is_open=False,
+        keyboard=True,
+        size='xl',
+        children=[
+            dbc.ModalBody(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Div(
+                                        html.P(
+                                            'Localisation',
+                                            style={
+                                                'color': 'white',
+                                                'text-indent': '15px',
+                                                'font-size':'20px'
+                                            }
+                                        ),
+                                        style={
+                                            'backgroundColor': '#054546',
+                                            'height': '40px'
+                                        }
+                                    ),
+                                    html.Div(
+                                        html.P(
+                                            f'Caméra ID {device_id}',
+                                            style={
+                                                'color': '#054546',
+                                                'font-size':'15px',
+                                                'text-indent': '15px'
+                                            }
+                                        ),
+                                        style={
+                                            'backgroundColor': '#FFECC1',
+                                            'height': '25px'
+                                        }
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.P(
+                                                f'Latitude : {round(lat, 4)}',
+                                                style={
+                                                    'text-indent': '15px',
+                                                    'font-size':'18px'
+                                                }
+                                            ),
+                                            html.P(
+                                                f'Longitude : {round(lon, 4)}',
+                                                style={
+                                                    'text-indent': '15px',
+                                                    'font-size':'18px'
+                                                }
+                                            )
+                                        ],
+                                        style={
+                                            'backgroundColor': '#5BBD8C',
+                                            'fontColor': '#2C796E'
+                                        }
+                                    ),
+                                    html.Br(),
+                                    html.Center(
+                                        id={
+                                            'type': 'acknowledge_alert_space',
+                                            'index': str(event_id)
+                                        },
+                                        children=[
+                                            html.Button(
+                                                id={
+                                                    'type': 'acknowledge_alert_button',
+                                                    'index': str(event_id)
+                                                },
+                                                children="Acquitter l'alerte",
+                                                className='warning'
+                                            )
+                                        ]
+                                    )
+                                ],
+                                width=4
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Img(
+                                        id={
+                                            'type': 'alert_frame',
+                                            'index': str(event_id)
+                                        },
+                                        src=urls[0],
+                                        width='700px'
+                                    ),
+                                    dcc.Markdown('---'),
+                                    dcc.Slider(
+                                        id={
+                                            'type': 'alert_slider',
+                                            'index': str(event_id)
+                                        },
+                                        min=1, max=number_of_images,
+                                        step=1,
+                                        marks={i + 1: str(i + 1) for i in range(number_of_images)},
+                                        value=1
+                                    )
+                                ],
+                                width=16
+                            )
+                        ],
+                        no_gutters=True
+                    ),
+                    # html.Center(
+                    #     [
+                    #         html.Div(
+                    #             children=[
+                    #                 html.P(f'Caméra ID {device_id}'),
+                    #                 html.P(f'Site de détection : {site_name}'),
+                    #                 html.P(f'Latitude : {round(lat, 2)}'),
+                    #                 html.P(f'Longitude : {round(lat, 2)}'),
+                    #             ],
+                    #             style={'backgroundColor': '#5BBD8C'}
+                    #         ),
+
+                    #         dcc.Markdown('---'),
+
+                    #         dcc.Slider(
+                    #             id={
+                    #                 'type': 'alert_slider',
+                    #                 'index': str(event_id)
+                    #             },
+                    #             min=1, max=number_of_images,
+                    #             step=1,
+                    #             marks={i + 1: str(i + 1) for i in range(number_of_images)},
+                    #             value=1
+                    #         ),
+
+                    #         dcc.Markdown("---"),
+
+                    #         html.Img(
+                    #             id={
+                    #                 'type': 'alert_frame',
+                    #                 'index': str(event_id)
+                    #             },
+                    #             src=urls[0],
+                    #             width='300px'
+                    #         ),
+
+                    #         dcc.Markdown("---"),
+
+                    #         html.Button(
+                    #             id={
+                    #                 'type': 'acknowledge_alert_button',
+                    #                 'index': str(event_id)
+                    #             },
+                    #             children="Acquitter l'alerte",
+                    #             className='warning'
+                    #         ),
+
+                    #         dcc.Markdown("---"),
+
+                    #         html.Button(
+                    #             id={
+                    #                 'type': 'alert_feedback_button',
+                    #                 'index': str(event_id)
+                    #             },
+                    #             children="Enregistrer un retour sur cette alerte",
+                    #             className='warning'
+                    #         )
+                    #     ]
+                    # )
+                ]
+            )
+        ]
+    )
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------

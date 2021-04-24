@@ -369,6 +369,9 @@ def Homepage():
         # Login modal added here
         build_login_modal(),
 
+        # HTML Div containing alert modals added here
+        html.Div(id='alert_modals')
+
     ],
         fluid=True,
     )

@@ -72,7 +72,7 @@ from homepage import Homepage
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
 from alerts import build_alerts_elements, get_site_devices_data,\
-    build_user_alerts_selection_area, build_vision_polygon
+    build_user_alerts_selection_area, build_vision_polygon, build_alert_modal
 from utils import choose_layer_style, build_filters_object,\
     build_historic_markers, build_legend_box
 
@@ -316,6 +316,7 @@ def manage_login_modal(n_clicks, username, password):
 
         if not check:
             # This if statement is verified if credentials are invalid
+            form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
 
             # We make the HTTP request to the login route of the API
             response = requests.post(login_route_url, data=data).json()
@@ -399,38 +400,38 @@ def click_department_alerts(feature, radio_button_value):
             return None
 
 
-@app.callback(
-    Output({'type': 'acknowledge_alert_div', 'index': MATCH}, 'children'),
-    Input({'type': 'acknowledge_alert_checkbox', 'index': MATCH}, 'children')
-)
-def acknowledge_alert(checkbox_checked):
-    """
-    -- Allowing user to acknowledge an alert --
+# @app.callback(
+#     Output({'type': 'acknowledge_alert_div', 'index': MATCH}, 'children'),
+#     Input({'type': 'acknowledge_alert_checkbox', 'index': MATCH}, 'children')
+# )
+# def acknowledge_alert(checkbox_checked):
+#     """
+#     -- Allowing user to acknowledge an alert --
 
-    This callback takes as input the status of the checkbox that the user can see when
-    clicking on an alert marker and can use to acknowledge the alert.
+#     This callback takes as input the status of the checkbox that the user can see when
+#     clicking on an alert marker and can use to acknowledge the alert.
 
-    For now, if the checkbox is checked, it simply eliminates the checkbox and displays
-    a message according to which the alert has already been taken into account.
+#     For now, if the checkbox is checked, it simply eliminates the checkbox and displays
+#     a message according to which the alert has already been taken into account.
 
-    Still to be done regarding this callback:
+#     Still to be done regarding this callback:
 
-    - use the client to effectively report the acknowledgement to the DB;
-    - check if an alert is acknowledged or not in the DB to display the right message.
-    """
+#     - use the client to effectively report the acknowledgement to the DB;
+#     - check if an alert is acknowledged or not in the DB to display the right message.
+#     """
 
-    ctx = dash.callback_context
+#     ctx = dash.callback_context
 
-    if not checkbox_checked:
-        return [dbc.FormGroup([dbc.Checkbox(id=ctx.triggered[0]['prop_id'].split('.')[0],
-                                            className="form-check-input"),
-                               dbc.Label("Confirmer la prise en compte de l'alerte",
-                                         className="form-check-label")],
-                              check=True,
-                              inline=True)]
+#     if not checkbox_checked:
+#         return [dbc.FormGroup([dbc.Checkbox(id=ctx.triggered[0]['prop_id'].split('.')[0],
+#                                             className="form-check-input"),
+#                                dbc.Label("Confirmer la prise en compte de l'alerte",
+#                                          className="form-check-label")],
+#                               check=True,
+#                               inline=True)]
 
-    elif checkbox_checked:
-        return [html.P("Prise en compte de l'alerte confirmée")]
+#     elif checkbox_checked:
+#         return [html.P("Prise en compte de l'alerte confirmée")]
 
 
 @app.callback(
@@ -438,13 +439,16 @@ def acknowledge_alert(checkbox_checked):
      Output('map_column', 'md'),
      Output("new_alerts_selection_list", "children"),
      Output("live_alert_header_btn", "style"),
-     Output('vision_polygons', 'children')],
+     Output('vision_polygons', 'children'),
+     Output('alert_modals', 'children')],
     Input("alert_button_alerts", "n_clicks"),
     State('map_style_button', 'children'),
-    State("store_live_alerts_data", "data")
+    State("store_live_alerts_data", "data"),
+    State("images_url_live_alerts", 'data'),
+    State('site_devices_data_storage', "data")
 )
 @cache.memoize()
-def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
+def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert_frame_urls, site_devices_data):
     """
     -- Initiating the whole alert flow  --
 
@@ -459,7 +463,6 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
     vision_polygons_children = []
     alert_modals_children = []
     df = pd.read_json(live_alerts)
-    print(df)
     if df.empty:
         raise PreventUpdate
     df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
@@ -475,8 +478,16 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
 
         vision_polygons_children.append(polygon)
 
+        # Here, we should retrieve the name of the site where the detection is made
+        # Thanks to the device_id and the site_devices_data (cf. States of this callback)
+
         modal = build_alert_modal(
-            event_id=row['event_id']
+            event_id=row['event_id'],
+            device_id=row['device_id'],
+            lat=row['lat'],
+            lon=row['lon'],
+            site_name="Tour de Serre en Don",
+            urls=alert_frame_urls[str(row['event_id'])]
         )
 
         alert_modals_children.append(modal)
@@ -494,25 +505,35 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
     if map_style == 'alerts':
         output = build_user_alerts_selection_area(n_clicks, live_alerts)
 
-        return output[0], output[1], output[2], output[3], vision_polygons_children, alert_modals_children
+        output += [vision_polygons_children, alert_modals_children]
+
+        return output
 
     elif map_style == 'risks':
         raise PreventUpdate
 
 
 @app.callback(
-    Output({'type': 'vision_polygon', 'index': MATCH}, 'opacity'),
+    Output({'type': 'alert_modal', 'index': MATCH}, 'is_open'),
     Input({'type': 'alert_selection_btn', 'index': MATCH}, 'n_clicks')
 )
-def display_vision_polygon(n_clicks):
+def display_alert_modal(n_clicks):
     if n_clicks is None or n_clicks == 0:
         raise PreventUpdate
 
-    elif n_clicks % 2 == 1:
-        return 0.5
+    else:
+        return True
+
+@app.callback(
+    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+    Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
+)
+def acknowledge_alert(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
 
     else:
-        return 0
+        return [html.P('Alerte acquittée.')]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
