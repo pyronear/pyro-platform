@@ -72,7 +72,7 @@ from homepage import Homepage
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
 from alerts import build_alerts_elements, get_site_devices_data,\
-    build_user_alerts_selection_area
+    build_user_alerts_selection_area, build_vision_polygon
 from utils import choose_layer_style, build_filters_object,\
     build_historic_markers, build_legend_box
 
@@ -102,8 +102,17 @@ app.layout = html.Div(
         dcc.Store(id="store_live_alerts_data", storage_type="session"),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
+
         # Storage component which contains data relative to site devices
-        dcc.Store(id="site_devices_data_storage", storage_type="session", data=get_site_devices_data(client=api_client))
+        dcc.Store(
+            id="site_devices_data_storage",
+            storage_type="session",
+            data=get_site_devices_data(client=api_client)
+        ),
+
+        # Storing alerts data for each event separately
+        html.Div(id='individual_alert_data_placeholder', style={'display': 'none'}),
+        html.Div(id='individual_alert_frame_placeholder', style={'display': 'none'})
     ]
 )
 
@@ -192,7 +201,7 @@ def change_layer_style(n_clicks=None):
 @app.callback(
     Output('store_live_alerts_data', 'data'),
     Output('images_url_live_alerts', 'data'),
-    Input('msg', 'children')
+    Input('msg', 'children'),
 )
 def update_live_alerts_data(alert):
     """
@@ -428,7 +437,8 @@ def acknowledge_alert(checkbox_checked):
     [Output('user_selection_column', 'md'),
      Output('map_column', 'md'),
      Output("new_alerts_selection_list", "children"),
-     Output("live_alert_header_btn", "style")],
+     Output("live_alert_header_btn", "style"),
+     Output('vision_polygons', 'children')],
     Input("alert_button_alerts", "n_clicks"),
     State('map_style_button', 'children'),
     State("store_live_alerts_data", "data")
@@ -444,7 +454,32 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
     the alerts list. To do so, it relies on the build_user_alerts_selection_area and the function, imported from alerts.
 
     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
-     """
+    """
+
+    vision_polygons_children = []
+    alert_modals_children = []
+    df = pd.read_json(live_alerts)
+    print(df)
+    if df.empty:
+        raise PreventUpdate
+    df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+    for _, row in df.iterrows():
+        polygon = build_vision_polygon(
+            event_id=row['event_id'],
+            site_lat=row['lat'],
+            site_lon=row['lon'],
+            yaw=row['azimuth'],
+            opening_angle=60,
+            dist_km=2
+        )
+
+        vision_polygons_children.append(polygon)
+
+        modal = build_alert_modal(
+            event_id=row['event_id']
+        )
+
+        alert_modals_children.append(modal)
 
     # Deducing the style of the map in place from the map style button label
     if 'risques' in map_style_button_label.lower():
@@ -457,10 +492,27 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
         n_clicks = 0
 
     if map_style == 'alerts':
-        return build_user_alerts_selection_area(n_clicks, live_alerts)
+        output = build_user_alerts_selection_area(n_clicks, live_alerts)
+
+        return output[0], output[1], output[2], output[3], vision_polygons_children, alert_modals_children
 
     elif map_style == 'risks':
         raise PreventUpdate
+
+
+@app.callback(
+    Output({'type': 'vision_polygon', 'index': MATCH}, 'opacity'),
+    Input({'type': 'alert_selection_btn', 'index': MATCH}, 'n_clicks')
+)
+def display_vision_polygon(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    elif n_clicks % 2 == 1:
+        return 0.5
+
+    else:
+        return 0
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -605,7 +657,10 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     [Output('live_alert_header_btn', 'children'),
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
-     Output("user-div", "children")],
+     Output("user-div", "children"),
+     Output('individual_alert_data_placeholder', 'children'),
+     Output('individual_alert_frame_placeholder', 'children')
+     ],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data')]
@@ -633,6 +688,44 @@ def update_live_alerts_components(
     To build these elements, it relies on the build_alerts_elements imported from alerts.
     """
 
+    df = pd.read_json(live_alerts)
+    if df.empty:
+        raise PreventUpdate
+    df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+
+    individual_alert_data_placeholder_children = []
+    for _, row in df.iterrows():
+        data = {}
+
+        data['lat'] = row['lat']
+        data['lon'] = row['lon']
+        data['yaw'] = row['azimuth']
+        data['device_id'] = row['device_id']
+
+        individual_alert_data_placeholder_children.append(
+            dcc.Store(
+                id={
+                    'type': 'individual_alert_data_storage',
+                    'index': str(row['event_id'])
+                },
+                data=data,
+                storage_type='session'
+            )
+        )
+
+    individual_alert_frame_placeholder_children = []
+    for event_id, frame_url_list in images_url_live_alerts.items():
+        individual_alert_frame_placeholder_children.append(
+            dcc.Store(
+                id={
+                    'type': 'individual_alert_frame_storage',
+                    'index': str(event_id)
+                },
+                data={'key': frame_url_list},
+                storage_type='session'
+            )
+        )
+
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
@@ -641,7 +734,11 @@ def update_live_alerts_components(
         map_style = "risks"
 
     if map_style == 'alerts':
-        return build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+
+        output += [individual_alert_data_placeholder_children, individual_alert_frame_placeholder_children]
+
+        return output
 
     elif map_style == 'risks':
         raise PreventUpdate

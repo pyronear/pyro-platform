@@ -144,7 +144,7 @@ def build_sites_markers(dpt_code=None):
     return dl.MarkerClusterGroup(children=markers, id='sites_markers')
 
 
-def build_vision_polygon(site_lat, site_lon, yaw, opening_angle, dist_km):
+def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_km):
     """
     This function allows to build the vision angle of a camera, ie. the zone covered by the detection device.
 
@@ -182,8 +182,12 @@ def build_vision_polygon(site_lat, site_lon, yaw, opening_angle, dist_km):
     points = [center] + points1 + list(reversed(points2))
 
     polygon = dl.Polygon(
+        id={
+            'type': 'vision_polygon',
+            'index': str(event_id)
+        },
         color="#ff7800",
-        opacity=0.5,
+        opacity=0,
         positions=points
     )
 
@@ -281,7 +285,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         style={'position': 'absolute', 'top': '10px', 'right': '30px', 'z-index': '1000'}
     )
 
-    return alert_button, alerts_markers_layer, navbar_color, navbar_title
+    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
 def build_user_alerts_selection_area(n_clicks, live_alerts):
@@ -338,7 +342,7 @@ def build_user_alerts_selection_area(n_clicks, live_alerts):
         user_alerts_selection = ""
         alert_button_status = {'display': 'block'}
 
-    return md_user, md_map, user_alerts_selection, alert_button_status
+    return [md_user, md_map, user_alerts_selection, alert_button_status]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -358,6 +362,7 @@ def build_alerts_map():
                             build_filters_object(map_type='alerts'),
                             build_legend_box(map_type='alerts'),
                             build_sites_markers(),
+                            dl.LayerGroup(id='vision_polygons'),
                             html.Div(id="live_alerts_marker"),
                             html.Div(id="live_alert_header_btn"),
                             html.Div(id='fire_markers_alerts')],  # Will contain the past fire markers of the alerts map
