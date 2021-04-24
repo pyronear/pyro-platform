@@ -218,7 +218,6 @@ def update_live_alerts_data(alert):
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
-    print(response)
     all_alerts = pd.DataFrame(response)
     if all_alerts.empty:
         raise PreventUpdate
@@ -524,6 +523,19 @@ def display_alert_modal(n_clicks):
     else:
         return True
 
+
+@app.callback(
+    Output({'type': 'alert_frame', 'index': MATCH}, 'src'),
+    Input({'type': 'alert_slider', 'index': MATCH}, 'value'),
+    State({'type': 'individual_alert_frame_storage', 'index': MATCH}, 'children')
+)
+def select_alert_frame_to_display(slider_value, urls):
+    if slider_value is None:
+        raise PreventUpdate
+
+    return urls[slider_value - 1]
+
+
 @app.callback(
     Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
     Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
@@ -736,14 +748,15 @@ def update_live_alerts_components(
 
     individual_alert_frame_placeholder_children = []
     for event_id, frame_url_list in images_url_live_alerts.items():
+
         individual_alert_frame_placeholder_children.append(
-            dcc.Store(
+            html.Div(
                 id={
                     'type': 'individual_alert_frame_storage',
                     'index': str(event_id)
                 },
-                data={'key': frame_url_list},
-                storage_type='session'
+                children=frame_url_list,
+                style={'display': 'none'}
             )
         )
 
