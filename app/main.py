@@ -209,7 +209,6 @@ def update_live_alerts_data(alert):
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
-    print(response)
     all_alerts = pd.DataFrame(response)
     if all_alerts.empty:
         raise PreventUpdate
