@@ -357,6 +357,14 @@ def Homepage():
 
                     # Simple placeholder - Source of truth for the map style being viewed
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
+
+                    # Two placeholders updated by callbacks in main.py to change the center and zoom attrbutes of the map
+                    html.Div(id='login_zoom_and_center', style={'display': 'none'}),
+                    html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
+
+                    # Simple placeholder - Source of truth for the center and zoom attributes of the map
+                    html.Div(id='current_zoom_and_center', style={'display': 'none'}),
+
                     # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
                     WebSocket(id="ws"),

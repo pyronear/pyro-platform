@@ -34,7 +34,7 @@ It is built around 5 main sections:
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import os
 import dash
-from dash.dependencies import Input, Output, State, MATCH
+from dash.dependencies import Input, Output, State, MATCH, ALL
 from dash.exceptions import PreventUpdate
 
 # Flask caching import
@@ -243,8 +243,10 @@ def update_live_alerts_data(alert):
 @app.callback(
     [Output('login_modal', 'is_open'),
      Output('form_feedback_area', 'children'),
-     Output('map', 'center'),
-     Output('map', 'zoom')],
+     Output('login_zoom_and_center', 'children')
+     # Output('map', 'center'),
+     # Output('map', 'zoom')
+     ],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
      State('password_input', 'value')]
@@ -282,7 +284,7 @@ def manage_login_modal(n_clicks, username, password):
     # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
     # nection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, None, [10, 10], 3
+        return True, None, {'center': [10, 10], 'zoom': 3}
 
     # We instantiate the form feedback output
     form_feedback = [dcc.Markdown('---')]
@@ -295,7 +297,7 @@ def manage_login_modal(n_clicks, username, password):
         form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
         # The login modal remains open; other outputs are updated with arbitrary values
-        return True, form_feedback, [10, 10], 3
+        return True, form_feedback, {'center': [10, 10], 'zoom': 3}
 
     else:
         # This is the route of the API that we are going to use for the credential check
@@ -321,7 +323,7 @@ def manage_login_modal(n_clicks, username, password):
             response = requests.post(login_route_url, data=data).json()
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return True, form_feedback, [10, 10], 3
+            return True, form_feedback, {'center': [10, 10], 'zoom': 3}
 
         else:
             # All checks are successful and we add the appropriate feedback
@@ -347,7 +349,34 @@ def manage_login_modal(n_clicks, username, password):
             zoom = group_correspondences[group_id]['zoom']
 
             # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-            return False, form_feedback, [lat, lon], zoom
+            return False, form_feedback, {'center': [lat, lon], 'zoom': zoom}
+
+
+@app.callback(
+     [Output('map', 'center'),
+      Output('map', 'zoom'),
+      Output('current_zoom_and_center', 'children')],
+     [Input('login_zoom_and_center', 'children'),
+      Input('alert_zoom_and_center', 'children')]
+)
+def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    else:
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if input_id == 'login_zoom_and_center':
+        return login_zoom_and_center['center'], login_zoom_and_center['zoom'], login_zoom_and_center
+
+    elif input_id == 'alert_zoom_and_center':
+        return alert_zoom_and_center['center'], alert_zoom_and_center['zoom'], alert_zoom_and_center
+
+    else:
+        print('Weird result to be investigated with the change_map_zoom_and_center callback.')
+        raise PreventUpdate
 
 
 @app.callback(
@@ -522,6 +551,33 @@ def display_alert_modal(n_clicks):
 
     else:
         return True
+
+
+@app.callback(
+    Output('alert_zoom_and_center', 'children'),
+    Input({'type': 'alert_selection_btn', 'index': ALL}, 'n_clicks'),
+    State('store_live_alerts_data', 'data')
+)
+def zoom_on_alert(n_clicks, live_alerts):
+    ctx = dash.callback_context
+
+    if not ctx.triggered or n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        text = ctx.triggered[0]['prop_id'].split(':')[1]
+        event_id = text[:text.find(',')]
+        event_id = event_id.strip('"')
+
+        df = pd.read_json(live_alerts)
+        df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+
+        df['event_id'] = df['event_id'].astype(str)
+
+        lat = df[df['event_id'] == event_id]['lat'].iloc[0]
+        lon = df[df['event_id'] == event_id]['lon'].iloc[0]
+
+        return {'center': [lat, lon], 'zoom': 14}
 
 
 @app.callback(
