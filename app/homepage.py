@@ -359,7 +359,7 @@ def Homepage():
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
                     # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
-                    WebSocket(id="ws"),
+                    WebSocket(url="wss://pyro-platform.herokuapp.com/wss", id="ws"),
                 ],
                     id='map_column',
                     md=12),
