@@ -103,6 +103,8 @@ app.layout = html.Div(
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
 
+        dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
+
         # Storage component which contains data relative to site devices
         dcc.Store(
             id="site_devices_data_storage",
@@ -139,8 +141,15 @@ def broadcast_message(message):
 
 
 # First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
-app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
-                        Output("msg", "children"), [Input("ws", "message")])
+@app.callback(
+    Output('msg', 'children'),
+    Input('ws', 'message')
+)
+def trigger(message):
+
+    return "hello"
+# app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
+#                         Output("msg", "children"), [Input("ws", "message")])
 
 
 @app.callback(
@@ -242,6 +251,7 @@ def update_live_alerts_data(alert):
 
 @app.callback(
     [Output('login_modal', 'is_open'),
+     Output('login_storage', 'data'),
      Output('form_feedback_area', 'children'),
      Output('login_zoom_and_center', 'children')
      # Output('map', 'center'),
@@ -249,9 +259,10 @@ def update_live_alerts_data(alert):
      ],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
-     State('password_input', 'value')]
+     State('password_input', 'value'),
+     State('login_storage', 'data')]
 )
-def manage_login_modal(n_clicks, username, password):
+def manage_login_modal(n_clicks, username, password, login_storage):
     """
     --- Managing the login modal ---
 
@@ -281,75 +292,91 @@ def manage_login_modal(n_clicks, username, password):
     - if all checks are successful, the login modal is closed (by returning False for the "is_open" attribute of the lo-
     gin modal), site devices data is fetched from the API and the right outputs are returned
     """
-    # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    print(ctx.triggered)
+    print(login_storage)
+
+    # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the con-
     # nection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, None, {'center': [10, 10], 'zoom': 3}
-
-    # We instantiate the form feedback output
-    form_feedback = [dcc.Markdown('---')]
-
-    # First check verifies whether both a username and a password have been provided
-    if username is None or password is None or len(username) == 0 or len(password) == 0:
-        # If either the username or the password is missing, the condition is verified
-
-        # We add the appropriate feedback
-        form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
-
-        # The login modal remains open; other outputs are updated with arbitrary values
-        return True, form_feedback, {'center': [10, 10], 'zoom': 3}
+        return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}
 
     else:
-        # This is the route of the API that we are going to use for the credential check
-        login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
 
-        # We create a mini-dictionary with the credentials passsed by the user
-        data = {
-            'username': username,
-            'password': password
-        }
+        # if n_clicks is None:
+        #     raise PreventUpdate
 
-        # We make the HTTP request to the login route of the API
-        response = requests.post(login_route_url, data=data).json()
+        # if login_storage['login'] == 'yes':
+        #     return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}
 
-        # Boolean that indicates whether the authentication was successful or not
-        check = ('access_token' in response.keys())
+        # We instantiate the form feedback output
+        form_feedback = [dcc.Markdown('---')]
 
-        if not check:
-            # This if statement is verified if credentials are invalid
-            form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
+        # First check verifies whether both a username and a password have been provided
+        if username is None or password is None or len(username) == 0 or len(password) == 0:
+            # If either the username or the password is missing, the condition is verified
+
+            # We add the appropriate feedback
+            form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
+
+            # The login modal remains open; other outputs are updated with arbitrary values
+            return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}
+
+        else:
+            # This is the route of the API that we are going to use for the credential check
+            login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
+
+            # We create a mini-dictionary with the credentials passsed by the user
+            data = {
+                'username': username,
+                'password': password
+            }
 
             # We make the HTTP request to the login route of the API
             response = requests.post(login_route_url, data=data).json()
 
-            # The login modal remains open; other outputs are updated with arbitrary values
-            return True, form_feedback, {'center': [10, 10], 'zoom': 3}
+            # Boolean that indicates whether the authentication was successful or not
+            check = ('access_token' in response.keys())
 
-        else:
-            # All checks are successful and we add the appropriate feedback
-            # (although the login modal does not remain open long enough for it to be readable by the user)
-            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
+            if not check:
+                # This if statement is verified if credentials are invalid
+                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
 
-            # For now the group_id is not fetched, we equalize it artificially to 1
-            group_id = '1'
+                # We make the HTTP request to the login route of the API
+                response = requests.post(login_route_url, data=data).json()
 
-            # We load the group correspondences stored in a dedicated JSON file in the data folder
-            path = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(path, 'data', 'group_correspondences.json')
+                # The login modal remains open; other outputs are updated with arbitrary values
+                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}
 
-            with open(path, 'r') as file:
-                group_correspondences = json.load(file)
+            else:
+                # All checks are successful and we add the appropriate feedback
+                # (although the login modal does not remain open long enough for it to be readable by the user)
+                form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
-            # We fetch the latitude and longitude of the point around which we want to center the map
-            # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
-            lat = group_correspondences[group_id]['center_lat']
-            lon = group_correspondences[group_id]['center_lon']
+                # For now the group_id is not fetched, we equalize it artificially to 1
+                group_id = '1'
 
-            # We fetch the zoom level for the map display
-            zoom = group_correspondences[group_id]['zoom']
+                # We load the group correspondences stored in a dedicated JSON file in the data folder
+                path = os.path.dirname(os.path.abspath(__file__))
+                path = os.path.join(path, 'data', 'group_correspondences.json')
 
-            # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-            return False, form_feedback, {'center': [lat, lon], 'zoom': zoom}
+                with open(path, 'r') as file:
+                    group_correspondences = json.load(file)
+
+                # We fetch the latitude and longitude of the point around which we want to center the map
+                # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
+                lat = group_correspondences[group_id]['center_lat']
+                lon = group_correspondences[group_id]['center_lon']
+
+                # We fetch the zoom level for the map display
+                zoom = group_correspondences[group_id]['zoom']
+
+                # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
+                return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}
 
 
 @app.callback(
@@ -357,9 +384,10 @@ def manage_login_modal(n_clicks, username, password):
       Output('map', 'zoom'),
       Output('current_zoom_and_center', 'children')],
      [Input('login_zoom_and_center', 'children'),
-      Input('alert_zoom_and_center', 'children')]
+      Input('alert_zoom_and_center', 'children')],
+      State('login_modal', 'is_open')
 )
-def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center):
+def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -369,9 +397,17 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center):
         input_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if input_id == 'login_zoom_and_center':
+
+        if login_zoom_and_center is None:
+            raise PreventUpdate
+
         return login_zoom_and_center['center'], login_zoom_and_center['zoom'], login_zoom_and_center
 
     elif input_id == 'alert_zoom_and_center':
+
+        if alert_zoom_and_center is None:
+            raise PreventUpdate
+
         return alert_zoom_and_center['center'], alert_zoom_and_center['zoom'], alert_zoom_and_center
 
     else:
@@ -543,7 +579,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
 
 @app.callback(
     Output({'type': 'alert_modal', 'index': MATCH}, 'is_open'),
-    Input({'type': 'alert_selection_btn', 'index': MATCH}, 'n_clicks')
+    Input({'type': 'alert_frame_small', 'index': MATCH}, 'n_clicks')
 )
 def display_alert_modal(n_clicks):
     if n_clicks is None or n_clicks == 0:
@@ -554,17 +590,20 @@ def display_alert_modal(n_clicks):
 
 
 @app.callback(
-    Output('alert_zoom_and_center', 'children'),
+    [Output('alert_zoom_and_center', 'children'),
+     Output('alert_overview_area', 'children')],
     Input({'type': 'alert_selection_btn', 'index': ALL}, 'n_clicks'),
-    State('store_live_alerts_data', 'data')
+    [State('store_live_alerts_data', 'data'),
+     State('images_url_live_alerts', 'data')]
 )
-def zoom_on_alert(n_clicks, live_alerts):
+def zoom_on_alert(n_clicks, live_alerts, frame_urls):
     ctx = dash.callback_context
 
-    if not ctx.triggered or n_clicks is None or n_clicks == 0:
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
         raise PreventUpdate
 
     else:
+
         text = ctx.triggered[0]['prop_id'].split(':')[1]
         event_id = text[:text.find(',')]
         event_id = event_id.strip('"')
@@ -577,7 +616,33 @@ def zoom_on_alert(n_clicks, live_alerts):
         lat = df[df['event_id'] == event_id]['lat'].iloc[0]
         lon = df[df['event_id'] == event_id]['lon'].iloc[0]
 
-        return {'center': [lat, lon], 'zoom': 14}
+        div = html.Div(
+            id={
+                'type': 'alert_overview',
+                'index': event_id
+            },
+            children=[
+                html.Center(
+                    children=[
+                        dcc.Markdown('---'),
+                        html.B(f'Alerte n°{event_id}'),
+                        html.P(f'Caméra n°{df[df["event_id"] == event_id]["device_id"].iloc[0]}'),
+                        html.P(f'Latitude : {lat}'),
+                        html.P(f'Longitude: {lon}'),
+                        html.Img(
+                            id={
+                                'type': 'alert_frame_small',
+                                'index': event_id
+                            },
+                            src=frame_urls[event_id][0],
+                            width="300px"
+                        )
+                    ]
+                )
+            ]
+        )
+
+        return {'center': [lat, lon], 'zoom': 14}, div
 
 
 @app.callback(

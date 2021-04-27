@@ -303,7 +303,9 @@ def build_login_modal():
 
         # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,
-        style={"max-width": "none", "width": "500px"}
+        style={"max-width": "none", "width": "500px"},
+
+        is_open=False
     )
 
 
@@ -340,6 +342,7 @@ def Homepage():
                 # Left column containing the user selection area
                 dbc.Col([
                     html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
+                    html.Div(id="alert_overview_area"),
                     html.Div(id='new_alerts_selection_list'),
                     # Placeholder containing the detection data for any alert of interest
                     html.P(id="hp_alert_frame_metadata")],
