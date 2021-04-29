@@ -130,16 +130,8 @@ def broadcast_message(message):
 
 
 # First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
-"""app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
-                        Output("msg", "children"), [Input("ws", "message")])"""
-
-# First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
-@app.callback(
-    Output('msg', 'children'),
-    Input('ws', 'message')
-)
-def trigger(message):
-    return "hello"
+app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
+                        Output("msg", "children"), [Input("ws", "message")])
 
 
 @app.callback(

@@ -98,17 +98,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run gunicorn
+      - name: Run gunicorn and ping the process port
         env:
           API_URL: ${{ secrets.API_URL }}
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          screen -dmS temp-screen
-          screen -S temp-screen -p 0 -X stuff "export API_URL=$API_URL^M"
-          screen -S temp-screen -p 0 -X stuff "export API_LOGIN=$API_LOGIN^M"
-          screen -S temp-screen -p 0 -X stuff "export API_PWD=$API_PWD^M"
-          screen -S temp-screen -p 0 -X stuff "gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server"
-          sleep 5
-      - name: Ping the gunicorn process port
-        run: nc -vz localhost 8050
+          export API_URL=$API_URL
+          export API_LOGIN=$API_LOGIN
+          export API_PWD=$API_PWD
+          gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server & (sleep 5 && nc -vz localhost 8050 && fg)
