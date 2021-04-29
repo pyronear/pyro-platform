@@ -253,7 +253,8 @@ def update_live_alerts_data(alert):
     [Output('login_modal', 'is_open'),
      Output('login_storage', 'data'),
      Output('form_feedback_area', 'children'),
-     Output('login_zoom_and_center', 'children')
+     Output('login_zoom_and_center', 'children'),
+     Output('hp_map', 'style')
      # Output('map', 'center'),
      # Output('map', 'zoom')
      ],
@@ -303,7 +304,7 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the con-
     # nection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}
+        return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
     else:
 
@@ -324,7 +325,7 @@ def manage_login_modal(n_clicks, username, password, login_storage):
             form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}
+            return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
         else:
             # This is the route of the API that we are going to use for the credential check
@@ -350,7 +351,7 @@ def manage_login_modal(n_clicks, username, password, login_storage):
                 response = requests.post(login_route_url, data=data).json()
 
                 # The login modal remains open; other outputs are updated with arbitrary values
-                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}
+                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
             else:
                 # All checks are successful and we add the appropriate feedback
@@ -376,7 +377,7 @@ def manage_login_modal(n_clicks, username, password, login_storage):
                 zoom = group_correspondences[group_id]['zoom']
 
                 # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-                return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}
+                return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}, {}
 
 
 @app.callback(
