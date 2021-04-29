@@ -104,7 +104,4 @@ jobs:
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          export API_URL=$API_URL
-          export API_LOGIN=$API_LOGIN
-          export API_PWD=$API_PWD
           gunicorn --workers 1 -b 0.0.0.0:8050 --chdir ./app main:server & (sleep 5 && nc -vz localhost 8050 && fg)
