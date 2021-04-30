@@ -52,7 +52,7 @@ def Navbar(dropdown=False):
         dropdown = ""
 
     # Navbar Title
-    user_item = html.H5(
+    user_item = html.Div(
         "Surveillez les départs de feux",
         id="user-div",
         className="mx-auto order-0",
@@ -95,8 +95,10 @@ def Navbar(dropdown=False):
             dbc.Collapse([user_item, dropdown], id="navbar-collapse", navbar=True),
             html.Div(alert_screen_button)
         ],
-        color="black",
+        id="main_navbar",
+        color='#044448',
         dark=True,
+        style={'display': 'none'}
     )
 
     return navbar
