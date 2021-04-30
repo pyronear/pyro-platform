@@ -36,16 +36,6 @@ import dash_leaflet as dl
 # CONTENT
 
 # ----------------------------------------------------------------------------------------------------------------------
-# User Info
-# The following block is used for the definition of logged user informations
-
-
-def user_department_lat_lon():
-
-    lat_lon = [44.759629, 4.562443]
-
-    return lat_lon
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Diverse
@@ -103,10 +93,6 @@ def choose_layer_style(n_clicks):
 # Information box
 # The following block is used to build the map filters in the bottom left corner
 
-def build_map_filters(feature=None):
-
-    return build_layer_style_button()
-
 
 def build_filters_object(map_type):
     """
@@ -116,12 +102,12 @@ def build_filters_object(map_type):
     map filters of the map with a relevant id.
     """
     if map_type == 'alerts':
-        object_id = 'alerts_info'
+        object_id = 'alerts_filter_button'
 
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=build_map_filters(),
+    return html.Div(children=build_layer_style_button(),
                     id=object_id,
                     style={'position': 'absolute',
                            'bottom': '30px',

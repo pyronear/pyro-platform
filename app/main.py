@@ -716,7 +716,7 @@ def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
         else:
             # new event, not been displayed yet
             layout_div, style_to_display = build_alert_detected_screen(
-                img_url, live_alerts, last_alert
+                img_url, last_alert
             )
             return layout_div, style_to_display, last_event_id
 
