@@ -37,7 +37,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_filters_object, build_legend_box, user_department_lat_lon
+from utils import map_style, build_filters_object, build_legend_box
 
 # Importing a pre-instantiated client
 from services import api_client
@@ -350,7 +350,7 @@ def build_alerts_map():
     The following function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
     """
-    map_object = dl.Map(center=user_department_lat_lon(),  # Determines the point around which the map is centered
+    map_object = dl.Map(center=[44.73, 4.27],  # Determines the point around which the map is centered
                         zoom=9,               # Determines the initial level of zoom around the center point
                         children=[
                             dl.TileLayer(id='tile_layer'),
