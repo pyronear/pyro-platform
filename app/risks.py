@@ -33,7 +33,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import map_style, build_info_object, build_legend_box
+from utils import map_style, build_filters_object, build_legend_box
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ def build_risks_map():
                         children=[dl.TileLayer(id='tile_layer'),
                                   geojson,
                                   colorbar,
-                                  build_info_object(map_type='risks'),
+                                  build_filters_object(map_type='risks'),
                                   build_legend_box(map_type='risks'),
                                   html.Div(id='fire_markers_risks'),  # Will contain past fire markers of the risks map
                                   html.Div(id='live_alerts_marker')
