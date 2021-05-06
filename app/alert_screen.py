@@ -8,7 +8,6 @@ The following Python file is dedicated to the alert screen of the web applicatio
 The alert screen corresponds to a web page which will be displayed on a big screen in the CODIS room. There will be no
 interaction with the user. The main use of this page is to display a "sober" screen when there are no alerts. When an
 alert pops out, the screen will automatically change to display various information.
-
 Most functions defined below are designed to be called in the main.py file.
 """
 
@@ -41,24 +40,24 @@ def build_no_alert_detected_screen():
     return style
 
 
-def build_alert_detected_screen(img_url, alert_metadata, last_alert):
+def build_alert_detected_screen(img_url, last_alert):
     """
     This function is used in the main.py file to create the alert screen when its on, i.e. when there is an alert
     ongoing.
-
     It takes as arguments:
-
     - 'img_url': the URL address of the alert frame to be displayed on the left of the map;
     - 'alert_metadata': a dictionary containing metadata about the ongoing alert
     - 'last_alert': pd.DataFrame of the last alert
-
     All these inputs are instantiated in the main.py file via a call to the API.
     """
     # Get lat and lon from last_alert
-    lat, lon = last_alert["lat"], last_alert["lon"]
+    lat, lon = round(last_alert["lat"], 4), round(last_alert["lon"], 4)
 
     # Get device id for last_alert
     device_id = last_alert["device_id"]
+
+    # Get azimuth from last_alert
+    azimuth = round(last_alert["azimuth"], 1)
 
     # Background image
     background_image = html.Img(
@@ -105,10 +104,10 @@ def build_alert_detected_screen(img_url, alert_metadata, last_alert):
     # Alert metadata div
     alert_metadata_div = html.Div(
         children=[
-            html.P("Tour: {}".format(alert_metadata["site_name"])),
+            html.P("Tour: Serre en Don"),
             html.P("Coordonnées de la tour: {}, {}".format(lat, lon)),
             html.P("Id de caméra: {}".format(device_id)),
-            html.P("Azimuth: {}".format(alert_metadata["azimuth"])),
+            html.P("Azimuth: {}".format(azimuth)),
         ]
     )
 

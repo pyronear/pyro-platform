@@ -29,6 +29,8 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
+from dash_extensions import WebSocket
+
 # From navbar.py to add the navigation bar at the top of the page
 from navbar import Navbar
 
@@ -38,11 +40,8 @@ from alerts import build_alerts_map
 # Importing risks map and opacity slider builders from risks.py
 from risks import build_risks_map, build_opacity_slider
 
-# Importing plotly fig objects from graphs.py
-from graphs import generate_meteo_fig
-
 # Importing layer style button builder and fetched API data from utils.py
-from utils import build_layer_style_button, build_live_alerts_metadata
+from utils import build_layer_style_button
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -50,29 +49,6 @@ from utils import build_layer_style_button, build_live_alerts_metadata
 
 # Pyronear - Horizontal Logo
 pyro_logo = 'https://pyronear.org/img/logo_letters.png'
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Alert simulation
-# The following block is used to create the radio button that allows to simulate alerts.
-
-def build_alert_radio_button():
-    """
-    -- For debug purposes only --
-
-    This function instantiates a radio button which allows, for debug purposes, to simulate an alert event.
-    """
-    alert_radio_button = dcc.RadioItems(
-        options=[
-            {'label': 'no alert', 'value': 0},
-            {'label': 'alert', 'value': 1},
-        ],
-        value=0,
-        labelStyle={'display': 'inline-block'},
-        id='alert_radio_button'
-    )
-
-    return alert_radio_button
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -163,15 +139,10 @@ def build_user_selection_area():
 
     It returns a list of Dash core and HTML components to be used below in the Homepage function.
     """
-    return [html.Div(build_alert_radio_button(), style={'display': 'none'}),
-            dcc.Markdown('---'),
+    return [dcc.Markdown('---'),
 
             # Map filters added below
-            html.H5(("Filtres Carte"), style={'text-align': 'center'}),
-
-            # Button allowing users to change the layer style (topgraphic / satellite)
-            html.P(build_layer_style_button()),
-            dcc.Markdown('---'),
+            html.H5(("Filtres Cartes"), style={'text-align': 'center'}),
 
             # Button allowing users to change the map style (alerts / risks)
             html.P(build_map_style_button()),
@@ -183,10 +154,8 @@ def build_user_selection_area():
             dcc.Markdown('---'),
 
             # Opacity slider for the risks view
-            html.P(id="hp_slider"),
+            html.P(id="hp_slider")
 
-            # Placeholder containing the detection data for any alert of interest
-            html.P(id="hp_alert_frame_metadata")
             ]
 
 
@@ -194,8 +163,10 @@ def build_user_selection_area():
 # Alert frame and metadata
 # The following block is used to display the metadata and the detection frame associated with a given alert.
 
-def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
+def display_alerts_frames(n_clicks=None, img_url=None):
     """
+    Will be replaced by a build_alert_modal function
+
     This function builds the components that display the detection image and metadata related to a given alert
     in the blank space on the left of the map, whenever the user clicks on an alert marker and on the following button.
 
@@ -206,7 +177,7 @@ def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
     - 'img_url': URL address of the image based on which the detection unit has triggered an alert.
 
     It then returns an html.Div component that contains several elements (detection frame and metadata).
-    """
+
 
     # If there is no alert_metadata argument to reuse, we instantiate it with a function imported from utils.py
     if alert_metadata is None:
@@ -255,40 +226,10 @@ def display_alerts_frames(n_clicks=None, alert_metadata=None, img_url=None):
             children=[frame_title, alert_frame, separator, alert_metadata_title, alert_metadata]
         )
 
-        return html.Div(alert_frame_metadata)
+        return html.Div(alert_frame_metadata)"""
 
     # If no button click is triggering the display of the alert frame and metadata, function returns a void string
     return ""
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Meteo graphs
-# The following block builds upon functions defined in graphs.py and is used to display or hide meteo graphs.
-
-def display_meteo_graphs(display=False):
-    """
-    This function takes a boolean, 'display', as argument which indicates whether to display or hide
-    graphs related to meteorological indicators. To do so, it builds upon the generate_meteo_fig defined
-    in the graphs.py file.
-    """
-    if display is True:
-        # If the 'display' argument is True, graphs are instantiated and returned
-        return dbc.Row(
-            [
-                # In the following line, we instantiate the Plotly Graph Objects figure storing the graphs
-                dbc.Col([html.H2("Données météorologiques"), dcc.Graph(figure=generate_meteo_fig())],
-                        md=4),
-                dbc.Col([html.H2("another indicator"),
-                        dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})],
-                        md=4),
-                dbc.Col([html.H2("a third indicator"),
-                        dcc.Graph(figure={"data": [{"x": [1, 2, 3], "y": [1, 4, 9]}]})],
-                        md=4),
-            ])
-
-    else:
-        # If the 'display' argument is False, the function returns a void string
-        return ''
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -379,8 +320,6 @@ def Homepage():
 
     # Body container
     body = dbc.Container([
-        # Markdown separator below the navigation bar
-        dbc.Row(dcc.Markdown('---')),
 
         # We add an HTML Div which displays the login background image as long as the user has not entered valid creden-
         # tials (so that he / she cannot see what lies behind on the platform before being connected)
@@ -389,22 +328,23 @@ def Homepage():
                 id='login_background',
                 children=[
                     # The background image is directly stored in the /assets folder
-                    html.Img(src='assets/background.png', width="100%")
+                    html.Img(src='assets/background.png', width="100%", height="100%")
                 ]
             )
         ),
 
-        # Optional radio button to simulate alert events in debugging mode
-        dbc.Row(dbc.Col(id='live_alert_header_btn')),
 
         # Main part of the page layout
         dbc.Row(
             [
                 # Left column containing the user selection area
-                dbc.Col(
-                    build_user_selection_area(),
+                dbc.Col([
+                    html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
+                    html.Div(id='new_alerts_selection_list'),
+                    # Placeholder containing the detection data for any alert of interest
+                    html.P(id="hp_alert_frame_metadata")],
                     id='user_selection_column',
-                    md=3),
+                ),
 
                 # Right column containing the map and various hidden components
                 dbc.Col([
@@ -416,19 +356,19 @@ def Homepage():
                     html.Div(id='alert_btn_switch_view'),   # Associated with the alert banner in risks mode
 
                     # Simple placeholder - Source of truth for the map style being viewed
-                    html.Div(id='current_map_style', children='alerts'),
-
-                    # Hidden html.Div storing the URL address of the detection frame of the latest alert
-                    html.Div(id='img_url', style={'display': 'none'})],
-                    md=9),
+                    html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
+                    # Hidden div storing the websocket message sent by the API
+                    html.Div(id="msg", style={'display': 'none'}),
+                    WebSocket(id="ws"),
+                ],
+                    id='map_column',
+                    md=12),
             ]
         ),
 
         # Login modal added here
         build_login_modal(),
 
-        # Meteo graphs added here
-        display_meteo_graphs(display=False)
     ],
         fluid=True,
     )
