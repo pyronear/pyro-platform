@@ -164,6 +164,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
     be represented on the map.
     """
 
+    # The center corresponds the point from which the vision angle "starts"
     center = [site_lat, site_lon]
 
     points1 = []
@@ -213,11 +214,18 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
     In the base case, the function returns:
 
-    - the urls addresses of the image to be displayed on the left of the map
-    - the new_alert_button
-    - the alert markers displayed on the map
-    - new navbar_color as in alert mode
-    - new navbar title
+    - the urls addresses of the image to be displayed on the left of the map;
+
+    - the new_alert_button;
+
+    - the alert markers displayed on the map;
+
+    - new navbar_color as in alert mode;
+
+    - new navbar title;
+
+    - a list of individual storage components, one for each alert/event to be displayed, that give the URL addresses of
+    the corresponding frames.
 
     But if the style of map in place is 'risks', we don't want to display neither the alert markers.
     So in this case, the third output of the function is a void string.
@@ -285,19 +293,37 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         style={'position': 'absolute', 'top': '10px', 'right': '30px', 'z-index': '1000'}
     )
 
-    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
+    individual_alert_frame_placeholder_children = []
+    for event_id, frame_url_list in images_url_live_alerts.items():
+
+        individual_alert_frame_placeholder_children.append(
+            html.Div(
+                id={
+                    'type': 'individual_alert_frame_storage',
+                    'index': str(event_id)
+                },
+                children=frame_url_list,
+                style={'display': 'none'}
+            )
+        )
+
+    return [alert_button, alerts_markers_layer, navbar_color, navbar_title, individual_alert_frame_placeholder_children]
 
 
-def build_user_alerts_selection_area(n_clicks, live_alerts):
+def build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls):
     """
     This function builds the user selection area containing the alert list
 
-    - it first sets the column sizes of each block (user area and map)
-    - it creates the alerts_list based on live_alerts data
+    - it first sets the column sizes of each block (user area and map);
+    - it creates the alerts_list based on live alerts data;
+    - it creates the vision angle polygons of each alert that should be displayed;
+    - it instantiates the modal corresponding to each live alert.
 
-    To do so, it takes two arguments:
+    To do so, it takes three arguments:
+
     - the number of clicks on the alert button;
-    - the live_alerts data filling the alert_list
+    - the live alerts data filling the alert_list;
+    - the URL addresses of alert frames, gathered by event_id in the alert_frame_urls dictionary.
     """
 
     if n_clicks > 0:
@@ -308,25 +334,57 @@ def build_user_alerts_selection_area(n_clicks, live_alerts):
         # Creating the alert_list based on live_alerts
         all_alerts = pd.read_json(live_alerts)
         all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+
+        # Instantiating the void lists that will contain the basic alert elements
         alert_list = []
+        vision_polygons_children = []
+        alert_modals_children = []
+
         for _, row in all_events.iterrows():
+
             alert_id = str(row['event_id'])
             alert_lat = round(row['lat'], 4)
             alert_lon = round(row['lon'], 4)
-            alert_azimtuth = round(row['azimuth'], 1)
+            alert_azimuth = round(row['azimuth'], 1)
             alert_date = datetime.fromisoformat(str(row['created_at'])).date()
             alert_time = datetime.fromisoformat(str(row['created_at'])).time()
-            alert_list.append(html.Div([
+
+            alert_selection_button = html.Div([
                 dcc.Markdown('---'),
                 dbc.Button(children=[
-                           html.Span('Azimuth : {}°'.format(alert_azimtuth), style={'font-weight': 'bold'}),
+                           html.Span('Azimuth : {}°'.format(alert_azimuth), style={'font-weight': 'bold'}),
                            html.Span('Lat : {} / Lon : {}'.format(alert_lat, alert_lon), style={'display': 'block'}),
                            html.Span('Tour : ', style={'display': 'block'}),  # Not possible to fetch from alert today
                            html.Span('{} / {}:{}'.format(alert_date, alert_time.hour, alert_time.minute),
                                      style={'display': 'block'})],
                            id={'type': 'alert_selection_btn', 'index': alert_id},
                            className='btn-alerts'),
-            ]))
+            ])
+
+            alert_list.append(alert_selection_button)
+
+            polygon = build_vision_polygon(
+                event_id=alert_id,
+                site_lat=row['lat'],
+                site_lon=row['lon'],
+                yaw=row['azimuth'],
+                opening_angle=60,
+                dist_km=2
+            )
+
+            vision_polygons_children.append(polygon)
+
+            # Here, we should retrieve the name of the site where the detection is made
+            modal = build_alert_modal(
+                event_id=alert_id,
+                device_id=row['device_id'],
+                lat=row['lat'],
+                lon=row['lon'],
+                site_name="Tour de Serre en Don",
+                urls=alert_frame_urls[alert_id]
+            )
+
+            alert_modals_children.append(modal)
 
         user_alerts_selection = [html.Div([
             dcc.Markdown('---'),
@@ -341,8 +399,81 @@ def build_user_alerts_selection_area(n_clicks, live_alerts):
         md_map = 12
         user_alerts_selection = ""
         alert_button_status = {'display': 'block'}
+        vision_polygons_children = ""
+        alert_modals_children = ""
 
-    return [md_user, md_map, user_alerts_selection, alert_button_status]
+    return [
+        md_user, md_map,
+        user_alerts_selection,
+        alert_button_status,
+        vision_polygons_children,
+        alert_modals_children
+    ]
+
+
+def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
+
+    if not acknowledged:
+
+        acknowledge_alert_space_children = [
+            html.Button(
+                id={
+                    'type': 'acknowledge_alert_button',
+                    'index': event_id
+                },
+                children="Acquitter l'alerte",
+                className='warning'
+            )
+        ]
+
+    else:
+
+        acknowledge_alert_space_children = [
+            html.P('Alerte acquittée.')
+        ]
+
+    df = pd.read_json(live_alerts)
+    df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+
+    df['event_id'] = df['event_id'].astype(str)
+
+    lat = df[df['event_id'] == event_id]['lat'].iloc[0]
+    lon = df[df['event_id'] == event_id]['lon'].iloc[0]
+
+    div = html.Div(
+        id={
+            'type': 'alert_overview',
+            'index': event_id
+        },
+        children=[
+            html.Center(
+                children=[
+                    dcc.Markdown('---'),
+                    html.B(f'Alerte n°{event_id}'),
+                    html.P(f'Caméra n°{df[df["event_id"] == event_id]["device_id"].iloc[0]}'),
+                    html.P(f'Latitude : {lat}'),
+                    html.P(f'Longitude: {lon}'),
+                    html.Img(
+                        id={
+                            'type': 'alert_frame_small',
+                            'index': event_id
+                        },
+                        src=frame_urls[event_id][0],
+                        width="300px"
+                    ),
+                    html.Div(
+                        id={
+                            'type': 'acknowledge_alert_space',
+                            'index': event_id
+                        },
+                        children=acknowledge_alert_space_children
+                    )
+                ]
+            )
+        ]
+    )
+
+    return lat, lon, div
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
@@ -415,21 +546,56 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                         }
                                     ),
                                     html.Br(),
-                                    html.Center(
+                                    html.Div(
                                         id={
-                                            'type': 'acknowledge_alert_space',
+                                            'type': 'alert_relevance_space',
                                             'index': str(event_id)
                                         },
                                         children=[
-                                            html.Button(
+                                            html.P(
+                                                "L'alerte est-elle pertinente ?",
+                                                style={'text-indent': '15px'}
+                                            ),
+                                            dbc.RadioItems(
                                                 id={
-                                                    'type': 'acknowledge_alert_button',
+                                                    'type': 'alert_relevance_radio_button',
                                                     'index': str(event_id)
                                                 },
-                                                children="Acquitter l'alerte",
-                                                className='warning'
+                                                options=[
+                                                    {'label': 'Oui', 'value': True},
+                                                    {'label': 'Non', 'value': False}
+                                                ],
+                                                value=None,
+                                                labelStyle={'display': 'inline-block'}
                                             )
                                         ]
+                                    ),
+                                    html.Br(),
+                                    html.Div(
+                                        id={
+                                            'type': 'alert_type_space',
+                                            'index': str(event_id)
+                                        },
+                                        children=[
+                                            html.P(
+                                                "Quel type de fumée a été détecté ?",
+                                                style={'text-indent': '15px'}
+                                            ),
+                                            dbc.RadioItems(
+                                                id={
+                                                    'type': 'alert_type_radio_button',
+                                                    'index': str(event_id)
+                                                },
+                                                options=[
+                                                    {'label': 'Feu de forêt', 'value': 'wildfire'},
+                                                    {'label': 'Incendie domestique', 'value': 'domestic_fire'},
+                                                    {'label': 'Cheminée', 'value': 'chimney'},
+                                                    {'label': 'Nuage', 'value': 'cloud'},
+                                                    {'label': 'Autre', 'value': 'other'}
+                                                ],
+                                                value=None,
+                                            )
+                                        ],
                                     )
                                 ],
                                 width=4
@@ -460,66 +626,7 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                             )
                         ],
                         no_gutters=True
-                    ),
-                    # html.Center(
-                    #     [
-                    #         html.Div(
-                    #             children=[
-                    #                 html.P(f'Caméra ID {device_id}'),
-                    #                 html.P(f'Site de détection : {site_name}'),
-                    #                 html.P(f'Latitude : {round(lat, 2)}'),
-                    #                 html.P(f'Longitude : {round(lat, 2)}'),
-                    #             ],
-                    #             style={'backgroundColor': '#5BBD8C'}
-                    #         ),
-
-                    #         dcc.Markdown('---'),
-
-                    #         dcc.Slider(
-                    #             id={
-                    #                 'type': 'alert_slider',
-                    #                 'index': str(event_id)
-                    #             },
-                    #             min=1, max=number_of_images,
-                    #             step=1,
-                    #             marks={i + 1: str(i + 1) for i in range(number_of_images)},
-                    #             value=1
-                    #         ),
-
-                    #         dcc.Markdown("---"),
-
-                    #         html.Img(
-                    #             id={
-                    #                 'type': 'alert_frame',
-                    #                 'index': str(event_id)
-                    #             },
-                    #             src=urls[0],
-                    #             width='300px'
-                    #         ),
-
-                    #         dcc.Markdown("---"),
-
-                    #         html.Button(
-                    #             id={
-                    #                 'type': 'acknowledge_alert_button',
-                    #                 'index': str(event_id)
-                    #             },
-                    #             children="Acquitter l'alerte",
-                    #             className='warning'
-                    #         ),
-
-                    #         dcc.Markdown("---"),
-
-                    #         html.Button(
-                    #             id={
-                    #                 'type': 'alert_feedback_button',
-                    #                 'index': str(event_id)
-                    #             },
-                    #             children="Enregistrer un retour sur cette alerte",
-                    #             className='warning'
-                    #         )
-                    #     ]
-                    # )
+                    )
                 ]
             )
         ]

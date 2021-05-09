@@ -71,10 +71,8 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data,\
-    build_user_alerts_selection_area, build_vision_polygon, build_alert_modal
-from utils import choose_layer_style, build_filters_object,\
-    build_historic_markers, build_legend_box
+from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, build_alert_overview
+from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
@@ -227,21 +225,28 @@ def update_live_alerts_data(alert):
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
     all_alerts = pd.DataFrame(response)
+
     if all_alerts.empty:
         raise PreventUpdate
+
     live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
 
     # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
     dict_images_url_live_alerts = {}
+
     for _, row in live_alerts.iterrows():
+
         img_url = ""
+
         try:
             img_url = api_client.get_media_url(row["media_id"]).json()["url"]
         except Exception:
             pass
+
         if row['event_id'] not in dict_images_url_live_alerts.keys():
             dict_images_url_live_alerts[row['event_id']] = []
             dict_images_url_live_alerts[row['event_id']].append(img_url)
+
         else:
             dict_images_url_live_alerts[row['event_id']].append(img_url)
 
@@ -297,21 +302,12 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     if not ctx.triggered:
         raise PreventUpdate
 
-    print(ctx.triggered)
-    print(login_storage)
-
     # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the
     # connection button yet (the user arrives on the page)
     if n_clicks is None:
         return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
     else:
-
-        # if n_clicks is None:
-        #     raise PreventUpdate
-
-        # if login_storage['login'] == 'yes':
-        #     return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}
 
         # We instantiate the form feedback output
         form_feedback = [dcc.Markdown('---')]
@@ -387,31 +383,43 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     State('login_modal', 'is_open')
 )
 def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
+    """
+    --- Main callback for updating the zoom and center attributes of the map ---
+
+    This callback determines the center and zoom attributes of the map based on two different inputs, that are the
+    login_zoom_and_center and alert_zoom_and_center placeholders. The latter correspond to the recentering of the map
+    that takes place respectively after the user logs in and when the user clicks on one of the alert selection buttons.
+    """
+
     ctx = dash.callback_context
 
+    # If none of the input has triggered the callback, we raise a PreventUpdate
     if not ctx.triggered:
         raise PreventUpdate
 
     else:
+        # We determine what input has triggered the callback
         input_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    if input_id == 'login_zoom_and_center':
+        # If it is the login that has triggered the change in the center and zoom attributes of the map
+        if input_id == 'login_zoom_and_center':
 
-        if login_zoom_and_center is None:
+            if login_zoom_and_center is None:
+                raise PreventUpdate
+
+            return login_zoom_and_center['center'], login_zoom_and_center['zoom']
+
+        # If it is a click on an alert selection button that has triggered the change
+        elif input_id == 'alert_zoom_and_center':
+
+            if alert_zoom_and_center is None:
+                raise PreventUpdate
+
+            return alert_zoom_and_center['center'], alert_zoom_and_center['zoom']
+
+        else:
+            print('Weird result to be investigated with the change_map_zoom_and_center callback.')
             raise PreventUpdate
-
-        return login_zoom_and_center['center'], login_zoom_and_center['zoom'], login_zoom_and_center
-
-    elif input_id == 'alert_zoom_and_center':
-
-        if alert_zoom_and_center is None:
-            raise PreventUpdate
-
-        return alert_zoom_and_center['center'], alert_zoom_and_center['zoom'], alert_zoom_and_center
-
-    else:
-        print('Weird result to be investigated with the change_map_zoom_and_center callback.')
-        raise PreventUpdate
 
 
 @app.callback(
@@ -434,7 +442,7 @@ def clean_login_background(is_modal_opened):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Callbacks related to the "Alerts and Infrastructure" view
+# Callbacks related to the alert workflow
 
 
 @app.callback(
@@ -463,40 +471,6 @@ def click_department_alerts(feature, radio_button_value):
             return None
 
 
-# @app.callback(
-#     Output({'type': 'acknowledge_alert_div', 'index': MATCH}, 'children'),
-#     Input({'type': 'acknowledge_alert_checkbox', 'index': MATCH}, 'children')
-# )
-# def acknowledge_alert(checkbox_checked):
-#     """
-#     -- Allowing user to acknowledge an alert --
-
-#     This callback takes as input the status of the checkbox that the user can see when
-#     clicking on an alert marker and can use to acknowledge the alert.
-
-#     For now, if the checkbox is checked, it simply eliminates the checkbox and displays
-#     a message according to which the alert has already been taken into account.
-
-#     Still to be done regarding this callback:
-
-#     - use the client to effectively report the acknowledgement to the DB;
-#     - check if an alert is acknowledged or not in the DB to display the right message.
-#     """
-
-#     ctx = dash.callback_context
-
-#     if not checkbox_checked:
-#         return [dbc.FormGroup([dbc.Checkbox(id=ctx.triggered[0]['prop_id'].split('.')[0],
-#                                             className="form-check-input"),
-#                                dbc.Label("Confirmer la prise en compte de l'alerte",
-#                                          className="form-check-label")],
-#                               check=True,
-#                               inline=True)]
-
-#     elif checkbox_checked:
-#         return [html.P("Prise en compte de l'alerte confirmée")]
-
-
 @app.callback(
     [Output('user_selection_column', 'md'),
      Output('map_column', 'md'),
@@ -518,42 +492,11 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
     This callback is triggered by the number of clicks on the new alert button.
 
     - If the number of clicks is strictly above 0 it triggers the creation of the user_alerts_selection_area with
-    the alerts list. To do so, it relies on the build_user_alerts_selection_area and the function, imported from alerts.
+    the alerts list, as well as of the vision angle polygons and the alert modals. To do so, it relies on the
+    build_individual_alert_components, imported from the alerts.py file.
 
     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
     """
-
-    vision_polygons_children = []
-    alert_modals_children = []
-    df = pd.read_json(live_alerts)
-    if df.empty:
-        raise PreventUpdate
-    df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
-    for _, row in df.iterrows():
-        polygon = build_vision_polygon(
-            event_id=row['event_id'],
-            site_lat=row['lat'],
-            site_lon=row['lon'],
-            yaw=row['azimuth'],
-            opening_angle=60,
-            dist_km=2
-        )
-
-        vision_polygons_children.append(polygon)
-
-        # Here, we should retrieve the name of the site where the detection is made
-        # Thanks to the device_id and the site_devices_data (cf. States of this callback)
-
-        modal = build_alert_modal(
-            event_id=row['event_id'],
-            device_id=row['device_id'],
-            lat=row['lat'],
-            lon=row['lon'],
-            site_name="Tour de Serre en Don",
-            urls=alert_frame_urls[str(row['event_id'])]
-        )
-
-        alert_modals_children.append(modal)
 
     # Deducing the style of the map in place from the map style button label
     if 'risques' in map_style_button_label.lower():
@@ -566,26 +509,10 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
         n_clicks = 0
 
     if map_style == 'alerts':
-        output = build_user_alerts_selection_area(n_clicks, live_alerts)
-
-        output += [vision_polygons_children, alert_modals_children]
-
-        return output
+        return build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls)
 
     elif map_style == 'risks':
         raise PreventUpdate
-
-
-@app.callback(
-    Output({'type': 'alert_modal', 'index': MATCH}, 'is_open'),
-    Input({'type': 'alert_frame_small', 'index': MATCH}, 'n_clicks')
-)
-def display_alert_modal(n_clicks):
-    if n_clicks is None or n_clicks == 0:
-        raise PreventUpdate
-
-    else:
-        return True
 
 
 @app.callback(
@@ -596,52 +523,88 @@ def display_alert_modal(n_clicks):
      State('images_url_live_alerts', 'data')]
 )
 def zoom_on_alert(n_clicks, live_alerts, frame_urls):
+    """
+    --- Zooming on the alert marker and displaying the alert overview ---
+
+    This callback is triggered by the user's click on any alert selection button and does two things:
+
+    - it updates the center and zoom components of the map to show where the alert has been raised in details;
+
+    - it makes an overview of the considered alert appear on the left-hand side of the map. To do so, it relies on the
+    build_alert_overview function, defined in the alerts.py file.
+    """
     ctx = dash.callback_context
 
     if not ctx.triggered or all(elt is None for elt in n_clicks):
         raise PreventUpdate
 
     else:
-
+        # From the context of the callback, we determine the event_id associated with the last alert selection button on
+        # which the user has clicked
         text = ctx.triggered[0]['prop_id'].split(':')[1]
         event_id = text[:text.find(',')]
         event_id = event_id.strip('"')
 
-        df = pd.read_json(live_alerts)
-        df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+        # This part should be replaced by an API call to check whether the event has been acknowledged or not yet
+        acknowledged = False
 
-        df['event_id'] = df['event_id'].astype(str)
-
-        lat = df[df['event_id'] == event_id]['lat'].iloc[0]
-        lon = df[df['event_id'] == event_id]['lon'].iloc[0]
-
-        div = html.Div(
-            id={
-                'type': 'alert_overview',
-                'index': event_id
-            },
-            children=[
-                html.Center(
-                    children=[
-                        dcc.Markdown('---'),
-                        html.B(f'Alerte n°{event_id}'),
-                        html.P(f'Caméra n°{df[df["event_id"] == event_id]["device_id"].iloc[0]}'),
-                        html.P(f'Latitude : {lat}'),
-                        html.P(f'Longitude: {lon}'),
-                        html.Img(
-                            id={
-                                'type': 'alert_frame_small',
-                                'index': event_id
-                            },
-                            src=frame_urls[event_id][0],
-                            width="300px"
-                        )
-                    ]
-                )
-            ]
+        # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
+        lat, lon, div = build_alert_overview(
+            live_alerts=live_alerts,
+            frame_urls=frame_urls,
+            event_id=event_id,
+            acknowledged=acknowledged
         )
 
         return {'center': [lat, lon], 'zoom': 14}, div
+
+
+@app.callback(
+    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+    Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
+)
+def acknowledge_alert(n_clicks):
+    """
+    --- Acknowledging an alert ---
+
+    Taking as input the number of clicks on an acknowledge_alert_button, this callback interacts with the API to modify
+    the "is_acknowledged" field of the corresponding event from False to True in the DB.
+
+    Additionally, it changes the acknowledge_alert_button into a paragraph component, indicating that the alert has been
+    acknowledged already.
+    """
+    ctx = dash.callback_context
+
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        text = ctx.triggered[0]['prop_id'].split(':')[1]
+        event_id = text[:text.find(',')]
+        event_id = event_id.strip('"')
+
+        # API interaction to be added here to validate the acknowledgement
+
+        return [html.P('Alerte acquittée.')]
+
+
+@app.callback(
+    Output({'type': 'alert_modal', 'index': MATCH}, 'is_open'),
+    Input({'type': 'alert_frame_small', 'index': MATCH}, 'n_clicks')
+)
+def display_alert_modal(n_clicks):
+    """
+    --- Displaying an alert modal ---
+
+    When the user has selected an alert in the column on the left-hand side of the page, he or she can click on the
+    image that appears to get more details about the alert. This callback is triggered by the user's click on any
+    alert_frame_small component and opens the corresponding alert modal.
+    """
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        return True
 
 
 @app.callback(
@@ -650,22 +613,18 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
     State({'type': 'individual_alert_frame_storage', 'index': MATCH}, 'children')
 )
 def select_alert_frame_to_display(slider_value, urls):
+    """
+    --- Choosing the alert frame to be displayed in an alert modal ---
+
+    When the user has opened an alert modal, he or she can choose the alert frame to view thanks to the slider. This
+    callback is triggered by a change in value of the slider and return the URL address of the frame to be displayed.
+    Like there is one alert modal per event, there is one alert slider per event, which allows to use MATCH here.
+    """
+
     if slider_value is None:
         raise PreventUpdate
 
     return urls[slider_value - 1]
-
-
-@app.callback(
-    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
-    Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
-)
-def acknowledge_alert(n_clicks):
-    if n_clicks is None or n_clicks == 0:
-        raise PreventUpdate
-
-    else:
-        return [html.P('Alerte acquittée.')]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -811,7 +770,6 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
      Output("user-div", "children"),
-     Output('individual_alert_data_placeholder', 'children'),
      Output('individual_alert_frame_placeholder', 'children')],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
@@ -833,51 +791,18 @@ def update_live_alerts_components(
     "store_live_alerts_data" and returns several elements:
 
     - it stores the URL address of the frame associated with the last alert;
+
     - it creates the elements (alert notifications button, alerts lists within alert selection area);
-    - it changes the navabar color and title into alert mode
-    - and instantiates the alert markers on the map.
+
+    - it changes the navabar color and title into alert mode;
+
+    - it instantiates the alert markers on the map;
+
+    - and it creates an individual storage component, specific to each alert/event being displayed, that contains the
+    URL addresses of the corresponding frames.
 
     To build these elements, it relies on the build_alerts_elements imported from alerts.
     """
-
-    df = pd.read_json(live_alerts)
-    if df.empty:
-        raise PreventUpdate
-    df = df.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
-
-    individual_alert_data_placeholder_children = []
-    for _, row in df.iterrows():
-        data = {}
-
-        data['lat'] = row['lat']
-        data['lon'] = row['lon']
-        data['yaw'] = row['azimuth']
-        data['device_id'] = row['device_id']
-
-        individual_alert_data_placeholder_children.append(
-            dcc.Store(
-                id={
-                    'type': 'individual_alert_data_storage',
-                    'index': str(row['event_id'])
-                },
-                data=data,
-                storage_type='session'
-            )
-        )
-
-    individual_alert_frame_placeholder_children = []
-    for event_id, frame_url_list in images_url_live_alerts.items():
-
-        individual_alert_frame_placeholder_children.append(
-            html.Div(
-                id={
-                    'type': 'individual_alert_frame_storage',
-                    'index': str(event_id)
-                },
-                children=frame_url_list,
-                style={'display': 'none'}
-            )
-        )
 
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
@@ -887,38 +812,10 @@ def update_live_alerts_components(
         map_style = "risks"
 
     if map_style == 'alerts':
-        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
-
-        output += [individual_alert_data_placeholder_children, individual_alert_frame_placeholder_children]
-
-        return output
+        return build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
 
     elif map_style == 'risks':
         raise PreventUpdate
-
-    """
-    Will be replaced by a display_alert_modal callback
-
-@app.callback(
-    [Output({'type': 'display_alert_frame_btn', 'index': MATCH}, 'children')],
-    Input({'type': 'display_alert_frame_btn', 'index': MATCH}, 'n_clicks'),
-    State('img_url', 'children')
-)
-def display_alert_frame_metadata(n_clicks_marker, images_url_live_alerts):
-
-
-    This callback detects the number of clicks the user has made on the button that allows
-    to display the detection data and the alert frame (in the popup of the alert marker).
-
-    If an odd number of clicks has been made, the function returns the image of the corresponding alert
-    and the associated metadata in the blank space on the left of the map.
-
-
-    if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker), 'Masquer les données de détection'
-    else:
-        return display_alerts_frames(), 'Afficher les données de détection'
-"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------
