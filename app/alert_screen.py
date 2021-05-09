@@ -40,7 +40,7 @@ def build_no_alert_detected_screen():
     return style
 
 
-def build_alert_detected_screen(img_url, alert_metadata, last_alert):
+def build_alert_detected_screen(img_url, last_alert):
     """
     This function is used in the main.py file to create the alert screen when its on, i.e. when there is an alert
     ongoing.
@@ -51,10 +51,13 @@ def build_alert_detected_screen(img_url, alert_metadata, last_alert):
     All these inputs are instantiated in the main.py file via a call to the API.
     """
     # Get lat and lon from last_alert
-    lat, lon = last_alert["lat"], last_alert["lon"]
+    lat, lon = round(last_alert["lat"], 4), round(last_alert["lon"], 4)
 
     # Get device id for last_alert
     device_id = last_alert["device_id"]
+
+    # Get azimuth from last_alert
+    azimuth = round(last_alert["azimuth"], 1)
 
     # Background image
     background_image = html.Img(
@@ -104,7 +107,7 @@ def build_alert_detected_screen(img_url, alert_metadata, last_alert):
             html.P("Tour: Serre en Don"),
             html.P("Coordonnées de la tour: {}, {}".format(lat, lon)),
             html.P("Id de caméra: {}".format(device_id)),
-            html.P("Azimuth: {}".format(alert_metadata["azimuth"])),
+            html.P("Azimuth: {}".format(azimuth)),
         ]
     )
 

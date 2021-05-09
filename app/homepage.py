@@ -342,7 +342,9 @@ def Homepage():
                 # Left column containing the user selection area
                 dbc.Col([
                     html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
+
                     html.Div(id="alert_overview_area"),
+
                     html.Div(id='new_alerts_selection_list'),
                     # Placeholder containing the detection data for any alert of interest
                     html.P(id="hp_alert_frame_metadata")],
@@ -361,12 +363,9 @@ def Homepage():
                     # Simple placeholder - Source of truth for the map style being viewed
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
 
-                    # Two placeholders updated by callbacks in main.py to change the center and zoom attrbutes of the map
+                    # Two placeholders updated by callbacks in main.py to change center and zoom attributes of the map
                     html.Div(id='login_zoom_and_center', style={'display': 'none'}),
                     html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
-
-                    # Simple placeholder - Source of truth for the center and zoom attributes of the map
-                    html.Div(id='current_zoom_and_center', style={'display': 'none'}),
 
                     # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
@@ -382,7 +381,6 @@ def Homepage():
 
         # HTML Div containing alert modals added here
         html.Div(id='alert_modals')
-
     ],
         fluid=True,
     )

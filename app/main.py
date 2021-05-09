@@ -103,6 +103,8 @@ app.layout = html.Div(
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
 
+        # Session storage component to avoid re-opening the login modal at each refresh
+        # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
 
         # Storage component which contains data relative to site devices
@@ -146,10 +148,7 @@ def broadcast_message(message):
     Input('ws', 'message')
 )
 def trigger(message):
-
-    return "hello"
-# app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
-#                         Output("msg", "children"), [Input("ws", "message")])
+    return "Hello world"
 
 
 @app.callback(
@@ -210,7 +209,7 @@ def change_layer_style(n_clicks=None):
 @app.callback(
     Output('store_live_alerts_data', 'data'),
     Output('images_url_live_alerts', 'data'),
-    Input('msg', 'children'),
+    Input('msg', 'children')
 )
 def update_live_alerts_data(alert):
     """
@@ -301,8 +300,8 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     print(ctx.triggered)
     print(login_storage)
 
-    # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the con-
-    # nection button yet (the user arrives on the page)
+    # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the
+    # connection button yet (the user arrives on the page)
     if n_clicks is None:
         return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
@@ -376,17 +375,16 @@ def manage_login_modal(n_clicks, username, password, login_storage):
                 # We fetch the zoom level for the map display
                 zoom = group_correspondences[group_id]['zoom']
 
-                # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
+                # The login modal is closed and the appropriate outputs are returned
                 return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}, {}
 
 
 @app.callback(
-     [Output('map', 'center'),
-      Output('map', 'zoom'),
-      Output('current_zoom_and_center', 'children')],
-     [Input('login_zoom_and_center', 'children'),
-      Input('alert_zoom_and_center', 'children')],
-      State('login_modal', 'is_open')
+    [Output('map', 'center'),
+     Output('map', 'zoom')],
+    [Input('login_zoom_and_center', 'children'),
+     Input('alert_zoom_and_center', 'children')],
+    State('login_modal', 'is_open')
 )
 def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
     ctx = dash.callback_context
@@ -814,8 +812,7 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
      Output("main_navbar", "color"),
      Output("user-div", "children"),
      Output('individual_alert_data_placeholder', 'children'),
-     Output('individual_alert_frame_placeholder', 'children')
-     ],
+     Output('individual_alert_frame_placeholder', 'children')],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data')]
@@ -970,7 +967,7 @@ def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
         else:
             # new event, not been displayed yet
             layout_div, style_to_display = build_alert_detected_screen(
-                img_url, live_alerts, last_alert
+                img_url, last_alert
             )
             return layout_div, style_to_display, last_event_id
 
