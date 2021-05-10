@@ -633,7 +633,6 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
     return lat, lon, div
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Map instantiation
 # The last block gathers previously defined functions to output the "Alerts and Infrastructure" map.
