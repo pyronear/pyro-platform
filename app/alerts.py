@@ -310,6 +310,163 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     return [alert_button, alerts_markers_layer, navbar_color, navbar_title, individual_alert_frame_placeholder_children]
 
 
+def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
+
+    number_of_images = len(urls)
+
+    return dbc.Modal(
+        id={
+            'type': 'alert_modal',
+            'index': str(event_id)
+        },
+        is_open=False,
+        keyboard=True,
+        size='xl',
+        children=[
+            dbc.ModalBody(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Div(
+                                        html.P(
+                                            'Localisation',
+                                            style={
+                                                'color': 'white',
+                                                'text-indent': '15px',
+                                                'font-size': '20px'
+                                            }
+                                        ),
+                                        style={
+                                            'backgroundColor': '#054546',
+                                            'height': '40px'
+                                        }
+                                    ),
+                                    html.Div(
+                                        html.P(
+                                            f'Caméra ID {device_id}',
+                                            style={
+                                                'color': '#054546',
+                                                'font-size': '15px',
+                                                'text-indent': '15px'
+                                            }
+                                        ),
+                                        style={
+                                            'backgroundColor': '#FFECC1',
+                                            'height': '25px'
+                                        }
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.P(
+                                                f'Latitude : {round(lat, 4)}',
+                                                style={
+                                                    'text-indent': '15px',
+                                                    'font-size': '18px'
+                                                }
+                                            ),
+                                            html.P(
+                                                f'Longitude : {round(lon, 4)}',
+                                                style={
+                                                    'text-indent': '15px',
+                                                    'font-size': '18px'
+                                                }
+                                            )
+                                        ],
+                                        style={
+                                            'backgroundColor': '#5BBD8C',
+                                            'fontColor': '#2C796E'
+                                        }
+                                    ),
+                                    html.Br(),
+                                    html.Div(
+                                        id={
+                                            'type': 'alert_relevance_space',
+                                            'index': str(event_id)
+                                        },
+                                        children=[
+                                            html.P(
+                                                "L'alerte est-elle pertinente ?",
+                                                style={'text-indent': '15px'}
+                                            ),
+                                            dbc.RadioItems(
+                                                id={
+                                                    'type': 'alert_relevance_radio_button',
+                                                    'index': str(event_id)
+                                                },
+                                                options=[
+                                                    {'label': 'Oui', 'value': True},
+                                                    {'label': 'Non', 'value': False}
+                                                ],
+                                                value=None,
+                                                labelStyle={'display': 'inline-block'}
+                                            )
+                                        ]
+                                    ),
+                                    html.Br(),
+                                    html.Div(
+                                        id={
+                                            'type': 'alert_type_space',
+                                            'index': str(event_id)
+                                        },
+                                        children=[
+                                            html.P(
+                                                "Quel type de fumée a été détecté ?",
+                                                style={'text-indent': '15px'}
+                                            ),
+                                            dbc.RadioItems(
+                                                id={
+                                                    'type': 'alert_type_radio_button',
+                                                    'index': str(event_id)
+                                                },
+                                                options=[
+                                                    {'label': 'Feu de forêt', 'value': 'wildfire'},
+                                                    {'label': 'Incendie domestique', 'value': 'domestic_fire'},
+                                                    {'label': 'Cheminée', 'value': 'chimney'},
+                                                    {'label': 'Nuage', 'value': 'cloud'},
+                                                    {'label': 'Autre', 'value': 'other'}
+                                                ],
+                                                value=None,
+                                            )
+                                        ],
+                                    )
+                                ],
+                                width=4
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Img(
+                                        id={
+                                            'type': 'alert_frame',
+                                            'index': str(event_id)
+                                        },
+                                        src=urls[0],
+                                        width='700px'
+                                    ),
+                                    dcc.Markdown('---'),
+                                    dcc.Slider(
+                                        id={
+                                            'type': 'alert_slider',
+                                            'index': str(event_id)
+                                        },
+                                        min=1, max=number_of_images,
+                                        step=1,
+                                        marks={i + 1: str(i + 1) for i in range(number_of_images)},
+                                        value=1
+                                    )
+                                ],
+                                width=16
+                            )
+                        ],
+                        no_gutters=True
+                    )
+                ]
+            )
+        ]
+    )
+
+
 def build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls):
     """
     This function builds the user selection area containing the alert list
@@ -475,162 +632,6 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
 
     return lat, lon, div
 
-
-def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
-
-    number_of_images = len(urls)
-
-    return dbc.Modal(
-        id={
-            'type': 'alert_modal',
-            'index': str(event_id)
-        },
-        is_open=False,
-        keyboard=True,
-        size='xl',
-        children=[
-            dbc.ModalBody(
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Div(
-                                        html.P(
-                                            'Localisation',
-                                            style={
-                                                'color': 'white',
-                                                'text-indent': '15px',
-                                                'font-size': '20px'
-                                            }
-                                        ),
-                                        style={
-                                            'backgroundColor': '#054546',
-                                            'height': '40px'
-                                        }
-                                    ),
-                                    html.Div(
-                                        html.P(
-                                            f'Caméra ID {device_id}',
-                                            style={
-                                                'color': '#054546',
-                                                'font-size': '15px',
-                                                'text-indent': '15px'
-                                            }
-                                        ),
-                                        style={
-                                            'backgroundColor': '#FFECC1',
-                                            'height': '25px'
-                                        }
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.P(
-                                                f'Latitude : {round(lat, 4)}',
-                                                style={
-                                                    'text-indent': '15px',
-                                                    'font-size': '18px'
-                                                }
-                                            ),
-                                            html.P(
-                                                f'Longitude : {round(lon, 4)}',
-                                                style={
-                                                    'text-indent': '15px',
-                                                    'font-size': '18px'
-                                                }
-                                            )
-                                        ],
-                                        style={
-                                            'backgroundColor': '#5BBD8C',
-                                            'fontColor': '#2C796E'
-                                        }
-                                    ),
-                                    html.Br(),
-                                    html.Div(
-                                        id={
-                                            'type': 'alert_relevance_space',
-                                            'index': str(event_id)
-                                        },
-                                        children=[
-                                            html.P(
-                                                "L'alerte est-elle pertinente ?",
-                                                style={'text-indent': '15px'}
-                                            ),
-                                            dbc.RadioItems(
-                                                id={
-                                                    'type': 'alert_relevance_radio_button',
-                                                    'index': str(event_id)
-                                                },
-                                                options=[
-                                                    {'label': 'Oui', 'value': True},
-                                                    {'label': 'Non', 'value': False}
-                                                ],
-                                                value=None,
-                                                labelStyle={'display': 'inline-block'}
-                                            )
-                                        ]
-                                    ),
-                                    html.Br(),
-                                    html.Div(
-                                        id={
-                                            'type': 'alert_type_space',
-                                            'index': str(event_id)
-                                        },
-                                        children=[
-                                            html.P(
-                                                "Quel type de fumée a été détecté ?",
-                                                style={'text-indent': '15px'}
-                                            ),
-                                            dbc.RadioItems(
-                                                id={
-                                                    'type': 'alert_type_radio_button',
-                                                    'index': str(event_id)
-                                                },
-                                                options=[
-                                                    {'label': 'Feu de forêt', 'value': 'wildfire'},
-                                                    {'label': 'Incendie domestique', 'value': 'domestic_fire'},
-                                                    {'label': 'Cheminée', 'value': 'chimney'},
-                                                    {'label': 'Nuage', 'value': 'cloud'},
-                                                    {'label': 'Autre', 'value': 'other'}
-                                                ],
-                                                value=None,
-                                            )
-                                        ],
-                                    )
-                                ],
-                                width=4
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Img(
-                                        id={
-                                            'type': 'alert_frame',
-                                            'index': str(event_id)
-                                        },
-                                        src=urls[0],
-                                        width='700px'
-                                    ),
-                                    dcc.Markdown('---'),
-                                    dcc.Slider(
-                                        id={
-                                            'type': 'alert_slider',
-                                            'index': str(event_id)
-                                        },
-                                        min=1, max=number_of_images,
-                                        step=1,
-                                        marks={i + 1: str(i + 1) for i in range(number_of_images)},
-                                        value=1
-                                    )
-                                ],
-                                width=16
-                            )
-                        ],
-                        no_gutters=True
-                    )
-                ]
-            )
-        ]
-    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------

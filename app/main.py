@@ -136,20 +136,25 @@ def broadcast_message(message):
     socket_pool.broadcast(message)
     return f"Message {message} broadcast."
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
 
-
-# First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
 @app.callback(
     Output('msg', 'children'),
     Input('ws', 'message')
 )
 def trigger(message):
-    return "Hello world"
+    """
+    This callback relays the message sent by the API whenever an alert is raised by one of the devices.
+
+    It then triggers a "waterfall" of callbacks to produce the alert workflow.
+    """
+
+    return message
 
 
 @app.callback(
@@ -219,10 +224,12 @@ def update_live_alerts_data(alert):
 
     It returns :
 
-    - a json containing live_alerts data where is_acknowledged is False.
+    - a json containing live alerts data, where live alerts either correspond to a not-yet-acknowledged event or have
+    been created less than 12 hours ago;
+
     - a dict where keys are event id and value lists of all urls related to the same event.
 
-    These url come from the API calls, triggered by the websocket message stroed in msg hidden div.
+    These URLs come from the API calls, triggered by the websocket message stored in msg hidden div.
     """
 
     # Fetching live alerts where is_acknowledged is False
@@ -292,10 +299,7 @@ def update_live_alerts_data(alert):
      Output('login_storage', 'data'),
      Output('form_feedback_area', 'children'),
      Output('login_zoom_and_center', 'children'),
-     Output('hp_map', 'style')
-     # Output('map', 'center'),
-     # Output('map', 'zoom')
-     ],
+     Output('hp_map', 'style')],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
      State('password_input', 'value'),
@@ -466,7 +470,7 @@ def clean_login_background(is_modal_opened):
     --- Erasing the login backrgound image when credentials are validated ---
 
     This callback is triggered by the login modal being closed, ie. indirectly by the user entering a valid username /
-    password pair and removes the login background image from the home pag layout.
+    password pair and removes the login background image from the homepage layout.
     """
     if is_modal_opened:
         raise PreventUpdate
@@ -662,7 +666,7 @@ def select_alert_frame_to_display(slider_value, urls):
     if slider_value is None:
         raise PreventUpdate
 
-    return urls[slider_value - 1]
+    return urls[slider_value - 1]   # Slider value starts at 1 and not 0
 
 
 # ----------------------------------------------------------------------------------------------------------------------
