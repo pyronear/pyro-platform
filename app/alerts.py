@@ -255,32 +255,8 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         alerts_markers.append(dl.Marker(
             id={'type': 'alert_marker', 'index': alert_id},   # Setting a unique id for each alert marker
             position=(alert_lat, alert_lon),
-            icon=icon,
-            children=[dl.Popup(
-                [
-                    html.H2("Alerte détectée"),
-                    html.P("Coordonées : {}, {} ".format(alert_lat, alert_lon)),
-
-                    # Button allowing the user to check the detection data after clicking on an alert marker
-                    html.Button("Afficher les données de détection",
-                                id=({'type': 'display_alert_frame_btn', 'index': alert_id}),  # Setting a unique btn id
-                                n_clicks=0,
-                                className="btn btn-danger"),
-
-                    # Adding a separator between the button and the checkbox
-                    dcc.Markdown("---"),
-
-                    # Alert acknowledgement checkbox with default value False and value True once checked
-                    html.Div(id={'type': 'acknowledge_alert_div', 'index': alert_id},
-                             children=[
-                                 dbc.FormGroup([dbc.Checkbox(id={'type': 'acknowledge_alert_checkbox',
-                                                                 'index': alert_id},
-                                                             className="form-check-input"),
-                                                dbc.Label("Confirmer la prise en compte de l'alerte",
-                                                          className="form-check-label")],
-                                               check=True,
-                                               inline=True)])
-                ])]))
+            icon=icon
+        ))
 
     # Wrapping all markers in the list into a dl.LayerGroup object
     alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id='alerts_markers')
