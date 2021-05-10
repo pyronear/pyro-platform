@@ -621,7 +621,7 @@ def acknowledge_alert(n_clicks):
         event_id = event_id.strip('"')
 
         # The event is actually acknowledged thanks to the acknowledge_event of the API client
-        response = api_client.acknowledge_event(event_id=int(event_id))
+        api_client.acknowledge_event(event_id=int(event_id))
 
         return [html.P('Alerte acquittée.')]
 
