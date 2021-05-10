@@ -305,7 +305,7 @@ def build_login_modal():
         keyboard=False,
         style={"max-width": "none", "width": "500px"},
 
-        is_open=False
+        is_open=True
     )
 
 
@@ -341,6 +341,7 @@ def Homepage():
             [
                 # Left column containing the user selection area
                 dbc.Col([
+                    # At first, the map is hidden (until the user logs in with valid credentials)
                     html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
 
                     html.Div(id="alert_overview_area"),
@@ -354,7 +355,7 @@ def Homepage():
                 # Right column containing the map and various hidden components
                 dbc.Col([
                     # Map object added here
-                    html.Div(build_alerts_map(), id='hp_map'),
+                    html.Div(build_alerts_map(), id='hp_map', style={'display': 'none'}),
 
                     # Two placeholders updated by callbacks in main.py to trigger a change in map style
                     html.Div(id='map_style_btn_switch_view'),   # Associated with the main map style button
