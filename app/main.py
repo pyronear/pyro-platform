@@ -56,7 +56,10 @@ import pandas as pd
 import requests
 
 # Various utils
+import numpy as np
 import json
+import pytz
+from datetime import datetime
 
 # --- Imports from other Python files
 
@@ -224,12 +227,43 @@ def update_live_alerts_data(alert):
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
-    all_alerts = pd.DataFrame(response)
 
-    if all_alerts.empty:
+    # If there is no alert, we prevent the callback from updating anything
+    if len(response) == 0:
         raise PreventUpdate
 
-    live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
+    # We store all alerts in a DataFrame and we want to select "live alerts",
+    # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+    all_alerts = pd.DataFrame(response)
+
+    # We first want to build the boolean indexing mask that corresponds to the time-related condition
+    # We convert values in the "created_at" column to datetime format
+    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'])
+
+    # For each of these creation dates, we check whether they were registered less than 12 hours ago
+    # This provides us with the first boolean indexing mask
+    mask_time = all_alerts['created_at'].map(
+        lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
+
+    # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
+    # We start by making an API call to fetch all events
+    url = cfg.API_URL + '/events/'
+    all_events = requests.get(url, headers=api_client.headers)
+
+    # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
+    # "is_acknowledged" field in the events table (boolean)
+    is_event_acknowledged = {}
+    for event in all_events:
+        is_event_acknowledged[event['id']] = event['is_acknowledged']
+
+    # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
+    mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
+
+    # We link the two masks with an OR condition
+    mask = np.logical_or(mask_time, mask_acknowledgement)
+
+    # And we deduce the subset of alerts that we can deem to be "live"
+    live_alerts = all_alerts[mask].copy()
 
     # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
     dict_images_url_live_alerts = {}
@@ -545,8 +579,11 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
         event_id = text[:text.find(',')]
         event_id = event_id.strip('"')
 
-        # This part should be replaced by an API call to check whether the event has been acknowledged or not yet
-        acknowledged = False
+        # We make an API call to check whether the event has already been acknowledged or not
+        # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
+        url = cfg.API_URL + f"/events/{event_id}/"
+        response = requests.get(url, headers=api_client.headers).json()
+        acknowledged = response['is_acknowledged']
 
         # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
         lat, lon, div = build_alert_overview(
@@ -583,7 +620,8 @@ def acknowledge_alert(n_clicks):
         event_id = text[:text.find(',')]
         event_id = event_id.strip('"')
 
-        # API interaction to be added here to validate the acknowledgement
+        # The event is actually acknowledged thanks to the acknowledge_event of the API client
+        response = api_client.acknowledge_event(event_id=int(event_id))
 
         return [html.P('Alerte acquittée.')]
 
