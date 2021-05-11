@@ -370,7 +370,7 @@ def Homepage():
 
                     # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
-                    WebSocket(id="ws"),
+                    WebSocket(id="ws", url="wss://platform.pyronear.org//wss"),
                 ],
                     id='map_column',
                     md=12),
