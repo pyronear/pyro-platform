@@ -245,7 +245,7 @@ def update_live_alerts_data(alert):
 
     # We first want to build the boolean indexing mask that corresponds to the time-related condition
     # We convert values in the "created_at" column to datetime format
-    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'])
+    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
 
     # For each of these creation dates, we check whether they were registered less than 12 hours ago
     # This provides us with the first boolean indexing mask
@@ -255,7 +255,7 @@ def update_live_alerts_data(alert):
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all events
     url = cfg.API_URL + '/events/'
-    all_events = requests.get(url, headers=api_client.headers)
+    all_events = requests.get(url, headers=api_client.headers).json()
 
     # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
     # "is_acknowledged" field in the events table (boolean)
