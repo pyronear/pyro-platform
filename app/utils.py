@@ -36,8 +36,6 @@ import dash_leaflet as dl
 # CONTENT
 
 # ----------------------------------------------------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------------------------------------------------
 # Diverse
 # The following block is used for the definition of small variables and/or functions.
 
@@ -93,7 +91,6 @@ def choose_layer_style(n_clicks):
 # Information box
 # The following block is used to build the map filters in the bottom left corner
 
-
 def build_filters_object(map_type):
     """
     This function builds upon the build_map_filters function defined above.
@@ -107,13 +104,16 @@ def build_filters_object(map_type):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=build_layer_style_button(),
-                    id=object_id,
-                    style={'position': 'absolute',
-                           'bottom': '30px',
-                           'left': '10px',
-                           'z-index': '1000'}
-                    )
+    return html.Div(
+        children=build_layer_style_button(),
+        id=object_id,
+        style={
+            'position': 'absolute',
+            'bottom': '30px',
+            'left': '10px',
+            'z-index': '1000'
+        }
+    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------

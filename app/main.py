@@ -34,7 +34,7 @@ It is built around 5 main sections:
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import os
 import dash
-from dash.dependencies import Input, Output, State, MATCH
+from dash.dependencies import Input, Output, State, MATCH, ALL
 from dash.exceptions import PreventUpdate
 
 # Flask caching import
@@ -56,7 +56,10 @@ import pandas as pd
 import requests
 
 # Various utils
+import numpy as np
 import json
+import pytz
+from datetime import datetime
 
 # --- Imports from other Python files
 
@@ -71,10 +74,8 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data,\
-    build_user_alerts_selection_area
-from utils import choose_layer_style, build_filters_object,\
-    build_historic_markers, build_legend_box
+from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, build_alert_overview
+from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
@@ -102,8 +103,21 @@ app.layout = html.Div(
         dcc.Store(id="store_live_alerts_data", storage_type="session"),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
+
+        # Session storage component to avoid re-opening the login modal at each refresh
+        # [NOT SUCCESSFUL YET]
+        dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
+
         # Storage component which contains data relative to site devices
-        dcc.Store(id="site_devices_data_storage", storage_type="session", data=get_site_devices_data(client=api_client))
+        dcc.Store(
+            id="site_devices_data_storage",
+            storage_type="session",
+            data=get_site_devices_data(client=api_client)
+        ),
+
+        # Storing alerts data for each event separately
+        html.Div(id='individual_alert_data_placeholder', style={'display': 'none'}),
+        html.Div(id='individual_alert_frame_placeholder', style={'display': 'none'})
     ]
 )
 
@@ -122,16 +136,25 @@ def broadcast_message(message):
     socket_pool.broadcast(message)
     return f"Message {message} broadcast."
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
 
+@app.callback(
+    Output('msg', 'children'),
+    Input('ws', 'message')
+)
+def trigger(message):
+    """
+    This callback relays the message sent by the API whenever an alert is raised by one of the devices.
 
-# First API relay once an alert is sent to the platform, passing msg.data into msg hidden div
-app.clientside_callback("function(msg){if(msg == null) {return;} else {return msg.data;}}",
-                        Output("msg", "children"), [Input("ws", "message")])
+    It then triggers a "waterfall" of callbacks to produce the alert workflow.
+    """
+
+    return message
 
 
 @app.callback(
@@ -201,30 +224,70 @@ def update_live_alerts_data(alert):
 
     It returns :
 
-    - a json containing live_alerts data where is_acknowledged is False.
+    - a json containing live alerts data, where live alerts either correspond to a not-yet-acknowledged event or have
+    been created less than 12 hours ago;
+
     - a dict where keys are event id and value lists of all urls related to the same event.
 
-    These url come from the API calls, triggered by the websocket message stroed in msg hidden div.
+    These URLs come from the API calls, triggered by the websocket message stored in msg hidden div.
     """
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
-    all_alerts = pd.DataFrame(response)
-    if all_alerts.empty:
+
+    # If there is no alert, we prevent the callback from updating anything
+    if len(response) == 0:
         raise PreventUpdate
-    live_alerts = all_alerts.loc[~all_alerts["is_acknowledged"]]
+
+    # We store all alerts in a DataFrame and we want to select "live alerts",
+    # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+    all_alerts = pd.DataFrame(response)
+
+    # We first want to build the boolean indexing mask that corresponds to the time-related condition
+    # We convert values in the "created_at" column to datetime format
+    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
+
+    # For each of these creation dates, we check whether they were registered less than 12 hours ago
+    # This provides us with the first boolean indexing mask
+    mask_time = all_alerts['created_at'].map(
+        lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
+
+    # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
+    # We start by making an API call to fetch all events
+    url = cfg.API_URL + '/events/'
+    all_events = requests.get(url, headers=api_client.headers).json()
+
+    # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
+    # "is_acknowledged" field in the events table (boolean)
+    is_event_acknowledged = {}
+    for event in all_events:
+        is_event_acknowledged[event['id']] = event['is_acknowledged']
+
+    # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
+    mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
+
+    # We link the two masks with an OR condition
+    mask = np.logical_or(mask_time, mask_acknowledgement)
+
+    # And we deduce the subset of alerts that we can deem to be "live"
+    live_alerts = all_alerts[mask].copy()
 
     # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
     dict_images_url_live_alerts = {}
+
     for _, row in live_alerts.iterrows():
+
         img_url = ""
+
         try:
             img_url = api_client.get_media_url(row["media_id"]).json()["url"]
         except Exception:
             pass
+
         if row['event_id'] not in dict_images_url_live_alerts.keys():
             dict_images_url_live_alerts[row['event_id']] = []
             dict_images_url_live_alerts[row['event_id']].append(img_url)
+
         else:
             dict_images_url_live_alerts[row['event_id']].append(img_url)
 
@@ -233,14 +296,16 @@ def update_live_alerts_data(alert):
 
 @app.callback(
     [Output('login_modal', 'is_open'),
+     Output('login_storage', 'data'),
      Output('form_feedback_area', 'children'),
-     Output('map', 'center'),
-     Output('map', 'zoom')],
+     Output('login_zoom_and_center', 'children'),
+     Output('hp_map', 'style')],
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
-     State('password_input', 'value')]
+     State('password_input', 'value'),
+     State('login_storage', 'data')]
 )
-def manage_login_modal(n_clicks, username, password):
+def manage_login_modal(n_clicks, username, password, login_storage):
     """
     --- Managing the login modal ---
 
@@ -270,74 +335,129 @@ def manage_login_modal(n_clicks, username, password):
     - if all checks are successful, the login modal is closed (by returning False for the "is_open" attribute of the lo-
     gin modal), site devices data is fetched from the API and the right outputs are returned
     """
-    # The modal is opened and other outputs are updated with arbitray values if no click has been registered on the con-
-    # nection button yet (the user arrives on the page)
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the
+    # connection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, None, [10, 10], 3
-
-    # We instantiate the form feedback output
-    form_feedback = [dcc.Markdown('---')]
-
-    # First check verifies whether both a username and a password have been provided
-    if username is None or password is None or len(username) == 0 or len(password) == 0:
-        # If either the username or the password is missing, the condition is verified
-
-        # We add the appropriate feedback
-        form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
-
-        # The login modal remains open; other outputs are updated with arbitrary values
-        return True, form_feedback, [10, 10], 3
+        return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
     else:
-        # This is the route of the API that we are going to use for the credential check
-        login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
 
-        # We create a mini-dictionary with the credentials passsed by the user
-        data = {
-            'username': username,
-            'password': password
-        }
+        # We instantiate the form feedback output
+        form_feedback = [dcc.Markdown('---')]
 
-        # We make the HTTP request to the login route of the API
-        response = requests.post(login_route_url, data=data).json()
+        # First check verifies whether both a username and a password have been provided
+        if username is None or password is None or len(username) == 0 or len(password) == 0:
+            # If either the username or the password is missing, the condition is verified
 
-        # Boolean that indicates whether the authentication was successful or not
-        check = ('access_token' in response.keys())
+            # We add the appropriate feedback
+            form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
-        if not check:
-            # This if statement is verified if credentials are invalid
+            # The login modal remains open; other outputs are updated with arbitrary values
+            return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
+
+        else:
+            # This is the route of the API that we are going to use for the credential check
+            login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
+
+            # We create a mini-dictionary with the credentials passsed by the user
+            data = {
+                'username': username,
+                'password': password
+            }
 
             # We make the HTTP request to the login route of the API
             response = requests.post(login_route_url, data=data).json()
 
-            # The login modal remains open; other outputs are updated with arbitrary values
-            return True, form_feedback, [10, 10], 3
+            # Boolean that indicates whether the authentication was successful or not
+            check = ('access_token' in response.keys())
+
+            if not check:
+                # This if statement is verified if credentials are invalid
+                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
+
+                # We make the HTTP request to the login route of the API
+                response = requests.post(login_route_url, data=data).json()
+
+                # The login modal remains open; other outputs are updated with arbitrary values
+                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
+
+            else:
+                # All checks are successful and we add the appropriate feedback
+                # (although the login modal does not remain open long enough for it to be readable by the user)
+                form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
+
+                # For now the group_id is not fetched, we equalize it artificially to 1
+                group_id = '1'
+
+                # We load the group correspondences stored in a dedicated JSON file in the data folder
+                path = os.path.dirname(os.path.abspath(__file__))
+                path = os.path.join(path, 'data', 'group_correspondences.json')
+
+                with open(path, 'r') as file:
+                    group_correspondences = json.load(file)
+
+                # We fetch the latitude and longitude of the point around which we want to center the map
+                # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
+                lat = group_correspondences[group_id]['center_lat']
+                lon = group_correspondences[group_id]['center_lon']
+
+                # We fetch the zoom level for the map display
+                zoom = group_correspondences[group_id]['zoom']
+
+                # The login modal is closed and the appropriate outputs are returned
+                return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}, {}
+
+
+@app.callback(
+    [Output('map', 'center'),
+     Output('map', 'zoom')],
+    [Input('login_zoom_and_center', 'children'),
+     Input('alert_zoom_and_center', 'children')],
+    State('login_modal', 'is_open')
+)
+def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
+    """
+    --- Main callback for updating the zoom and center attributes of the map ---
+
+    This callback determines the center and zoom attributes of the map based on two different inputs, that are the
+    login_zoom_and_center and alert_zoom_and_center placeholders. The latter correspond to the recentering of the map
+    that takes place respectively after the user logs in and when the user clicks on one of the alert selection buttons.
+    """
+
+    ctx = dash.callback_context
+
+    # If none of the input has triggered the callback, we raise a PreventUpdate
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    else:
+        # We determine what input has triggered the callback
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        # If it is the login that has triggered the change in the center and zoom attributes of the map
+        if input_id == 'login_zoom_and_center':
+
+            if login_zoom_and_center is None:
+                raise PreventUpdate
+
+            return login_zoom_and_center['center'], login_zoom_and_center['zoom']
+
+        # If it is a click on an alert selection button that has triggered the change
+        elif input_id == 'alert_zoom_and_center':
+
+            if alert_zoom_and_center is None:
+                raise PreventUpdate
+
+            return alert_zoom_and_center['center'], alert_zoom_and_center['zoom']
 
         else:
-            # All checks are successful and we add the appropriate feedback
-            # (although the login modal does not remain open long enough for it to be readable by the user)
-            form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
-
-            # For now the group_id is not fetched, we equalize it artificially to 1
-            group_id = '1'
-
-            # We load the group correspondences stored in a dedicated JSON file in the data folder
-            path = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(path, 'data', 'group_correspondences.json')
-
-            with open(path, 'r') as file:
-                group_correspondences = json.load(file)
-
-            # We fetch the latitude and longitude of the point around which we want to center the map
-            # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
-            lat = group_correspondences[group_id]['center_lat']
-            lon = group_correspondences[group_id]['center_lon']
-
-            # We fetch the zoom level for the map display
-            zoom = group_correspondences[group_id]['zoom']
-
-            # The login modal is closed; site devices data is fetched from the API and the right outputs are returned
-            return False, form_feedback, [lat, lon], zoom
+            print('Weird result to be investigated with the change_map_zoom_and_center callback.')
+            raise PreventUpdate
 
 
 @app.callback(
@@ -350,7 +470,7 @@ def clean_login_background(is_modal_opened):
     --- Erasing the login backrgound image when credentials are validated ---
 
     This callback is triggered by the login modal being closed, ie. indirectly by the user entering a valid username /
-    password pair and removes the login background image from the home pag layout.
+    password pair and removes the login background image from the homepage layout.
     """
     if is_modal_opened:
         raise PreventUpdate
@@ -360,7 +480,7 @@ def clean_login_background(is_modal_opened):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Callbacks related to the "Alerts and Infrastructure" view
+# Callbacks related to the alert workflow
 
 
 @app.callback(
@@ -390,60 +510,31 @@ def click_department_alerts(feature, radio_button_value):
 
 
 @app.callback(
-    Output({'type': 'acknowledge_alert_div', 'index': MATCH}, 'children'),
-    Input({'type': 'acknowledge_alert_checkbox', 'index': MATCH}, 'children')
-)
-def acknowledge_alert(checkbox_checked):
-    """
-    -- Allowing user to acknowledge an alert --
-
-    This callback takes as input the status of the checkbox that the user can see when
-    clicking on an alert marker and can use to acknowledge the alert.
-
-    For now, if the checkbox is checked, it simply eliminates the checkbox and displays
-    a message according to which the alert has already been taken into account.
-
-    Still to be done regarding this callback:
-
-    - use the client to effectively report the acknowledgement to the DB;
-    - check if an alert is acknowledged or not in the DB to display the right message.
-    """
-
-    ctx = dash.callback_context
-
-    if not checkbox_checked:
-        return [dbc.FormGroup([dbc.Checkbox(id=ctx.triggered[0]['prop_id'].split('.')[0],
-                                            className="form-check-input"),
-                               dbc.Label("Confirmer la prise en compte de l'alerte",
-                                         className="form-check-label")],
-                              check=True,
-                              inline=True)]
-
-    elif checkbox_checked:
-        return [html.P("Prise en compte de l'alerte confirmée")]
-
-
-@app.callback(
     [Output('user_selection_column', 'md'),
      Output('map_column', 'md'),
      Output("new_alerts_selection_list", "children"),
-     Output("live_alert_header_btn", "style")],
+     Output("live_alert_header_btn", "style"),
+     Output('vision_polygons', 'children'),
+     Output('alert_modals', 'children')],
     Input("alert_button_alerts", "n_clicks"),
     State('map_style_button', 'children'),
-    State("store_live_alerts_data", "data")
+    State("store_live_alerts_data", "data"),
+    State("images_url_live_alerts", 'data'),
+    State('site_devices_data_storage', "data")
 )
 @cache.memoize()
-def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
+def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert_frame_urls, site_devices_data):
     """
     -- Initiating the whole alert flow  --
 
     This callback is triggered by the number of clicks on the new alert button.
 
     - If the number of clicks is strictly above 0 it triggers the creation of the user_alerts_selection_area with
-    the alerts list. To do so, it relies on the build_user_alerts_selection_area and the function, imported from alerts.
+    the alerts list, as well as of the vision angle polygons and the alert modals. To do so, it relies on the
+    build_individual_alert_components, imported from the alerts.py file.
 
     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
-     """
+    """
 
     # Deducing the style of the map in place from the map style button label
     if 'risques' in map_style_button_label.lower():
@@ -456,10 +547,126 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts):
         n_clicks = 0
 
     if map_style == 'alerts':
-        return build_user_alerts_selection_area(n_clicks, live_alerts)
+        return build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls)
 
     elif map_style == 'risks':
         raise PreventUpdate
+
+
+@app.callback(
+    [Output('alert_zoom_and_center', 'children'),
+     Output('alert_overview_area', 'children')],
+    Input({'type': 'alert_selection_btn', 'index': ALL}, 'n_clicks'),
+    [State('store_live_alerts_data', 'data'),
+     State('images_url_live_alerts', 'data')]
+)
+def zoom_on_alert(n_clicks, live_alerts, frame_urls):
+    """
+    --- Zooming on the alert marker and displaying the alert overview ---
+
+    This callback is triggered by the user's click on any alert selection button and does two things:
+
+    - it updates the center and zoom components of the map to show where the alert has been raised in details;
+
+    - it makes an overview of the considered alert appear on the left-hand side of the map. To do so, it relies on the
+    build_alert_overview function, defined in the alerts.py file.
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    else:
+        # From the context of the callback, we determine the event_id associated with the last alert selection button on
+        # which the user has clicked
+        text = ctx.triggered[0]['prop_id'].split(':')[1]
+        event_id = text[:text.find(',')]
+        event_id = event_id.strip('"')
+
+        # We make an API call to check whether the event has already been acknowledged or not
+        # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
+        url = cfg.API_URL + f"/events/{event_id}/"
+        response = requests.get(url, headers=api_client.headers).json()
+        acknowledged = response['is_acknowledged']
+
+        # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
+        lat, lon, div = build_alert_overview(
+            live_alerts=live_alerts,
+            frame_urls=frame_urls,
+            event_id=event_id,
+            acknowledged=acknowledged
+        )
+
+        return {'center': [lat, lon], 'zoom': 14}, div
+
+
+@app.callback(
+    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+    Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
+)
+def acknowledge_alert(n_clicks):
+    """
+    --- Acknowledging an alert ---
+
+    Taking as input the number of clicks on an acknowledge_alert_button, this callback interacts with the API to modify
+    the "is_acknowledged" field of the corresponding event from False to True in the DB.
+
+    Additionally, it changes the acknowledge_alert_button into a paragraph component, indicating that the alert has been
+    acknowledged already.
+    """
+    ctx = dash.callback_context
+
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        text = ctx.triggered[0]['prop_id'].split(':')[1]
+        event_id = text[:text.find(',')]
+        event_id = event_id.strip('"')
+
+        # The event is actually acknowledged thanks to the acknowledge_event of the API client
+        api_client.acknowledge_event(event_id=int(event_id))
+
+        return [html.P('Alerte acquittée.')]
+
+
+@app.callback(
+    Output({'type': 'alert_modal', 'index': MATCH}, 'is_open'),
+    Input({'type': 'alert_frame_small', 'index': MATCH}, 'n_clicks')
+)
+def display_alert_modal(n_clicks):
+    """
+    --- Displaying an alert modal ---
+
+    When the user has selected an alert in the column on the left-hand side of the page, he or she can click on the
+    image that appears to get more details about the alert. This callback is triggered by the user's click on any
+    alert_frame_small component and opens the corresponding alert modal.
+    """
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        return True
+
+
+@app.callback(
+    Output({'type': 'alert_frame', 'index': MATCH}, 'src'),
+    Input({'type': 'alert_slider', 'index': MATCH}, 'value'),
+    State({'type': 'individual_alert_frame_storage', 'index': MATCH}, 'children')
+)
+def select_alert_frame_to_display(slider_value, urls):
+    """
+    --- Choosing the alert frame to be displayed in an alert modal ---
+
+    When the user has opened an alert modal, he or she can choose the alert frame to view thanks to the slider. This
+    callback is triggered by a change in value of the slider and return the URL address of the frame to be displayed.
+    Like there is one alert modal per event, there is one alert slider per event, which allows to use MATCH here.
+    """
+
+    if slider_value is None:
+        raise PreventUpdate
+
+    return urls[slider_value - 1]   # Slider value starts at 1 and not 0
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -604,7 +811,8 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     [Output('live_alert_header_btn', 'children'),
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
-     Output("user-div", "children")],
+     Output("user-div", "children"),
+     Output('individual_alert_frame_placeholder', 'children')],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data')]
@@ -625,9 +833,15 @@ def update_live_alerts_components(
     "store_live_alerts_data" and returns several elements:
 
     - it stores the URL address of the frame associated with the last alert;
+
     - it creates the elements (alert notifications button, alerts lists within alert selection area);
-    - it changes the navabar color and title into alert mode
-    - and instantiates the alert markers on the map.
+
+    - it changes the navabar color and title into alert mode;
+
+    - it instantiates the alert markers on the map;
+
+    - and it creates an individual storage component, specific to each alert/event being displayed, that contains the
+    URL addresses of the corresponding frames.
 
     To build these elements, it relies on the build_alerts_elements imported from alerts.
     """
@@ -644,30 +858,6 @@ def update_live_alerts_components(
 
     elif map_style == 'risks':
         raise PreventUpdate
-
-    """
-    Will be replaced by a display_alert_modal callback
-
-@app.callback(
-    [Output({'type': 'display_alert_frame_btn', 'index': MATCH}, 'children')],
-    Input({'type': 'display_alert_frame_btn', 'index': MATCH}, 'n_clicks'),
-    State('img_url', 'children')
-)
-def display_alert_frame_metadata(n_clicks_marker, images_url_live_alerts):
-
-
-    This callback detects the number of clicks the user has made on the button that allows
-    to display the detection data and the alert frame (in the popup of the alert marker).
-
-    If an odd number of clicks has been made, the function returns the image of the corresponding alert
-    and the associated metadata in the blank space on the left of the map.
-
-
-    if (n_clicks_marker + 1) % 2 == 0:
-        return display_alerts_frames(n_clicks_marker), 'Masquer les données de détection'
-    else:
-        return display_alerts_frames(), 'Afficher les données de détection'
-"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------

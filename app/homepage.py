@@ -303,7 +303,9 @@ def build_login_modal():
 
         # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,
-        style={"max-width": "none", "width": "500px"}
+        style={"max-width": "none", "width": "500px"},
+
+        is_open=True
     )
 
 
@@ -339,7 +341,11 @@ def Homepage():
             [
                 # Left column containing the user selection area
                 dbc.Col([
+                    # At first, the map is hidden (until the user logs in with valid credentials)
                     html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
+
+                    html.Div(id="alert_overview_area"),
+
                     html.Div(id='new_alerts_selection_list'),
                     # Placeholder containing the detection data for any alert of interest
                     html.P(id="hp_alert_frame_metadata")],
@@ -349,7 +355,7 @@ def Homepage():
                 # Right column containing the map and various hidden components
                 dbc.Col([
                     # Map object added here
-                    html.Div(build_alerts_map(), id='hp_map'),
+                    html.Div(build_alerts_map(), id='hp_map', style={'display': 'none'}),
 
                     # Two placeholders updated by callbacks in main.py to trigger a change in map style
                     html.Div(id='map_style_btn_switch_view'),   # Associated with the main map style button
@@ -357,9 +363,14 @@ def Homepage():
 
                     # Simple placeholder - Source of truth for the map style being viewed
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
-                    # Hidden div storing the websocket message sent by the API
+
+                    # Two placeholders updated by callbacks in main.py to change center and zoom attributes of the map
+                    html.Div(id='login_zoom_and_center', style={'display': 'none'}),
+                    html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
+
+                    # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
-                    WebSocket(id="ws"),
+                    WebSocket(id="ws", url="wss://platform.pyronear.org//wss"),
                 ],
                     id='map_column',
                     md=12),
@@ -369,6 +380,8 @@ def Homepage():
         # Login modal added here
         build_login_modal(),
 
+        # HTML Div containing alert modals added here
+        html.Div(id='alert_modals')
     ],
         fluid=True,
     )
