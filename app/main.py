@@ -74,8 +74,8 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components,\
-     build_alert_overview, display_alert_selection_area
+from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, \
+    build_alert_overview, display_alert_selection_area
 from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
@@ -683,6 +683,7 @@ def close_alert_overview_intermediary(n_clicks):
 
     else:
         return 'hidden'
+
 
 @app.callback(
     Output('alert_overview_area', 'style'),
