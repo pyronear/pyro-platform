@@ -74,7 +74,8 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, build_alert_overview
+from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components,\
+     build_alert_overview, display_alert_selection_area
 from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
@@ -214,7 +215,76 @@ def change_layer_style(n_clicks=None):
 
 @app.callback(
     Output('store_live_alerts_data', 'data'),
+    [Input('update_live_alerts_data_workflow', 'children'),
+     Input('update_live_alerts_data_erase_buttons', 'children')]
+)
+def update_live_alerts_data_main(workflow_input, erase_buttons_input):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if input_id == 'update_live_alerts_data_workflow':
+        return workflow_input
+
+    else:
+        return erase_buttons_input
+
+
+@app.callback(
     Output('images_url_live_alerts', 'data'),
+    [Input('update_live_alerts_frames_workflow', 'children'),
+     Input('update_live_alerts_frames_erase_buttons', 'children')]
+)
+def update_live_alerts_frames_main(workflow_input, erase_buttons_input):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if input_id == 'update_live_alerts_frames_workflow':
+        return workflow_input
+
+    else:
+        return erase_buttons_input
+
+
+@app.callback(
+    [Output('update_live_alerts_data_erase_buttons', 'children'),
+     Output('update_live_alerts_frames_erase_buttons', 'children'),
+     Output('alert_overview_style_erase_buttons', 'children')],
+    Input({'type': 'erase_alert_button', 'index': ALL}, 'n_clicks'),
+    [State('store_live_alerts_data', 'data'),
+     State('images_url_live_alerts', 'data')]
+)
+def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames):
+    ctx = dash.callback_context
+
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    text = ctx.triggered[0]['prop_id'].split(':')[1]
+    event_id = text[:text.find(',')]
+    event_id = event_id.strip('"')
+
+    _ = alerts_frames.pop(event_id, None)
+
+    live_alerts = pd.read_json(alerts_data)
+
+    live_alerts['event_id'] = live_alerts['event_id'].astype(str)
+
+    live_alerts = live_alerts[live_alerts['event_id'] != event_id].copy()
+
+    return live_alerts.to_json(orient='records'), alerts_frames, 'hidden'
+
+
+@app.callback(
+    [Output('update_live_alerts_data_workflow', 'children'),
+     Output('update_live_alerts_frames_workflow', 'children')],
     Input('msg', 'children')
 )
 def update_live_alerts_data(alert):
@@ -303,9 +373,11 @@ def update_live_alerts_data(alert):
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
      State('password_input', 'value'),
-     State('login_storage', 'data')]
+     State('login_storage', 'data'),
+     State('map', 'center'),
+     State('map', 'zoom')]
 )
-def manage_login_modal(n_clicks, username, password, login_storage):
+def manage_login_modal(n_clicks, username, password, login_storage, current_center, current_zoom):
     """
     --- Managing the login modal ---
 
@@ -344,6 +416,9 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     # connection button yet (the user arrives on the page)
     if n_clicks is None:
         return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
+
+    # if login_storage['login'] == 'yes':
+    #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
 
     else:
 
@@ -512,18 +587,13 @@ def click_department_alerts(feature, radio_button_value):
 @app.callback(
     [Output('user_selection_column', 'md'),
      Output('map_column', 'md'),
-     Output("new_alerts_selection_list", "children"),
      Output("live_alert_header_btn", "style"),
-     Output('vision_polygons', 'children'),
-     Output('alert_modals', 'children')],
+     Output('new_alerts_selection_list', 'style')],
     Input("alert_button_alerts", "n_clicks"),
-    State('map_style_button', 'children'),
-    State("store_live_alerts_data", "data"),
-    State("images_url_live_alerts", 'data'),
-    State('site_devices_data_storage', "data")
+    [State('map_style_button', 'children')]
 )
 @cache.memoize()
-def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert_frame_urls, site_devices_data):
+def click_new_alerts_button(n_clicks, map_style_button_label):
     """
     -- Initiating the whole alert flow  --
 
@@ -547,7 +617,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
         n_clicks = 0
 
     if map_style == 'alerts':
-        return build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls)
+        return display_alert_selection_area(n_clicks)
 
     elif map_style == 'risks':
         raise PreventUpdate
@@ -555,7 +625,8 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
 
 @app.callback(
     [Output('alert_zoom_and_center', 'children'),
-     Output('alert_overview_area', 'children')],
+     Output('alert_overview_area', 'children'),
+     Output('alert_overview_style_zoom', 'children')],
     Input({'type': 'alert_selection_btn', 'index': ALL}, 'n_clicks'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data')]
@@ -597,7 +668,51 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
             acknowledged=acknowledged
         )
 
-        return {'center': [lat, lon], 'zoom': 14}, div
+        return {'center': [lat, lon], 'zoom': 14}, div, ''
+
+
+@app.callback(
+    Output('alert_overview_style_closing_buttons', 'children'),
+    Input({'type': 'close_alert_overview_button', 'index': ALL}, 'n_clicks')
+)
+def close_alert_overview_intermediary(n_clicks):
+    ctx = dash.callback_context
+
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    else:
+        return 'hidden'
+
+@app.callback(
+    Output('alert_overview_area', 'style'),
+    [Input('alert_overview_style_zoom', 'children'),
+     Input('alert_overview_style_closing_buttons', 'children'),
+     Input('alert_overview_style_erase_buttons', 'children')]
+)
+def close_alert_overview_main(
+    alert_overview_style_zoom,
+    alert_overview_style_closing_buttons,
+    alert_overview_style_erase_buttons
+):
+    ctx = dash.callback_context
+
+    # If none of the input has triggered the callback, we raise a PreventUpdate
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    else:
+        # We determine what input has triggered the callback
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        if input_id == 'alert_overview_style_zoom':
+            return None
+
+        elif input_id == 'alert_overview_style_closing_buttons':
+            return {'display': 'none'}
+
+        elif input_id == 'alert_overview_style_erase_buttons':
+            return {'display': 'none'}
 
 
 @app.callback(
@@ -812,14 +927,15 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
      Output("user-div", "children"),
-     Output('individual_alert_frame_placeholder', 'children')],
+     Output('individual_alert_frame_placeholder', 'children'),
+     Output("new_alerts_selection_list", "children"),
+     Output('vision_polygons', 'children'),
+     Output('alert_modals', 'children')],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data')]
 )
-def update_live_alerts_components(
-        live_alerts, map_style_button_label, images_url_live_alerts
-):
+def update_live_alerts_components(live_alerts, map_style_button_label, images_url_live_alerts):
     """
     -- Updating style components with corresponding alerts data --
 
@@ -854,7 +970,11 @@ def update_live_alerts_components(
         map_style = "risks"
 
     if map_style == 'alerts':
-        return build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+
+        output += build_individual_alert_components(live_alerts, images_url_live_alerts)
+
+        return output
 
     elif map_style == 'risks':
         raise PreventUpdate
