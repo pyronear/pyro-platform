@@ -246,7 +246,6 @@ def build_login_modal():
     dal object which prevent the user from closing the modal respectively by clicking next to it and by pressing the
     Escape key.
     """
-    print('modal being built')
 
     return dbc.Modal(
         [
