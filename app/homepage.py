@@ -370,13 +370,16 @@ def Homepage():
                     html.Div(id='login_zoom_and_center', style={'display': 'none'}),
                     html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
 
+                    # Placeholders for the three inputs that can affect the style attribute of the alert overview area
                     html.Div(id='alert_overview_style_zoom', style={'display': 'none'}),
                     html.Div(id='alert_overview_style_closing_buttons', style={'display': 'none'}),
                     html.Div(id='alert_overview_style_erase_buttons', style={'display': 'none'}),
 
+                    # Placeholders for the two inputs that can affect the stored live alert data
                     html.Div(id='update_live_alerts_data_workflow', style={'display': 'none'}),
                     html.Div(id='update_live_alerts_data_erase_buttons', style={'display': 'none'}),
 
+                    # Placeholders for the two inputs that can affect the stored live alert frame URLs
                     html.Div(id='update_live_alerts_frames_workflow', style={'display': 'none'}),
                     html.Div(id='update_live_alerts_frames_erase_buttons', style={'display': 'none'}),
 
