@@ -246,6 +246,24 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     # Building the list of alert markers to be displayed
     alerts_markers = []
     all_alerts = pd.read_json(live_alerts)
+
+    if all_alerts.empty:
+        # When there is no live alert to display, we return a alert header button that will remain hidden
+        hidden_header_alert_button = html.Div(
+            html.Button(
+                id=f'alert_button_{map_style}'
+            ),
+            style={'display': 'none'}
+        )
+
+        # This is to ensure that the "click_new_alerts_button" callback gets triggered with n_clicks=0 and hides the
+        # blank user selection area, letting the map take the full width of the screen
+
+        # (It can be interesting to test returning [] instead of [hidden_header_alert_button] and erase all alerts one
+        # by one if explanations are unclear)
+
+        return [hidden_header_alert_button], [], '#054546', 'Surveillez les départs de feux', []
+
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
     for _, row in all_events.iterrows():
         alert_id = str(row['event_id'])
@@ -443,102 +461,120 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
     )
 
 
-def build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls):
+def display_alert_selection_area(n_clicks):
+    """
+    Used in main.py in the "click_new_alerts_button" callback, this function takes as input the number of clicks on the
+    alert header button (in the top-right corner of the map) and returns the appropriate:
+
+    - width of the user selection area column on the left-hand side of the map;
+    - width of the map;
+    - style (being displayed or not) of the alert header button;
+    - style (being displayed or not) of the alert selection area.
+
+    If the number of clicks is 0, the user selection area is fully hidden and the button is displayed on the map. On the
+    other hand, if the number of clicks is stricly above 0, the various attributes are set so as to let the user sele-
+    ction area appear.
+    """
+    if n_clicks > 0:
+        # Defining col width for both user selection area and map
+        md_user = 3
+        md_map = 9
+
+        # Disabling alert_button
+        alert_button_status = {'display': 'none'}
+
+        # Displaying the alert selection area
+        alert_selection_area_style = {}
+
+    else:
+        md_user = 0
+        md_map = 12
+        alert_button_status = {}
+        alert_selection_area_style = {'display': 'none'}
+
+    return [md_user, md_map, alert_button_status, alert_selection_area_style]
+
+
+def build_individual_alert_components(live_alerts, alert_frame_urls):
     """
     This function builds the user selection area containing the alert list
 
-    - it first sets the column sizes of each block (user area and map);
     - it creates the alerts_list based on live alerts data;
     - it creates the vision angle polygons of each alert that should be displayed;
     - it instantiates the modal corresponding to each live alert.
 
     To do so, it takes three arguments:
 
-    - the number of clicks on the alert button;
     - the live alerts data filling the alert_list;
     - the URL addresses of alert frames, gathered by event_id in the alert_frame_urls dictionary.
     """
 
-    if n_clicks > 0:
-        # Defining col width for both user selection area and map
-        md_user = 3
-        md_map = 9
+    # Creating the alert_list based on live_alerts
+    all_alerts = pd.read_json(live_alerts)
 
-        # Creating the alert_list based on live_alerts
-        all_alerts = pd.read_json(live_alerts)
-        all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
+    if all_alerts.empty:
+        return [], [], []
 
-        # Instantiating the void lists that will contain the basic alert elements
-        alert_list = []
-        vision_polygons_children = []
-        alert_modals_children = []
+    all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
 
-        for _, row in all_events.iterrows():
+    # Instantiating the void lists that will contain the basic alert elements
+    alert_list = []
+    vision_polygons_children = []
+    alert_modals_children = []
 
-            alert_id = str(row['event_id'])
-            alert_lat = round(row['lat'], 4)
-            alert_lon = round(row['lon'], 4)
-            alert_azimuth = round(row['azimuth'], 1)
-            alert_date = datetime.fromisoformat(str(row['created_at'])).date()
-            alert_time = datetime.fromisoformat(str(row['created_at'])).time()
+    for _, row in all_events.iterrows():
 
-            alert_selection_button = html.Div([
-                dcc.Markdown('---'),
-                dbc.Button(children=[
-                           html.Span('Azimuth : {}°'.format(alert_azimuth), style={'font-weight': 'bold'}),
-                           html.Span('Lat : {} / Lon : {}'.format(alert_lat, alert_lon), style={'display': 'block'}),
-                           html.Span('Tour : ', style={'display': 'block'}),  # Not possible to fetch from alert today
-                           html.Span('{} / {}:{}'.format(alert_date, alert_time.hour, alert_time.minute),
-                                     style={'display': 'block'})],
-                           id={'type': 'alert_selection_btn', 'index': alert_id},
-                           className='btn-alerts'),
-            ])
+        alert_id = str(row['event_id'])
+        alert_lat = round(row['lat'], 4)
+        alert_lon = round(row['lon'], 4)
+        alert_azimuth = round(row['azimuth'], 1)
+        alert_date = datetime.fromisoformat(str(row['created_at'])).date()
+        alert_time = datetime.fromisoformat(str(row['created_at'])).time()
 
-            alert_list.append(alert_selection_button)
-
-            polygon = build_vision_polygon(
-                event_id=alert_id,
-                site_lat=row['lat'],
-                site_lon=row['lon'],
-                yaw=row['azimuth'],
-                opening_angle=60,
-                dist_km=2
-            )
-
-            vision_polygons_children.append(polygon)
-
-            # Here, we should retrieve the name of the site where the detection is made
-            modal = build_alert_modal(
-                event_id=alert_id,
-                device_id=row['device_id'],
-                lat=row['lat'],
-                lon=row['lon'],
-                site_name="Tour de Serre en Don",
-                urls=alert_frame_urls[alert_id]
-            )
-
-            alert_modals_children.append(modal)
-
-        user_alerts_selection = [html.Div([
+        alert_selection_button = html.Div([
             dcc.Markdown('---'),
-            html.H5(children="Nouvelles alertes !", style={'text-align': 'center'})]),
-            dbc.Container(alert_list)]
+            dbc.Button(children=[
+                       html.Span('Azimuth : {}°'.format(alert_azimuth), style={'font-weight': 'bold'}),
+                       html.Span('Lat : {} / Lon : {}'.format(alert_lat, alert_lon), style={'display': 'block'}),
+                       html.Span('Tour : ', style={'display': 'block'}),  # Not possible to fetch from alert today
+                       html.Span('{} / {}:{}'.format(alert_date, alert_time.hour, alert_time.minute),
+                                 style={'display': 'block'})],
+                       id={'type': 'alert_selection_btn', 'index': alert_id},
+                       className='btn-alerts'),
+        ])
 
-        # Disabling alert_button
-        alert_button_status = {'display': 'none'}
+        alert_list.append(alert_selection_button)
 
-    else:
-        md_user = 0
-        md_map = 12
-        user_alerts_selection = ""
-        alert_button_status = {'display': 'block'}
-        vision_polygons_children = ""
-        alert_modals_children = ""
+        polygon = build_vision_polygon(
+            event_id=alert_id,
+            site_lat=row['lat'],
+            site_lon=row['lon'],
+            yaw=row['azimuth'],
+            opening_angle=60,
+            dist_km=2
+        )
+
+        vision_polygons_children.append(polygon)
+
+        # Here, we should retrieve the name of the site where the detection is made
+        modal = build_alert_modal(
+            event_id=alert_id,
+            device_id=row['device_id'],
+            lat=row['lat'],
+            lon=row['lon'],
+            site_name="Tour de Serre en Don",
+            urls=alert_frame_urls[alert_id]
+        )
+
+        alert_modals_children.append(modal)
+
+    user_alerts_selection = [html.Div([
+        dcc.Markdown('---'),
+        html.H5(children="Nouvelles alertes !", style={'text-align': 'center'})]),
+        dbc.Container(alert_list)]
 
     return [
-        md_user, md_map,
         user_alerts_selection,
-        alert_button_status,
         vision_polygons_children,
         alert_modals_children
     ]
@@ -600,6 +636,20 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                             'index': event_id
                         },
                         children=acknowledge_alert_space_children
+                    ),
+                    html.Button(
+                        id={
+                            'type': 'close_alert_overview_button',
+                            'index': event_id
+                        },
+                        children="Fermer l'aperçu de l'alerte"
+                    ),
+                    html.Button(
+                        id={
+                            'type': 'erase_alert_button',
+                            'index': event_id
+                        },
+                        children='Ne plus voir cette alerte'
                     )
                 ]
             )
