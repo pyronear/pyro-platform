@@ -74,7 +74,8 @@ from homepage import Homepage
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
-from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, build_alert_overview
+from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, \
+    build_alert_overview, display_alert_selection_area
 from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
@@ -212,9 +213,128 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Callbacks determining what alert data and alert frame URLs are stored
+
 @app.callback(
     Output('store_live_alerts_data', 'data'),
+    [Input('update_live_alerts_data_workflow', 'children'),
+     Input('update_live_alerts_data_erase_buttons', 'children')]
+)
+def update_live_alerts_data_main(workflow_input, erase_buttons_input):
+    """
+    --- Updating the alert data storage component / Main callback ---
+
+    This callback centralises the two interactions that can trigger an update of the stored alerts data:
+
+    - the usual alert workflow;
+    - a click on any of the alert erasing buttons by the user.
+
+    In practice, the callback is triggered by a change in any of the two corresponding HTML placeholders.
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # We determine what input has triggered the callback
+    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # If the usual alert workflow has triggered the callback
+    if input_id == 'update_live_alerts_data_workflow':
+        return workflow_input
+
+    # If a click on any of the alert erasing buttons has triggered the callback
+    else:
+        return erase_buttons_input
+
+
+@app.callback(
     Output('images_url_live_alerts', 'data'),
+    [Input('update_live_alerts_frames_workflow', 'children'),
+     Input('update_live_alerts_frames_erase_buttons', 'children')]
+)
+def update_live_alerts_frames_main(workflow_input, erase_buttons_input):
+    """
+    --- Updating the alert frames storage component / Main callback ---
+
+    Similarly to the one defined above for live alert data, this callback centralises the two interactions that can
+    trigger an update of the stored alert frame URLs:
+
+    - the usual alert workflow;
+    - a click on any of the alert erasing buttons by the user.
+
+    In practice, the callback is triggered by a change in any of the two corresponding HTML placeholders.
+    """
+
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # We determine what input has triggered the callback
+    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # If the usual alert workflow has triggered the callback
+    if input_id == 'update_live_alerts_frames_workflow':
+        return workflow_input
+
+    # If a click on any of the alert erasing buttons has triggered the callback
+    else:
+        return erase_buttons_input
+
+
+@app.callback(
+    [Output('update_live_alerts_data_erase_buttons', 'children'),
+     Output('update_live_alerts_frames_erase_buttons', 'children'),
+     Output('alert_overview_style_erase_buttons', 'children')],
+    Input({'type': 'erase_alert_button', 'index': ALL}, 'n_clicks'),
+    [State('store_live_alerts_data', 'data'),
+     State('images_url_live_alerts', 'data')]
+)
+def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames):
+    """
+    --- Erasing an alert for the rest of the browser session ---
+
+    In the alert overview of each alert, a button allows to erase an irrelevant alert for the rest of the browser ses-
+    sion. This callback is triggered by a click on any of these buttons and eliminates the alert / event from the alert
+    data and frames that are stored in dcc.Store components ("store_live_alerts_data" and "images_url_live_alerts").
+
+    It does so indirectly because two interactions can modify these components: this one and the usual alert workflow.
+    To account for this, the callback updates two HTML placeholders created in homepage.py. The new data and frames are
+    sent to these, which relay them to the storage components via two other callbacks defined right above.
+
+    Additionally, this callback hides the alert overview area when it is triggered.
+    """
+    ctx = dash.callback_context
+
+    # If the callback has not been triggered by any click on alert erasing buttons, we raise a PreventUpdate
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    # These few lines allow to determine the event_id corresponding to the button that has triggered the callback
+    text = ctx.triggered[0]['prop_id'].split(':')[1]
+    event_id = text[:text.find(',')]
+    event_id = event_id.strip('"')
+
+    # We remove the corresponding key-value pair from the dictionary that contains alert frames
+    _ = alerts_frames.pop(event_id, None)
+
+    # We rebuild the live alerts as a DataFrame
+    live_alerts = pd.read_json(alerts_data)
+
+    # We will match the event_id with the corresponding column but we need to change its data type
+    live_alerts['event_id'] = live_alerts['event_id'].astype(str)
+
+    # We exclude the alerts that correspond to the event being erased
+    live_alerts = live_alerts[live_alerts['event_id'] != event_id].copy()
+
+    return live_alerts.to_json(orient='records'), alerts_frames, 'hidden'
+
+
+@app.callback(
+    [Output('update_live_alerts_data_workflow', 'children'),
+     Output('update_live_alerts_frames_workflow', 'children')],
     Input('msg', 'children')
 )
 def update_live_alerts_data(alert):
@@ -294,6 +414,9 @@ def update_live_alerts_data(alert):
     return live_alerts.to_json(orient='records'), dict_images_url_live_alerts
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Login-related callbacks
+
 @app.callback(
     [Output('login_modal', 'is_open'),
      Output('login_storage', 'data'),
@@ -303,9 +426,11 @@ def update_live_alerts_data(alert):
     Input('send_form_button', 'n_clicks'),
     [State('username_input', 'value'),
      State('password_input', 'value'),
-     State('login_storage', 'data')]
+     State('login_storage', 'data'),
+     State('map', 'center'),
+     State('map', 'zoom')]
 )
-def manage_login_modal(n_clicks, username, password, login_storage):
+def manage_login_modal(n_clicks, username, password, login_storage, current_center, current_zoom):
     """
     --- Managing the login modal ---
 
@@ -344,6 +469,9 @@ def manage_login_modal(n_clicks, username, password, login_storage):
     # connection button yet (the user arrives on the page)
     if n_clicks is None:
         return True, {'login': 'no'}, None, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
+
+    # if login_storage['login'] == 'yes':
+    #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
 
     else:
 
@@ -414,53 +542,6 @@ def manage_login_modal(n_clicks, username, password, login_storage):
 
 
 @app.callback(
-    [Output('map', 'center'),
-     Output('map', 'zoom')],
-    [Input('login_zoom_and_center', 'children'),
-     Input('alert_zoom_and_center', 'children')],
-    State('login_modal', 'is_open')
-)
-def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
-    """
-    --- Main callback for updating the zoom and center attributes of the map ---
-
-    This callback determines the center and zoom attributes of the map based on two different inputs, that are the
-    login_zoom_and_center and alert_zoom_and_center placeholders. The latter correspond to the recentering of the map
-    that takes place respectively after the user logs in and when the user clicks on one of the alert selection buttons.
-    """
-
-    ctx = dash.callback_context
-
-    # If none of the input has triggered the callback, we raise a PreventUpdate
-    if not ctx.triggered:
-        raise PreventUpdate
-
-    else:
-        # We determine what input has triggered the callback
-        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-        # If it is the login that has triggered the change in the center and zoom attributes of the map
-        if input_id == 'login_zoom_and_center':
-
-            if login_zoom_and_center is None:
-                raise PreventUpdate
-
-            return login_zoom_and_center['center'], login_zoom_and_center['zoom']
-
-        # If it is a click on an alert selection button that has triggered the change
-        elif input_id == 'alert_zoom_and_center':
-
-            if alert_zoom_and_center is None:
-                raise PreventUpdate
-
-            return alert_zoom_and_center['center'], alert_zoom_and_center['zoom']
-
-        else:
-            print('Weird result to be investigated with the change_map_zoom_and_center callback.')
-            raise PreventUpdate
-
-
-@app.callback(
     Output('login_background', 'children'),
     Output('main_navbar', 'style'),
     Input('login_modal', 'is_open')
@@ -512,18 +593,13 @@ def click_department_alerts(feature, radio_button_value):
 @app.callback(
     [Output('user_selection_column', 'md'),
      Output('map_column', 'md'),
-     Output("new_alerts_selection_list", "children"),
      Output("live_alert_header_btn", "style"),
-     Output('vision_polygons', 'children'),
-     Output('alert_modals', 'children')],
+     Output('new_alerts_selection_list', 'style')],
     Input("alert_button_alerts", "n_clicks"),
-    State('map_style_button', 'children'),
-    State("store_live_alerts_data", "data"),
-    State("images_url_live_alerts", 'data'),
-    State('site_devices_data_storage', "data")
+    [State('map_style_button', 'children')]
 )
 @cache.memoize()
-def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert_frame_urls, site_devices_data):
+def click_new_alerts_button(n_clicks, map_style_button_label):
     """
     -- Initiating the whole alert flow  --
 
@@ -547,7 +623,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
         n_clicks = 0
 
     if map_style == 'alerts':
-        return build_individual_alert_components(n_clicks, live_alerts, alert_frame_urls)
+        return display_alert_selection_area(n_clicks)
 
     elif map_style == 'risks':
         raise PreventUpdate
@@ -555,7 +631,8 @@ def click_new_alerts_button(n_clicks, map_style_button_label, live_alerts, alert
 
 @app.callback(
     [Output('alert_zoom_and_center', 'children'),
-     Output('alert_overview_area', 'children')],
+     Output('alert_overview_area', 'children'),
+     Output('alert_overview_style_zoom', 'children')],
     Input({'type': 'alert_selection_btn', 'index': ALL}, 'n_clicks'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data')]
@@ -597,7 +674,129 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
             acknowledged=acknowledged
         )
 
-        return {'center': [lat, lon], 'zoom': 14}, div
+        return {'center': [lat, lon], 'zoom': 14}, div, ''
+
+
+@app.callback(
+    [Output('map', 'center'),
+     Output('map', 'zoom')],
+    [Input('login_zoom_and_center', 'children'),
+     Input('alert_zoom_and_center', 'children')],
+    State('login_modal', 'is_open')
+)
+def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, login_modal_is_open):
+    """
+    --- Main callback for updating the zoom and center attributes of the map ---
+
+    This callback determines the center and zoom attributes of the map based on two different inputs, that are the
+    login_zoom_and_center and alert_zoom_and_center placeholders. The latter correspond to the recentering of the map
+    that takes place respectively after the user logs in and when the user clicks on one of the alert selection buttons.
+    """
+
+    ctx = dash.callback_context
+
+    # If none of the input has triggered the callback, we raise a PreventUpdate
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    else:
+        # We determine what input has triggered the callback
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        # If it is the login that has triggered the change in the center and zoom attributes of the map
+        if input_id == 'login_zoom_and_center':
+
+            if login_zoom_and_center is None:
+                raise PreventUpdate
+
+            return login_zoom_and_center['center'], login_zoom_and_center['zoom']
+
+        # If it is a click on an alert selection button that has triggered the change
+        elif input_id == 'alert_zoom_and_center':
+
+            if alert_zoom_and_center is None:
+                raise PreventUpdate
+
+            return alert_zoom_and_center['center'], alert_zoom_and_center['zoom']
+
+        else:
+            print('Weird result to be investigated with the change_map_zoom_and_center callback.')
+            raise PreventUpdate
+
+
+@app.callback(
+    Output('alert_overview_style_closing_buttons', 'children'),
+    Input({'type': 'close_alert_overview_button', 'index': ALL}, 'n_clicks')
+)
+def close_alert_overview_intermediary(n_clicks):
+    """
+    --- Closing the alert overview from the dedicated button ---
+
+    For each alert, the overview contains a button allowing to close the overview.
+
+    This callback is triggered by a click on any of these alert-specific buttons and closes the alert overview.
+
+    Because the "style" attribute of the alert overview can be modified by three different inputs (the click on any of
+    the alert selection buttons, a click on any of the overview closing buttons and a click on any of the alert erasing
+    buttons), we cannot directly have it as an Output for this callback. Instead, we modify an HTML placeholder created
+    on the home page (see homepage.py).
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    else:
+        return 'hidden'
+
+
+@app.callback(
+    Output('alert_overview_area', 'style'),
+    [Input('alert_overview_style_zoom', 'children'),
+     Input('alert_overview_style_closing_buttons', 'children'),
+     Input('alert_overview_style_erase_buttons', 'children')]
+)
+def close_alert_overview_main(
+    alert_overview_style_zoom,
+    alert_overview_style_closing_buttons,
+    alert_overview_style_erase_buttons
+):
+    """
+    --- Closing the alert overview / Main callback ---
+
+    This callback centralises the three inputs that can modify the "style" attribute of the alert overview area:
+
+    - a click on any of the alert selection buttons;
+    - a click on any of the overview closing buttons;
+    - a click on any of the alert erasing buttons.
+
+    These interactions are relayed to HTML placeholders instantiated in homepage.py and a change in any of these objects
+    triggers this callback that determines whether the alert overview must be displayed or not.
+    """
+    ctx = dash.callback_context
+
+    # If none of the input has triggered the callback, we raise a PreventUpdate
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    else:
+        # We determine what input has triggered the callback
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        # If it is a click on any of the alert selection buttons that has triggered the callback
+        if input_id == 'alert_overview_style_zoom':
+            # Then we return None, ie. we display the alert overview
+            return None
+
+        # If it is a click on any of the overview closing buttons that has triggered the callback
+        elif input_id == 'alert_overview_style_closing_buttons':
+            # Then we hide the alert overview
+            return {'display': 'none'}
+
+        # If it is a click on any of the alert erasing buttons that has triggered the callback
+        elif input_id == 'alert_overview_style_erase_buttons':
+            # Then we hide the alert overview
+            return {'display': 'none'}
 
 
 @app.callback(
@@ -671,7 +870,6 @@ def select_alert_frame_to_display(slider_value, urls):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Risk Score" page
-
 
 @app.callback(
     Output('map', 'children'),
@@ -812,14 +1010,15 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
      Output("user-div", "children"),
-     Output('individual_alert_frame_placeholder', 'children')],
+     Output('individual_alert_frame_placeholder', 'children'),
+     Output("new_alerts_selection_list", "children"),
+     Output('vision_polygons', 'children'),
+     Output('alert_modals', 'children')],
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data')]
 )
-def update_live_alerts_components(
-        live_alerts, map_style_button_label, images_url_live_alerts
-):
+def update_live_alerts_components(live_alerts, map_style_button_label, images_url_live_alerts):
     """
     -- Updating style components with corresponding alerts data --
 
@@ -854,7 +1053,11 @@ def update_live_alerts_components(
         map_style = "risks"
 
     if map_style == 'alerts':
-        return build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
+
+        output += build_individual_alert_components(live_alerts, images_url_live_alerts)
+
+        return output
 
     elif map_style == 'risks':
         raise PreventUpdate
