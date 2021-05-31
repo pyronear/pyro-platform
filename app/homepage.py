@@ -246,6 +246,7 @@ def build_login_modal():
     dal object which prevent the user from closing the modal respectively by clicking next to it and by pressing the
     Escape key.
     """
+
     return dbc.Modal(
         [
             dbc.ModalBody(
@@ -346,7 +347,7 @@ def Homepage():
 
                     html.Div(id="alert_overview_area"),
 
-                    html.Div(id='new_alerts_selection_list'),
+                    html.Div(id='new_alerts_selection_list', style={'display': 'none'}),
                     # Placeholder containing the detection data for any alert of interest
                     html.P(id="hp_alert_frame_metadata")],
                     id='user_selection_column',
@@ -367,6 +368,19 @@ def Homepage():
                     # Two placeholders updated by callbacks in main.py to change center and zoom attributes of the map
                     html.Div(id='login_zoom_and_center', style={'display': 'none'}),
                     html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
+
+                    # Placeholders for the three inputs that can affect the style attribute of the alert overview area
+                    html.Div(id='alert_overview_style_zoom', style={'display': 'none'}),
+                    html.Div(id='alert_overview_style_closing_buttons', style={'display': 'none'}),
+                    html.Div(id='alert_overview_style_erase_buttons', style={'display': 'none'}),
+
+                    # Placeholders for the two inputs that can affect the stored live alert data
+                    html.Div(id='update_live_alerts_data_workflow', style={'display': 'none'}),
+                    html.Div(id='update_live_alerts_data_erase_buttons', style={'display': 'none'}),
+
+                    # Placeholders for the two inputs that can affect the stored live alert frame URLs
+                    html.Div(id='update_live_alerts_frames_workflow', style={'display': 'none'}),
+                    html.Div(id='update_live_alerts_frames_erase_buttons', style={'display': 'none'}),
 
                     # Hidden div storing the webscocket message sent by the API
                     html.Div(id="msg", style={'display': 'none'}),
