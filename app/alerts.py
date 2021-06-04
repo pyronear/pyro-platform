@@ -57,6 +57,10 @@ from geopy.distance import geodesic
 # We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
 departments = requests.get(cfg.GEOJSON_FILE).json()
 
+# import json
+
+# with open('app/data/departements.geojson') as file:
+#     departments = json.load(file)
 
 def build_departments_geojson():
     """
@@ -199,7 +203,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
-def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
+def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocked_event_ids):
     """
     This function is used in the main.py file to create alerts-related elements such as the alert button (banner)
     or the alert markers on the map.
@@ -246,6 +250,8 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     # Building the list of alert markers to be displayed
     alerts_markers = []
     all_alerts = pd.read_json(live_alerts)
+
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     if all_alerts.empty:
         # When there is no live alert to display, we return a alert header button that will remain hidden
@@ -495,7 +501,7 @@ def display_alert_selection_area(n_clicks):
     return [md_user, md_map, alert_button_status, alert_selection_area_style]
 
 
-def build_individual_alert_components(live_alerts, alert_frame_urls):
+def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_event_ids):
     """
     This function builds the user selection area containing the alert list
 
@@ -511,6 +517,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls):
 
     # Creating the alert_list based on live_alerts
     all_alerts = pd.read_json(live_alerts)
+
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     if all_alerts.empty:
         return [], [], []
