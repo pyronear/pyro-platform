@@ -57,10 +57,6 @@ from geopy.distance import geodesic
 # We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
 departments = requests.get(cfg.GEOJSON_FILE).json()
 
-# import json
-
-# with open('app/data/departements.geojson') as file:
-#     departments = json.load(file)
 
 def build_departments_geojson():
     """
