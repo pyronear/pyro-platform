@@ -46,9 +46,6 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
-from dash_extensions.websockets import SocketPool, run_server
-from dash_extensions import WebSocket
-
 # Pandas to read the login correspondences file
 import pandas as pd
 
@@ -87,7 +84,6 @@ from services import api_client
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
-socket_pool = SocketPool(app)
 
 # We define a few attributes of the app object
 app.title = 'Pyronear - Monitoring platform'
@@ -100,8 +96,10 @@ app.layout = html.Div(
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"height": "100%"}),
 
+        # Main interval that fetches API alerts data
+        dcc.Interval(id="main_api_fetch_interval", interval=5 * 1000),
         # Storage components which contains data relative to alerts
-        dcc.Store(id="store_live_alerts_data", storage_type="session"),
+        dcc.Store(id="store_live_alerts_data", storage_type="session", data={}),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
 
@@ -131,32 +129,11 @@ cache = Cache(app.server, config={
 })
 
 
-# End point ping by the API for each alert being recorded. Then broadcasting message to ALL sessions
-@app.server.route("/alert/<message>")
-def broadcast_message(message):
-    socket_pool.broadcast(message)
-    return f"Message {message} broadcast."
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
-
-@app.callback(
-    Output('msg', 'children'),
-    Input('ws', 'message')
-)
-def trigger(message):
-    """
-    This callback relays the message sent by the API whenever an alert is raised by one of the devices.
-
-    It then triggers a "waterfall" of callbacks to produce the alert workflow.
-    """
-
-    return message
-
 
 @app.callback(
     Output("page-content", "children"),
@@ -335,9 +312,11 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames):
 @app.callback(
     [Output('update_live_alerts_data_workflow', 'children'),
      Output('update_live_alerts_frames_workflow', 'children')],
-    Input('msg', 'children')
+    Input('main_api_fetch_interval', 'n_intervals'),
+    [State('store_live_alerts_data', 'data'),
+     State('images_url_live_alerts', 'data')]
 )
-def update_live_alerts_data(alert):
+def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls):
     """
     The following function is used to update the store containing live_alerts data from API and
     the dictionary of images of ongoing alerts.
@@ -349,7 +328,7 @@ def update_live_alerts_data(alert):
 
     - a dict where keys are event id and value lists of all urls related to the same event.
 
-    These URLs come from the API calls, triggered by the websocket message stored in msg hidden div.
+    These URLs come from the API calls, triggered by the intervals every 5 seconds.
     """
 
     # Fetching live alerts where is_acknowledged is False
@@ -411,7 +390,13 @@ def update_live_alerts_data(alert):
         else:
             dict_images_url_live_alerts[row['event_id']].append(img_url)
 
-    return live_alerts.to_json(orient='records'), dict_images_url_live_alerts
+    live_alerts = live_alerts.to_json(orient='records')
+
+    # Stopping the process if no new alert is fetched
+    if ongoing_live_alerts == live_alerts and json.dumps(ongoing_frame_urls) == json.dumps(dict_images_url_live_alerts):
+        raise PreventUpdate
+
+    return live_alerts, dict_images_url_live_alerts
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -490,7 +475,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
         else:
             # This is the route of the API that we are going to use for the credential check
-            login_route_url = 'http://pyronear-api.herokuapp.com/login/access-token'
+            login_route_url = cfg.API_URL + '/login/access-token'
 
             # We create a mini-dictionary with the credentials passsed by the user
             data = {
@@ -1023,7 +1008,7 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
     -- Updating style components with corresponding alerts data --
 
     This callback takes as input "live_alerts", a json object containing live_alerts data. It is triggered each time a
-    new alert is sent by the API then processed by the websocket and then stored in store_live_alerts_data.
+    new alert is fetched and then stored in store_live_alerts_data.
 
     It also takes as states the images_url_live_alerts and the label of the button that allows users to change the
     style of the map , in order to deduce the style of the map that the user is currently looking at.
@@ -1161,4 +1146,4 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=8050, help='Port to run the server on')
     args = parser.parse_args()
 
-    run_server(app, port=args.port)
+    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
