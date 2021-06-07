@@ -303,7 +303,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocke
             )
         )
 
-    return [alert_button, alerts_markers_layer, navbar_color, navbar_title, individual_alert_frame_placeholder_children]
+    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]#, individual_alert_frame_placeholder_children]
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
@@ -567,7 +567,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
             lat=row['lat'],
             lon=row['lon'],
             site_name="Tour de Serre en Don",
-            urls=alert_frame_urls[alert_id]
+            urls=alert_frame_urls.get(alert_id, [''])
         )
 
         alert_modals_children.append(modal)

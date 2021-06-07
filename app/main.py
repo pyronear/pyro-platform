@@ -97,7 +97,7 @@ app.layout = html.Div(
         html.Div(id="page-content", style={"height": "100%"}),
 
         # Main interval that fetches API alerts data
-        dcc.Interval(id="main_api_fetch_interval", interval=5 * 1000),
+        dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
         # Storage components which contains data relative to alerts
         dcc.Store(id="store_live_alerts_data", storage_type="session", data={}),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
@@ -199,9 +199,10 @@ def change_layer_style(n_clicks=None):
 @app.callback(
     Output('store_live_alerts_data', 'data'),
     [Input('update_live_alerts_data_workflow', 'data'),
-     Input('update_live_alerts_data_erase_buttons', 'data')]
+     Input('update_live_alerts_data_erase_buttons', 'data')],
+    State('update_live_alerts_data_workflow', 'data')
 )
-def update_live_alerts_data_main(workflow_input, erase_buttons_input):
+def update_live_alerts_data_main(workflow_input, erase_buttons_input, current_alert_data):
     """
     --- Updating the alert data storage component / Main callback ---
 
@@ -410,22 +411,38 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
 
     live_alerts = live_alerts.to_json(orient='records')
 
-    # Stopping the process if no new alert and no new frame is fetched
-    # First, we verify whether we have the same alerts
-    condition = ongoing_live_alerts == live_alerts
+    # TO BE THOUGHT FURTHER ABOUT
+
+    # First, we verify whether we have the same events
+    if ongoing_live_alerts != {}:
+        condition = np.array_equal(
+            pd.read_json(ongoing_live_alerts)['event_id'].unique(),
+            pd.read_json(live_alerts)['event_id'].unique()
+        )
+
+    else:
+        condition = True
 
     # Second, we verify whether we have the same event_ids as keys in the two frame URL dictionaries
     condition = condition and (ongoing_frame_urls.keys() == dict_images_url_live_alerts.keys())
 
-    # Eventually, we verify that we have the same number of frames for each events in both dictionaries
-    condition = condition and all(
-        len(ongoing_frame_urls[k]) == len(dict_images_url_live_alerts[k]) for k in ongoing_frame_urls.keys()
-    )
+    if not condition:
+        return live_alerts, dict_images_url_live_alerts
 
-    if condition:
-        raise PreventUpdate
+    else:
 
-    return live_alerts, dict_images_url_live_alerts
+        # Eventually, we verify that we have the same number of frames for each events in both dictionaries
+        condition_bis = all(
+            len(ongoing_frame_urls[k]) == len(dict_images_url_live_alerts[k]) for k in ongoing_frame_urls.keys()
+        )
+
+        if not condition_bis:
+            # We would like to only update the list of alert frames being displayed and not all the components
+            return dash.no_update, dict_images_url_live_alerts
+
+        else:
+            # Stopping the process if no new alert and no new frame is fetched
+            raise PreventUpdate
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1024,7 +1041,6 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
      Output('live_alerts_marker', 'children'),
      Output("main_navbar", "color"),
      Output("user-div", "children"),
-     Output('individual_alert_frame_placeholder', 'children'),
      Output("new_alerts_selection_list", "children"),
      Output('vision_polygons', 'children'),
      Output('alert_modals', 'children')],
@@ -1076,6 +1092,38 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
 
     elif map_style == 'risks':
         raise PreventUpdate
+
+@app.callback(
+    Output('individual_alert_frame_placeholder', 'children'),
+    Input('images_url_live_alerts', 'data')
+)
+def update_individual_frame_components(images_url_live_alerts):
+    individual_alert_frame_placeholder_children = []
+
+    for event_id, frame_url_list in images_url_live_alerts.items():
+
+        individual_alert_frame_placeholder_children.append(
+            html.Div(
+                id={
+                    'type': 'individual_alert_frame_storage',
+                    'index': str(event_id)
+                },
+                children=frame_url_list,
+                style={'display': 'none'}
+            )
+        )
+
+    return individual_alert_frame_placeholder_children
+
+@app.callback(
+    [Output({'type': 'alert_slider', 'index': MATCH}, 'max'),
+     Output({'type': 'alert_slider', 'index': MATCH}, 'marks')],
+    Input({'type': 'individual_alert_frame_storage', 'index': MATCH}, 'children')
+)
+def modify_alert_slider_length(individual_alert_frame_storage):
+    number_of_images = len(individual_alert_frame_storage)
+
+    return number_of_images, {i + 1: str(i + 1) for i in range(number_of_images)}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
