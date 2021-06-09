@@ -29,8 +29,6 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
-from dash_extensions import WebSocket
-
 # From navbar.py to add the navigation bar at the top of the page
 from navbar import Navbar
 
@@ -381,10 +379,6 @@ def Homepage():
                     # Placeholders for the two inputs that can affect the stored live alert frame URLs
                     html.Div(id='update_live_alerts_frames_workflow', style={'display': 'none'}),
                     html.Div(id='update_live_alerts_frames_erase_buttons', style={'display': 'none'}),
-
-                    # Hidden div storing the webscocket message sent by the API
-                    html.Div(id="msg", style={'display': 'none'}),
-                    WebSocket(id="ws", url="wss://platform.pyronear.org//wss"),
                 ],
                     id='map_column',
                     md=12),
