@@ -110,6 +110,13 @@ app.layout = html.Div(
         # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
 
+        # Storage component which contains data relative devices
+        dcc.Store(
+            id="devices_data_storage",
+            storage_type="session",
+            data=requests.get('https://api.pyronear.org/devices/', headers=api_client.headers).json()
+        ),
+
         # Storage component which contains data relative to site devices
         dcc.Store(
             id="site_devices_data_storage",
@@ -324,9 +331,10 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
     Input('main_api_fetch_interval', 'n_intervals'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data'),
-     State('blocked_event_ids', 'data')]
+     State('blocked_event_ids', 'data'),
+     State('devices_data_storage', 'data')]
 )
-def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids):
+def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data):
     """
     The following function is used to update the store containing live_alerts data from API and
     the dictionary of images of ongoing alerts.
@@ -408,6 +416,21 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
 
         else:
             dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
+
+    # Merging yaw (azimuth) field from devices_data
+    all_devices = pd.DataFrame(devices_data)
+
+    devices_yaw = all_devices[['id', 'yaw']].copy()
+
+    live_alerts = pd.merge(
+        live_alerts, devices_yaw,
+        how='left',
+        left_on=['device_id'], right_on=['id']
+    )
+
+    live_alerts = live_alerts.drop(['azimuth'], axis=1)
+
+    live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
 
     live_alerts = live_alerts.to_json(orient='records')
 

@@ -531,7 +531,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
         alert_id = str(row['event_id'])
         alert_lat = round(row['lat'], 4)
         alert_lon = round(row['lon'], 4)
-        alert_azimuth = round(row['azimuth'], 1)
+        alert_azimuth = round(row['yaw'], 1)
         alert_date = datetime.fromisoformat(str(row['created_at'])).date()
         alert_time = datetime.fromisoformat(str(row['created_at'])).time()
 
@@ -553,7 +553,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
             event_id=alert_id,
             site_lat=row['lat'],
             site_lon=row['lon'],
-            yaw=row['azimuth'],
+            yaw=row['yaw'],
             opening_angle=60,
             dist_km=2
         )
