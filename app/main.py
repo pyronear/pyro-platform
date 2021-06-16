@@ -26,6 +26,8 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
+import time
+
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
@@ -99,7 +101,7 @@ app.layout = html.Div(
         # Main interval that fetches API alerts data
         dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
         # Storage components which contains data relative to alerts
-        dcc.Store(id="store_live_alerts_data", storage_type="session", data={}),
+        dcc.Store(id="store_live_alerts_data", storage_type="session", data=json.dumps({'status': 'never_loaded_alerts_data'})),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
 
@@ -335,19 +337,8 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
      State('devices_data_storage', 'data')]
 )
 def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data):
-    """
-    The following function is used to update the store containing live_alerts data from API and
-    the dictionary of images of ongoing alerts.
 
-    It returns :
-
-    - a json containing live alerts data, where live alerts either correspond to a not-yet-acknowledged event or have
-    been created less than 12 hours ago;
-
-    - a dict where keys are event id and value lists of all urls related to the same event.
-
-    These URLs come from the API calls, triggered by the intervals every 5 seconds.
-    """
+    start_time = time.time()
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
@@ -398,74 +389,121 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
     if live_alerts.empty:
         raise PreventUpdate
 
-    # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
-    dict_images_url_live_alerts = {}
-
-    for _, row in live_alerts.iterrows():
-
-        img_url = ""
-
-        try:
-            img_url = api_client.get_media_url(row["media_id"]).json()["url"]
-
-        except Exception:
-            img_url = ''
-
-        if str(row['event_id']) not in dict_images_url_live_alerts.keys():
-            dict_images_url_live_alerts[str(row['event_id'])] = [img_url]
-
-        else:
-            dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
-
-    # Merging yaw (azimuth) field from devices_data
-    all_devices = pd.DataFrame(devices_data)
-
-    devices_yaw = all_devices[['id', 'yaw']].copy()
-
-    live_alerts = pd.merge(
-        live_alerts, devices_yaw,
-        how='left',
-        left_on=['device_id'], right_on=['id']
-    )
-
-    live_alerts = live_alerts.drop(['azimuth'], axis=1)
-
-    live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
-
-    live_alerts = live_alerts.to_json(orient='records')
-
-    # TO BE THOUGHT FURTHER ABOUT
-
-    # First, we verify whether we have the same events
-    if ongoing_live_alerts != {}:
-        condition = np.array_equal(
-            pd.read_json(ongoing_live_alerts)['event_id'].unique(),
-            pd.read_json(live_alerts)['event_id'].unique()
-        )
-
-    else:
-        condition = True
-
-    # Second, we verify whether we have the same event_ids as keys in the two frame URL dictionaries
-    condition = condition and (ongoing_frame_urls.keys() == dict_images_url_live_alerts.keys())
-
-    if not condition:
-        return live_alerts, dict_images_url_live_alerts
-
     else:
 
-        # Eventually, we verify that we have the same number of frames for each events in both dictionaries
-        condition_bis = all(
-            len(ongoing_frame_urls[k]) == len(dict_images_url_live_alerts[k]) for k in ongoing_frame_urls.keys()
-        )
+        temp = json.loads(ongoing_live_alerts)
 
-        if not condition_bis:
-            # We would like to only update the list of alert frames being displayed and not all the components
-            return dash.no_update, dict_images_url_live_alerts
+        if isinstance(temp, dict) and 'status' in temp.keys() and temp['status'] == 'never_loaded_alerts_data':
+
+            print('initial condition verified')
+
+            # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
+            dict_images_url_live_alerts = {}
+
+            for _, row in live_alerts.iterrows():
+
+                img_url = ""
+
+                try:
+                    img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+
+                except Exception:
+                    img_url = ''
+
+                if str(row['event_id']) not in dict_images_url_live_alerts.keys():
+                    dict_images_url_live_alerts[str(row['event_id'])] = [img_url]
+
+                else:
+                    dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
+
+            # Merging yaw (azimuth) field from devices_data
+            all_devices = pd.DataFrame(devices_data)
+
+            devices_yaw = all_devices[['id', 'yaw']].copy()
+
+            live_alerts = pd.merge(
+                live_alerts, devices_yaw,
+                how='left',
+                left_on=['device_id'], right_on=['id']
+            )
+
+            live_alerts = live_alerts.drop(['azimuth'], axis=1)
+
+            live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
+
+            live_alerts = live_alerts.to_json(orient='records')
+
+            print("--- %s seconds ---" % (time.time() - start_time))
+
+            return live_alerts, dict_images_url_live_alerts
 
         else:
-            # Stopping the process if no new alert and no new frame is fetched
-            raise PreventUpdate
+
+            ongoing_live_alerts = pd.read_json(ongoing_live_alerts)
+
+            # Are all live alerts already stored on the platform?
+            condition = np.array_equal(
+                live_alerts['id'].unique(),
+                ongoing_live_alerts['id'].unique()
+            )
+
+            if condition:
+                # No new alert to display
+
+                print("--- %s seconds ---" % (time.time() - start_time))
+
+                raise PreventUpdate
+
+            else:
+                new_alerts = live_alerts[~live_alerts['id'].isin(ongoing_live_alerts['id'].unique())].copy()
+
+                dict_images_url_live_alerts = ongoing_frame_urls.copy()
+
+                for _, row in new_alerts.iterrows():
+                    try:
+                        img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+
+                    except Exception:
+                        img_url = ''
+
+                    if str(row['event_id']) not in dict_images_url_live_alerts.keys():
+                        dict_images_url_live_alerts[str(row['event_id'])] = [img_url]
+
+                    else:
+                        dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
+
+                # Is there any new event among these new alerts?
+                condition = (~new_alerts['event_id'].isin(ongoing_live_alerts['event_id'].unique())).sum()
+
+                if condition:
+
+                    # Merging yaw (azimuth) field from devices_data
+                    all_devices = pd.DataFrame(devices_data)
+
+                    devices_yaw = all_devices[['id', 'yaw']].copy()
+
+                    live_alerts = pd.merge(
+                        live_alerts, devices_yaw,
+                        how='left',
+                        left_on=['device_id'], right_on=['id']
+                    )
+
+                    live_alerts = live_alerts.drop(['azimuth'], axis=1)
+
+                    live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
+
+                    live_alerts = live_alerts.to_json(orient='records')
+
+                    print("--- %s seconds ---" % (time.time() - start_time))
+
+                    return live_alerts, dict_images_url_live_alerts
+
+                else:
+
+                    print("--- %s seconds ---" % (time.time() - start_time))
+
+                    # We would like to only update the list of alert frames being displayed and not all the components
+                    return dash.no_update, dict_images_url_live_alerts
 
 
 # ----------------------------------------------------------------------------------------------------------------------
