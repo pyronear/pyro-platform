@@ -128,7 +128,10 @@ app.layout = html.Div(
 
         # Storing alerts data for each event separately
         html.Div(id='individual_alert_data_placeholder', style={'display': 'none'}),
-        html.Div(id='individual_alert_frame_placeholder', style={'display': 'none'})
+        html.Div(id='individual_alert_frame_placeholder', style={'display': 'none'}),
+
+        # Storage component saving the IDs of alerts whose frames have already been loaded
+        dcc.Store(id='loaded_frames', storage_type='session')
     ]
 )
 
@@ -329,14 +332,18 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
 
 @app.callback(
     [Output('update_live_alerts_data_workflow', 'data'),
-     Output('update_live_alerts_frames_workflow', 'data')],
+     Output('update_live_alerts_frames_workflow', 'data'),
+     Output('loaded_frames', 'data')],
     Input('main_api_fetch_interval', 'n_intervals'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data'),
      State('blocked_event_ids', 'data'),
-     State('devices_data_storage', 'data')]
+     State('devices_data_storage', 'data'),
+     State('loaded_frames', 'data')]
 )
-def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data):
+def update_live_alerts_data(
+    n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data, already_loaded_frames
+    ):
 
     start_time = time.time()
 
@@ -431,11 +438,13 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
 
             live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
 
+            new_loaded_frames = list(live_alerts['id'].unique())
+
             live_alerts = live_alerts.to_json(orient='records')
 
             print("--- %s seconds ---" % (time.time() - start_time))
 
-            return live_alerts, dict_images_url_live_alerts
+            return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
         else:
 
@@ -455,7 +464,11 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
                 raise PreventUpdate
 
             else:
-                new_alerts = live_alerts[~live_alerts['id'].isin(ongoing_live_alerts['id'].unique())].copy()
+                print(already_loaded_frames)
+
+                new_alerts = live_alerts[~live_alerts['id'].isin(already_loaded_frames['loaded_frames'])].copy()
+
+                new_loaded_frames = list(live_alerts['id'].unique())
 
                 dict_images_url_live_alerts = ongoing_frame_urls.copy()
 
@@ -496,14 +509,14 @@ def update_live_alerts_data(n_intervals, ongoing_live_alerts, ongoing_frame_urls
 
                     print("--- %s seconds ---" % (time.time() - start_time))
 
-                    return live_alerts, dict_images_url_live_alerts
+                    return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
                 else:
 
                     print("--- %s seconds ---" % (time.time() - start_time))
 
                     # We would like to only update the list of alert frames being displayed and not all the components
-                    return dash.no_update, dict_images_url_live_alerts
+                    return dash.no_update, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
