@@ -100,8 +100,13 @@ app.layout = html.Div(
 
         # Main interval that fetches API alerts data
         dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
+
         # Storage components which contains data relative to alerts
-        dcc.Store(id="store_live_alerts_data", storage_type="session", data=json.dumps({'status': 'never_loaded_alerts_data'})),
+        dcc.Store(
+            id="store_live_alerts_data",
+            storage_type="session",
+            data=json.dumps({'status': 'never_loaded_alerts_data'})
+        ),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
 
@@ -343,7 +348,7 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
 )
 def update_live_alerts_data(
     n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data, already_loaded_frames
-    ):
+):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
     client so as to identify live alerts, load the associated data and trigger their display on the platform. This doc-
@@ -1203,6 +1208,7 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
     elif map_style == 'risks':
         raise PreventUpdate
 
+
 @app.callback(
     Output('individual_alert_frame_placeholder', 'children'),
     Input('images_url_live_alerts', 'data')
@@ -1224,6 +1230,7 @@ def update_individual_frame_components(images_url_live_alerts):
         )
 
     return individual_alert_frame_placeholder_children
+
 
 @app.callback(
     [Output({'type': 'alert_slider', 'index': MATCH}, 'max'),
