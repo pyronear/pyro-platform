@@ -553,7 +553,12 @@ def update_live_alerts_data(
                     live_alerts = live_alerts.to_json(orient='records')
 
                     # We update all outputs
-                    return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, dash.no_update
+                    return [
+                        live_alerts,
+                        dict_images_url_live_alerts,
+                        {'loaded_frames': new_loaded_frames},
+                        dash.no_update
+                    ]
 
                 # If the condition is not verified, we have no new "alert" / event to display on the platform but only
                 # new detection frames for an existing alert; this means that we do not have to update all components
@@ -561,7 +566,12 @@ def update_live_alerts_data(
 
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
-                    return dash.no_update, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, dash.no_update
+                    return [
+                        dash.no_update,
+                        dict_images_url_live_alerts,
+                        {'loaded_frames': new_loaded_frames},
+                        dash.no_update
+                    ]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
