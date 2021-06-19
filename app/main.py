@@ -99,7 +99,7 @@ app.layout = html.Div(
         html.Div(id="page-content", style={"height": "100%"}),
 
         # Main interval that fetches API alerts data
-        dcc.Interval(id="main_api_fetch_interval", interval=5 * 1000),
+        dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
 
         # Storage components which contains data relative to alerts
         dcc.Store(
@@ -338,7 +338,8 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
 @app.callback(
     [Output('update_live_alerts_data_workflow', 'data'),
      Output('update_live_alerts_frames_workflow', 'data'),
-     Output('loaded_frames', 'data')],
+     Output('loaded_frames', 'data'),
+     Output('main_api_fetch_interval', 'interval')],
     Input('main_api_fetch_interval', 'n_intervals'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data'),
@@ -354,6 +355,9 @@ def update_live_alerts_data(
     client so as to identify live alerts, load the associated data and trigger their display on the platform. This doc-
     string should be completed but more details can be found in the comments below.
     """
+
+    print('Number of intervals:', n_intervals)
+    print('Time:', time.time())
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
@@ -472,7 +476,7 @@ def update_live_alerts_data(
             # - the storage component that contains the dictionary with detection frame URLs;
             # - the storage component that serves as source of truth for the list of already loaded alerts
 
-            return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
+            return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, 5 * 1000
 
         else:
             # In this case, we have already loaded some alert data
@@ -549,7 +553,7 @@ def update_live_alerts_data(
                     live_alerts = live_alerts.to_json(orient='records')
 
                     # We update all outputs
-                    return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
+                    return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, dash.no_update
 
                 # If the condition is not verified, we have no new "alert" / event to display on the platform but only
                 # new detection frames for an existing alert; this means that we do not have to update all components
@@ -557,7 +561,7 @@ def update_live_alerts_data(
 
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
-                    return dash.no_update, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
+                    return dash.no_update, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, dash.no_update
 
 
 # ----------------------------------------------------------------------------------------------------------------------
