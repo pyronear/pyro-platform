@@ -344,8 +344,11 @@ def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, 
 def update_live_alerts_data(
     n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data, already_loaded_frames
     ):
-
-    start_time = time.time()
+    """
+    This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
+    client so as to identify live alerts, load the associated data and trigger their display on the platform. This doc-
+    string should be completed but more details can be found in the comments below.
+    """
 
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
@@ -393,61 +396,83 @@ def update_live_alerts_data(
         ~live_alerts['event_id'].isin(blocked_event_ids['event_ids'])
     ].copy()
 
+    # Is there any live alert to display?
     if live_alerts.empty:
+        # If not, we do not update any of the callback's output
         raise PreventUpdate
 
     else:
+        # If yes, there is a bit of work to do!
 
+        # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
 
+        # Has some alert data already been loaded so far?
         if isinstance(temp, dict) and 'status' in temp.keys() and temp['status'] == 'never_loaded_alerts_data':
-
-            print('initial condition verified')
+            # If the dictionary loaded from the store_live_alerts_data dcc.Store component corresponds to the initial
+            # data attribute of the component, it means that alert data have never been loaded so far
 
             # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
             dict_images_url_live_alerts = {}
 
+            # We iterate over newly loaded live alerts
             for _, row in live_alerts.iterrows():
-
-                img_url = ""
-
                 try:
+                    # For each live alert, we fetch the URL of the associated frame
                     img_url = api_client.get_media_url(row["media_id"]).json()["url"]
 
                 except Exception:
+                    # This is just a security in case we cannot retrieve the URL of the detection frame
                     img_url = ''
 
+                # We now want to fill-in the dictionary that will contain the URLs of the detection frames
                 if str(row['event_id']) not in dict_images_url_live_alerts.keys():
+                    # This is a new event, so we need to instantiate the key / value pair
                     dict_images_url_live_alerts[str(row['event_id'])] = [img_url]
 
                 else:
+                    # We already have some URLs for this event and we simply append the latest frame to the list of URLs
                     dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
 
             # Merging yaw (azimuth) field from devices_data
             all_devices = pd.DataFrame(devices_data)
 
+            # We restrict the DataFrame to useful information
             devices_yaw = all_devices[['id', 'yaw']].copy()
 
+            # We merge it with the live_alerts DataFrame
             live_alerts = pd.merge(
                 live_alerts, devices_yaw,
                 how='left',
                 left_on=['device_id'], right_on=['id']
             )
 
+            # We drop the azimuth associated with the alert as we will focus on the yaw of the device
             live_alerts = live_alerts.drop(['azimuth'], axis=1)
 
+            # We rename columns to avoid any ambibguity (id_y is the id of the device)
             live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
 
+            # We store the IDs of newly loaded alerts in a dedicated list
+            # This will serve as the source of truth to know what frame URLs have already been fetched or not
             new_loaded_frames = list(live_alerts['id'].unique())
 
+            # We convert the live_alerts DataFrame into a JSON that can be stored in a dcc.Store component
             live_alerts = live_alerts.to_json(orient='records')
 
-            print("--- %s seconds ---" % (time.time() - start_time))
+            # Reminder: in this case, this is the first time that we load alert data
+
+            # So we update all outputs:
+            # - the storage component that contains alert data in JSON format;
+            # - the storage component that contains the dictionary with detection frame URLs;
+            # - the storage component that serves as source of truth for the list of already loaded alerts
 
             return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
         else:
+            # In this case, we have already loaded some alert data
 
+            # We create a DataFrame with the data for already loaded alerts
             ongoing_live_alerts = pd.read_json(ongoing_live_alerts)
 
             # Are all live alerts already stored on the platform?
@@ -456,29 +481,36 @@ def update_live_alerts_data(
                 ongoing_live_alerts['id'].unique()
             )
 
+            # If this condition is verified,
             if condition:
-                # No new alert to display
-
-                print("--- %s seconds ---" % (time.time() - start_time))
-
+                # Then there is no new alert to display and we do not update any of the components
                 raise PreventUpdate
 
+            # If the condition is not verified,
             else:
-                print(already_loaded_frames)
+                # Then, there are new alerts to display on the platform
 
+                # To identify them, we use the list of already loaded alert IDs, stored in a dedicated dcc.Store
                 new_alerts = live_alerts[~live_alerts['id'].isin(already_loaded_frames['loaded_frames'])].copy()
 
+                # We want to update this list since new alerts have been fetched from the database
                 new_loaded_frames = list(live_alerts['id'].unique())
 
+                # Besides, we want to update the dictionary that contains alert frame URLs
+                # We start from a copy of the existing one (which we got from the dedicated dcc.Store component)
                 dict_images_url_live_alerts = ongoing_frame_urls.copy()
 
+                # We iterate over new live alerts
                 for _, row in new_alerts.iterrows():
                     try:
+                        # For each new live alert, we fetch the URL of the associated frame
                         img_url = api_client.get_media_url(row["media_id"]).json()["url"]
 
                     except Exception:
+                        # This is just a security in case we cannot retrieve the URL of the detection frame
                         img_url = ''
 
+                    # We update the detection frame URL dictionary with the same method as above
                     if str(row['event_id']) not in dict_images_url_live_alerts.keys():
                         dict_images_url_live_alerts[str(row['event_id'])] = [img_url]
 
@@ -488,11 +520,15 @@ def update_live_alerts_data(
                 # Is there any new event among these new alerts?
                 condition = (~new_alerts['event_id'].isin(ongoing_live_alerts['event_id'].unique())).sum()
 
+                # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
+                # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
+                # selection area, etc)
                 if condition:
 
                     # Merging yaw (azimuth) field from devices_data
                     all_devices = pd.DataFrame(devices_data)
 
+                    # We follow the same process as above to replace the azimuth of the alert with the yaw of the device
                     devices_yaw = all_devices[['id', 'yaw']].copy()
 
                     live_alerts = pd.merge(
@@ -507,15 +543,15 @@ def update_live_alerts_data(
 
                     live_alerts = live_alerts.to_json(orient='records')
 
-                    print("--- %s seconds ---" % (time.time() - start_time))
-
+                    # We update all outputs
                     return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
+                # If the condition is not verified, we have no new "alert" / event to display on the platform but only
+                # new detection frames for an existing alert; this means that we do not have to update all components
                 else:
 
-                    print("--- %s seconds ---" % (time.time() - start_time))
-
                     # We would like to only update the list of alert frames being displayed and not all the components
+                    # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
                     return dash.no_update, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}
 
 
