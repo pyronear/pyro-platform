@@ -99,7 +99,7 @@ app.layout = html.Div(
         html.Div(id="page-content", style={"height": "100%"}),
 
         # Main interval that fetches API alerts data
-        dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
+        dcc.Interval(id="main_api_fetch_interval", interval=5 * 1000),
 
         # Storage components which contains data relative to alerts
         dcc.Store(
