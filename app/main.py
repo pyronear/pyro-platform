@@ -356,9 +356,6 @@ def update_live_alerts_data(
     string should be completed but more details can be found in the comments below.
     """
 
-    print('Number of intervals:', n_intervals)
-    print('Time:', time.time())
-
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
 
