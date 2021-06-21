@@ -26,8 +26,6 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
-import time
-
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
