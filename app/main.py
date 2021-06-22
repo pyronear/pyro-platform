@@ -214,10 +214,9 @@ def change_layer_style(n_clicks=None):
 @app.callback(
     Output('store_live_alerts_data', 'data'),
     [Input('update_live_alerts_data_workflow', 'data'),
-     Input('update_live_alerts_data_erase_buttons', 'data')],
-    State('update_live_alerts_data_workflow', 'data')
+     Input('update_live_alerts_data_erase_buttons', 'data')]
 )
-def update_live_alerts_data_main(workflow_input, erase_buttons_input, current_alert_data):
+def update_live_alerts_data_main(workflow_input, erase_buttons_input):
     """
     --- Updating the alert data storage component / Main callback ---
 
