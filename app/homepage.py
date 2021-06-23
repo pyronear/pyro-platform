@@ -364,8 +364,8 @@ def Homepage():
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
 
                     # Two placeholders updated by callbacks in main.py to change center and zoom attributes of the map
-                    html.Div(id='login_zoom_and_center', style={'display': 'none'}),
-                    html.Div(id='alert_zoom_and_center', style={'display': 'none'}),
+                    dcc.Store(id='login_zoom_and_center', data={}),
+                    dcc.Store(id='alert_zoom_and_center', data={}),
 
                     # Placeholders for the three inputs that can affect the style attribute of the alert overview area
                     html.Div(id='alert_overview_style_zoom', style={'display': 'none'}),
@@ -373,12 +373,12 @@ def Homepage():
                     html.Div(id='alert_overview_style_erase_buttons', style={'display': 'none'}),
 
                     # Placeholders for the two inputs that can affect the stored live alert data
-                    html.Div(id='update_live_alerts_data_workflow', style={'display': 'none'}),
-                    html.Div(id='update_live_alerts_data_erase_buttons', style={'display': 'none'}),
+                    dcc.Store(id='update_live_alerts_data_workflow', data={}),
+                    dcc.Store(id='update_live_alerts_data_erase_buttons', data={}),
 
                     # Placeholders for the two inputs that can affect the stored live alert frame URLs
-                    html.Div(id='update_live_alerts_frames_workflow', style={'display': 'none'}),
-                    html.Div(id='update_live_alerts_frames_erase_buttons', style={'display': 'none'}),
+                    dcc.Store(id='update_live_alerts_frames_workflow', data={}),
+                    dcc.Store(id='update_live_alerts_frames_erase_buttons', data={})
                 ],
                     id='map_column',
                     md=12),
