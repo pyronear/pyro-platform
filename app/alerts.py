@@ -247,8 +247,6 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocke
     alerts_markers = []
     all_alerts = pd.read_json(live_alerts)
 
-    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
-
     if all_alerts.empty:
         # When there is no live alert to display, we return a alert header button that will remain hidden
         hidden_header_alert_button = html.Div(
@@ -264,7 +262,9 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocke
         # (It can be interesting to test returning [] instead of [hidden_header_alert_button] and erase all alerts one
         # by one if explanations are unclear)
 
-        return [hidden_header_alert_button], [], '#054546', 'Surveillez les départs de feux', []
+        return [hidden_header_alert_button], [], '#054546', 'Surveillez les départs de feux'
+
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
     for _, row in all_events.iterrows():
@@ -514,10 +514,10 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
     # Creating the alert_list based on live_alerts
     all_alerts = pd.read_json(live_alerts)
 
-    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
-
     if all_alerts.empty:
         return [], [], []
+
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
 
