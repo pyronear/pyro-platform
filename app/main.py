@@ -26,6 +26,10 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
+import time
+from pyroclient import Client
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
@@ -97,7 +101,7 @@ app.layout = html.Div(
         html.Div(id="page-content", style={"height": "100%"}),
 
         # Main interval that fetches API alerts data
-        dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
+        dcc.Interval(id="main_api_fetch_interval", interval=25 * 1000),
 
         # Storage components which contains data relative to alerts
         dcc.Store(
@@ -105,8 +109,13 @@ app.layout = html.Div(
             storage_type="session",
             data=json.dumps({'status': 'never_loaded_alerts_data'})
         ),
-        dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
+
+        dcc.Store(id="last_displayed_event_id", storage_type="session"),
+        dcc.Store(id='images_to_display_on_big_screen', data={'frame_URLs': 'no_images'}, storage_type='session'),
+
+        html.Div(id='alert_frame_update_new_event', style={'display': 'none'}),
+        html.Div(id='alert_frame_update_interval', style={'display': 'none'}),
 
         # Placeholder storing the list of event_ids that the user has decided not to show during the session
         dcc.Store(id='blocked_event_ids', data={'event_ids': []}, storage_type='session'),
@@ -353,11 +362,15 @@ def update_live_alerts_data(
     string should be completed but more details can be found in the comments below.
     """
 
+    start_time = time.time()
+
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
+
+        print(time.time() - start_time)
         raise PreventUpdate
 
     # We store all alerts in a DataFrame and we want to select "live alerts",
@@ -401,6 +414,8 @@ def update_live_alerts_data(
 
     # Is there any live alert to display?
     if live_alerts.empty:
+
+        print(time.time() - start_time)
         # If not, we do not update any of the callback's output
         raise PreventUpdate
 
@@ -469,6 +484,8 @@ def update_live_alerts_data(
             # - the storage component that contains alert data in JSON format;
             # - the storage component that contains the dictionary with detection frame URLs;
             # - the storage component that serves as source of truth for the list of already loaded alerts
+
+            print(time.time() - start_time)
 
             return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, 5 * 1000
 
@@ -546,6 +563,8 @@ def update_live_alerts_data(
 
                     live_alerts = live_alerts.to_json(orient='records')
 
+                    print(time.time() - start_time)
+
                     # We update all outputs
                     return [
                         live_alerts,
@@ -560,6 +579,8 @@ def update_live_alerts_data(
 
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
+
+                    print(time.time() - start_time)
                     return [
                         dash.no_update,
                         dict_images_url_live_alerts,
@@ -718,30 +739,30 @@ def clean_login_background(is_modal_opened):
 # Callbacks related to the alert workflow
 
 
-@app.callback(
-    Output('fire_markers_alerts', 'children'),
-    [Input('geojson_departments', 'click_feature'),
-     Input('historic_fires_radio_button', 'value')]
-)
-def click_department_alerts(feature, radio_button_value):
-    """
-    -- Displaying past fires on the alerts map --
+# @app.callback(
+#     Output('fire_markers_alerts', 'children'),
+#     [Input('geojson_departments', 'click_feature'),
+#      Input('historic_fires_radio_button', 'value')]
+# )
+# def click_department_alerts(feature, radio_button_value):
+#     """
+#     -- Displaying past fires on the alerts map --
 
-    This callback detects what department the user is clicking on.
-    It returns the position of past fires in this department as markers on the map.
+#     This callback detects what department the user is clicking on.
+#     It returns the position of past fires in this department as markers on the map.
 
-    It relies on the get_old_fire_positions function, imported from utils.
+#     It relies on the get_old_fire_positions function, imported from utils.
 
-    It also takes as input the value of the radio button dedicated to past fires:
+#     It also takes as input the value of the radio button dedicated to past fires:
 
-    - if the user has selected "Non", the container of historic fire markers is left empty;
-    - if the user has selected "Yes", we fill it in with the relevant information.
-    """
-    if feature is not None:
-        if radio_button_value == 1:
-            return build_historic_markers(dpt_code=feature['properties']['code'])
-        else:
-            return None
+#     - if the user has selected "Non", the container of historic fire markers is left empty;
+#     - if the user has selected "Yes", we fill it in with the relevant information.
+#     """
+#     if feature is not None:
+#         if radio_button_value == 1:
+#             return build_historic_markers(dpt_code=feature['properties']['code'])
+#         else:
+#             return None
 
 
 @app.callback(
@@ -1170,9 +1191,12 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data'),
-     State('blocked_event_ids', 'data')]
+     State('blocked_event_ids', 'data'),
+     State('site_devices_data_storage', 'data')]
 )
-def update_live_alerts_components(live_alerts, map_style_button_label, images_url_live_alerts, blocked_event_ids):
+def update_live_alerts_components(
+    live_alerts, map_style_button_label, images_url_live_alerts, blocked_event_ids, site_devices_data
+):
     """
     -- Updating style components with corresponding alerts data --
 
@@ -1209,7 +1233,9 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
     if map_style == 'alerts':
         output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocked_event_ids)
 
-        output += build_individual_alert_components(live_alerts, images_url_live_alerts, blocked_event_ids)
+        output += build_individual_alert_components(
+            live_alerts, images_url_live_alerts, blocked_event_ids, site_devices_data
+        )
 
         return output
 
@@ -1253,88 +1279,197 @@ def modify_alert_slider_length(individual_alert_frame_storage):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to alert_screen page
+
 @app.callback(
     [
         Output("core_layout_alert_screen", "children"),
         Output("core_layout_alert_screen", "style"),
-        Output("last_displayed_event_id", "data"),
+        Output('images_to_display_on_big_screen', 'data')
     ],
     Input("interval-component-alert-screen", "n_intervals"),
-    [
-        State("store_live_alerts_data", "data"),
-        State("last_displayed_event_id", "data"),
-    ],
+    [State('blocked_event_ids', 'data'),
+     State('devices_data_storage', 'data'),
+     State('site_devices_data_storage', 'data')],
 )
-def update_alert_screen(n_intervals, live_alerts, last_displayed_event_id):
-    """
-    -- Update elements related to the Alert Screen page when the interval component "alert-screen" is triggered --
-    """
-    if live_alerts is None:
+def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devices_data):
+
+    client = Client(cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD)
+
+    response = client.get_ongoing_alerts().json()
+
+    # If there is no alert, we build the no alert screen
+    if len(response) == 0:
         style_to_display = build_no_alert_detected_screen()
+
+        images_to_display = {'frame_URLs': 'no_images'}
+
         return (
             [{}],
             style_to_display,
-            last_displayed_event_id
+            images_to_display
         )
 
     else:
-        # Fetching the last alert
-        live_alerts = pd.read_json(live_alerts)
-        last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
-        last_event_id = str(last_alert["event_id"])
+        # We store all alerts in a DataFrame and we want to select "live alerts",
+        # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+        all_alerts = pd.DataFrame(response)
 
-        # Fetching the URL address of the frame associated with the last alert
-        img_url = ""
-        try:
-            img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
-        except Exception:
-            pass
+        # We first want to build the boolean indexing mask that corresponds to the time-related condition
+        # We convert values in the "created_at" column to datetime format
+        all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
 
-        if last_event_id == last_displayed_event_id:
-            # the alert is related to an event id which has already been displayed
-            # need to send the img_url to the GIF
-            raise PreventUpdate
-        else:
-            # new event, not been displayed yet
-            layout_div, style_to_display = build_alert_detected_screen(
-                img_url, last_alert
+        # For each of these creation dates, we check whether they were registered less than 12 hours ago
+        # This provides us with the first boolean indexing mask
+        mask_time = all_alerts['created_at'].map(
+            lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
+
+        # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
+        # We start by making an API call to fetch all events
+        url = cfg.API_URL + '/events/'
+        all_events = requests.get(url, headers=api_client.headers).json()
+
+        # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
+        # "is_acknowledged" field in the events table (boolean)
+        is_event_acknowledged = {}
+        for event in all_events:
+            is_event_acknowledged[event['id']] = event['is_acknowledged']
+
+        # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
+        mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
+
+        # We link the two masks with an OR condition
+        mask = np.logical_or(mask_time, mask_acknowledgement)
+
+        # And we deduce the subset of alerts that we can deem to be "live"
+        live_alerts = all_alerts[mask].copy()
+
+        # Some of these live alerts may have been blocked by the user, clicking on a "Ne plus voir cette alerte" button
+        # We filter these out thanks to the list of blocked_event_ids
+        live_alerts = live_alerts[
+            ~live_alerts['event_id'].isin(blocked_event_ids['event_ids'])
+        ].copy()
+
+        # Is there any live alert to display?
+        if live_alerts.empty:
+            style_to_display = build_no_alert_detected_screen()
+
+            images_to_display = {'frame_URLs': 'no_images'}
+
+            return (
+                [{}],
+                style_to_display,
+                images_to_display
             )
-            return layout_div, style_to_display, last_event_id
+
+        else:
+            # Merging yaw (azimuth) field from devices_data
+            all_devices = pd.DataFrame(devices_data)
+
+            # We restrict the DataFrame to useful information
+            devices_yaw = all_devices[['id', 'yaw']].copy()
+
+            # We merge it with the live_alerts DataFrame
+            live_alerts = pd.merge(
+                live_alerts, devices_yaw,
+                how='left',
+                left_on=['device_id'], right_on=['id']
+            )
+
+            # We drop the azimuth associated with the alert as we will focus on the yaw of the device
+            live_alerts = live_alerts.drop(['azimuth'], axis=1)
+
+            # We rename columns to avoid any ambibguity (id_y is the id of the device)
+            live_alerts.rename(columns={'id_x': 'id', 'id_y': 'd_id'}, inplace=True)
+
+            last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
+            last_event_id = str(last_alert["event_id"])
+
+            focus_on_event = live_alerts[live_alerts['event_id'] == int(last_event_id)].copy()
+            focus_on_event = focus_on_event.sort_values(by='id').tail(3).copy()
+
+            images_to_display = {last_event_id: []}
+
+            for _, row in focus_on_event.iterrows():
+                img_url = ""
+
+                try:
+                    img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+
+                except Exception:
+                    pass
+
+                images_to_display[last_event_id].append(img_url)
+
+            layout_div, style_to_display = build_alert_detected_screen(
+                images_to_display[last_event_id], last_alert, site_devices_data
+            )
+
+            return layout_div, style_to_display, images_to_display
 
 
 @app.callback(
-    Output("alert_frame", "src"),
-    Input("interval-component-img-refresh", "n_intervals"),
-    [
-        State("last_displayed_event_id", "data"),
-        State("images_url_live_alerts", "data")
-    ]
+    [Output('alert_frame_update_new_event', 'children'),
+     Output('last_displayed_event_id', 'data')],
+    Input('images_to_display_on_big_screen', 'data'),
+    State('last_displayed_event_id', 'data')
 )
-def update_images_for_doubt_removal(n_intervals, last_displayed_event_id, dict_images_url_live_alerts):
-    """
-    -- Create a pseudo GIF --
+def update_alert_frame_due_to_new_event(images_to_display, last_event_id):
 
-    Created from the x frames we received each time there is an alert related to the same event.
-    The urls of these images are stored in a dictionary "images_url_live_alerts".
-    """
-    if n_intervals is None:
+    if 'frame_URLs' in images_to_display.keys() and images_to_display['frame_URLs'] == 'no_images':
         raise PreventUpdate
 
-    if last_displayed_event_id not in dict_images_url_live_alerts.keys():
+    elif list(images_to_display.keys())[0] == last_event_id:
+        return list(images_to_display.values())[0][-1], dash.no_update
+
+    else:
+        return list(images_to_display.values())[0][-1], list(images_to_display.keys())[0]
+
+
+# @app.callback(
+#     Output("alert_frame_update_interval", "children"),
+#     Input("interval-component-img-refresh", "n_intervals"),
+#     State("images_to_display_on_big_screen", "data")
+# )
+# def update_alert_frame_from_interval(n_intervals, images_to_display):
+#     """
+#     -- Create a pseudo GIF --
+
+#     Created from the x frames we received each time there is an alert related to the same event.
+#     The urls of these images are stored in a dictionary "images_url_live_alerts".
+#     """
+#     if n_intervals is None:
+#         raise PreventUpdate
+
+#     list_url_images = list(images_to_display.values())[0]
+
+#     return list_url_images[n_intervals % len(list_url_images)]
+
+
+@app.callback(
+    [Output('alert_frame', 'src'),
+     Output("interval-component-img-refresh", "n_intervals")],
+    [Input('alert_frame_update_new_event', 'children'),
+     Input("alert_frame_update_interval", "children")]
+)
+def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_interval):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
         raise PreventUpdate
 
-    if n_intervals is None:
+    if alert_frame_update_new_event is None and alert_frame_update_interval is None:
         raise PreventUpdate
 
-    list_url_images = dict_images_url_live_alerts[last_displayed_event_id]
-    # Only for demo purposes: will be removed afterwards
-    list_url_images = [
-        "http://placeimg.com/625/225/nature",
-        "http://placeimg.com/625/225/animals",
-        "http://placeimg.com/625/225/nature"
-    ]
-    return list_url_images[n_intervals % len(list_url_images)]
+    # We determine what input has triggered the callback
+    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    if input_id == 'alert_frame_update_new_event':
+
+        return alert_frame_update_new_event, 0
+
+    elif input_id == 'alert_frame_update_interval':
+
+        return alert_frame_update_interval, dash.no_updates
 
 # ----------------------------------------------------------------------------------------------------------------------
 # RUNNING THE WEB-APP SERVER

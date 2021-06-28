@@ -88,10 +88,21 @@ def get_site_devices_data(client):
     """
     response = client.get_sites()
     sites = response.json()
-    data = {site['id']: client.get_site_devices(site['id']).json() for site in sites}
+    data = {site['name']: client.get_site_devices(site['id']).json() for site in sites}
 
     return data
 
+
+def retrieve_site_from_device_id(device_id, site_devices_data):
+
+    for key, value in site_devices_data.items():
+        if device_id in value:
+            site_name = key.replace('_', ' ').title()
+            return site_name
+        else:
+            continue
+
+    raise Exception('Device ID not found in site devices data.')
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
@@ -497,7 +508,7 @@ def display_alert_selection_area(n_clicks):
     return [md_user, md_map, alert_button_status, alert_selection_area_style]
 
 
-def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_event_ids):
+def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_event_ids, site_devices_data):
     """
     This function builds the user selection area containing the alert list
 
@@ -535,12 +546,18 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
         alert_date = datetime.fromisoformat(str(row['created_at'])).date()
         alert_time = datetime.fromisoformat(str(row['created_at'])).time()
 
+        device_id = row['device_id']
+        try:
+            site_name = retrieve_site_from_device_id(device_id, site_devices_data)
+        except:
+            site_name = ''
+
         alert_selection_button = html.Div([
             dcc.Markdown('---'),
             dbc.Button(children=[
                        html.Span('Azimuth : {}°'.format(alert_azimuth), style={'font-weight': 'bold'}),
                        html.Span('Lat : {} / Lon : {}'.format(alert_lat, alert_lon), style={'display': 'block'}),
-                       html.Span('Tour : ', style={'display': 'block'}),  # Not possible to fetch from alert today
+                       html.Span(f'Tour : {site_name}', style={'display': 'block'}),
                        html.Span('{} / {}:{}'.format(alert_date, alert_time.hour, alert_time.minute),
                                  style={'display': 'block'})],
                        id={'type': 'alert_selection_btn', 'index': alert_id},
@@ -566,7 +583,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
             device_id=row['device_id'],
             lat=row['lat'],
             lon=row['lon'],
-            site_name="Tour de Serre en Don",
+            site_name=site_name,
             urls=alert_frame_urls.get(alert_id, [''])
         )
 
