@@ -96,6 +96,21 @@ app.layout = html.Div(
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"height": "100%"}),
 
+        # Placeholders for the two inputs that can affect the stored live alert data
+        dcc.Store(id='update_live_alerts_data_workflow', data={}, storage_type="session"),
+        dcc.Store(id='update_live_alerts_data_erase_buttons', data={}, storage_type="session"),
+
+        # Placeholders for the two inputs that can affect the stored live alert frame URLs
+        dcc.Store(id='update_live_alerts_frames_workflow', data={}, storage_type="session"),
+        dcc.Store(id='update_live_alerts_frames_erase_buttons', data={}, storage_type="session"),
+
+        # Storage component which contains data relative devices
+        dcc.Store(
+            id="devices_data_storage",
+            storage_type="session",
+            data=requests.get('https://api.pyronear.org/devices/', headers=api_client.headers).json()
+        ),
+
         # Main interval that fetches API alerts data
         dcc.Interval(id="main_api_fetch_interval", interval=15 * 1000),
 
@@ -114,13 +129,6 @@ app.layout = html.Div(
         # Session storage component to avoid re-opening the login modal at each refresh
         # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
-
-        # Storage component which contains data relative devices
-        dcc.Store(
-            id="devices_data_storage",
-            storage_type="session",
-            data=requests.get('https://api.pyronear.org/devices/', headers=api_client.headers).json()
-        ),
 
         # Storage component which contains data relative to site devices
         dcc.Store(
