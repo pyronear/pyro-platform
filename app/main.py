@@ -1380,7 +1380,7 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
                 img_url = ""
 
                 try:
-                    img_url = api_client.get_media_url(last_alert["media_id"]).json()["url"]
+                    img_url = api_client.get_media_url(row["media_id"]).json()["url"]
 
                 except Exception:
                     pass
