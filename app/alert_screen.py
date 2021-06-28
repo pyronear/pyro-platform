@@ -21,8 +21,10 @@ import dash_html_components as html
 
 from alerts import retrieve_site_from_device_id
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
+
 def build_no_alert_detected_screen():
     """
     The following function builds the no alert screen.
@@ -60,7 +62,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     # Retrieve the name of the site from the device id
     try:
         site_name = retrieve_site_from_device_id(device_id, site_devices_data)
-    except:
+    except Exception:
         site_name = ''
 
     # Get azimuth from last_alert

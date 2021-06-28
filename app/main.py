@@ -26,14 +26,13 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
-import time
-from pyroclient import Client
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
 # --- General imports
+
+# From the pyroclient package
+from pyroclient import Client
 
 # Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
 import os
@@ -362,15 +361,11 @@ def update_live_alerts_data(
     string should be completed but more details can be found in the comments below.
     """
 
-    start_time = time.time()
-
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts().json()
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
-
-        print(time.time() - start_time)
         raise PreventUpdate
 
     # We store all alerts in a DataFrame and we want to select "live alerts",
@@ -414,8 +409,6 @@ def update_live_alerts_data(
 
     # Is there any live alert to display?
     if live_alerts.empty:
-
-        print(time.time() - start_time)
         # If not, we do not update any of the callback's output
         raise PreventUpdate
 
@@ -484,8 +477,6 @@ def update_live_alerts_data(
             # - the storage component that contains alert data in JSON format;
             # - the storage component that contains the dictionary with detection frame URLs;
             # - the storage component that serves as source of truth for the list of already loaded alerts
-
-            print(time.time() - start_time)
 
             return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, 5 * 1000
 
@@ -563,8 +554,6 @@ def update_live_alerts_data(
 
                     live_alerts = live_alerts.to_json(orient='records')
 
-                    print(time.time() - start_time)
-
                     # We update all outputs
                     return [
                         live_alerts,
@@ -579,8 +568,6 @@ def update_live_alerts_data(
 
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
-
-                    print(time.time() - start_time)
                     return [
                         dash.no_update,
                         dict_images_url_live_alerts,
@@ -1470,6 +1457,7 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
     elif input_id == 'alert_frame_update_interval':
 
         return alert_frame_update_interval, dash.no_updates
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # RUNNING THE WEB-APP SERVER

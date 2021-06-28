@@ -104,6 +104,7 @@ def retrieve_site_from_device_id(device_id, site_devices_data):
 
     raise Exception('Device ID not found in site devices data.')
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Sites markers
 # The following block is used to fetch and display on the map the positions of detection units.
@@ -549,7 +550,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
         device_id = row['device_id']
         try:
             site_name = retrieve_site_from_device_id(device_id, site_devices_data)
-        except:
+        except Exception:
             site_name = ''
 
         alert_selection_button = html.Div([
