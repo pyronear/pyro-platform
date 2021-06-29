@@ -29,6 +29,7 @@ import datetime as dt
 
 # Various modules provided by Dash to build app components
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
 
@@ -54,9 +55,13 @@ def build_layer_style_button():
     This function creates and returns the button allowing users to change the map
     background layer (either topographic/schematic or satellite).
     """
-    button = html.Button(children='Satellite',
-                         id='layer_style_button',
-                         className="btn-layers")
+    button = html.Div(
+        dbc.Button(
+            children='Satellite',
+            id='layer_style_button',
+            className="btn-layers"
+        )
+    )
 
     return html.Center(button)
 

@@ -22,7 +22,7 @@ Most functions defined below are called in the main.py file, in the alerts callb
 
 # Useful imports to handle API payloads
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 # Useful imports to read the GeoJSON file from Pyro-Risk release
@@ -339,7 +339,7 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                 [
                                     html.Div(
                                         html.P(
-                                            'Localisation',
+                                            f'{site_name}',
                                             style={
                                                 'color': 'white',
                                                 'text-indent': '15px',
@@ -545,7 +545,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
         alert_lon = round(row['lon'], 4)
         alert_azimuth = round(row['yaw'], 1)
         alert_date = datetime.fromisoformat(str(row['created_at'])).date()
-        alert_time = datetime.fromisoformat(str(row['created_at'])).time()
+        alert_time = datetime.fromisoformat(str(row['created_at'])) + timedelta(hours=2)
+        alert_time = alert_time.time()
 
         device_id = row['device_id']
         try:
@@ -607,14 +608,16 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
     if not acknowledged:
 
         acknowledge_alert_space_children = [
-            html.Button(
+            dcc.Markdown('---'),
+            html.Div(dbc.Button(
                 id={
                     'type': 'acknowledge_alert_button',
                     'index': event_id
                 },
                 children="Acquitter l'alerte",
-                className='warning'
-            )
+                className="btn-layers",
+                size="sm"
+            ))
         ]
 
     else:
@@ -630,6 +633,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
 
     lat = df[df['event_id'] == event_id]['lat'].iloc[0]
     lon = df[df['event_id'] == event_id]['lon'].iloc[0]
+    alert_azimuth = df[df['event_id'] == event_id]['yaw'].iloc[0]
 
     div = html.Div(
         id={
@@ -641,7 +645,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                 children=[
                     dcc.Markdown('---'),
                     html.B(f'Alerte n°{event_id}'),
-                    html.P(f'Caméra n°{df[df["event_id"] == event_id]["device_id"].iloc[0]}'),
+                    html.P(f'Azimuth : {alert_azimuth}'),
                     html.P(f'Latitude : {lat}'),
                     html.P(f'Longitude: {lon}'),
                     html.Img(
@@ -659,20 +663,24 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                         },
                         children=acknowledge_alert_space_children
                     ),
-                    html.Button(
+                    html.Div(dbc.Button(
                         id={
                             'type': 'close_alert_overview_button',
                             'index': event_id
                         },
-                        children="Fermer l'aperçu de l'alerte"
-                    ),
-                    html.Button(
+                        children="Fermer l'aperçu de l'alerte",
+                        className="btn-layers",
+                        size="sm"
+                    )),
+                    html.Div(dbc.Button(
                         id={
                             'type': 'erase_alert_button',
                             'index': event_id
                         },
-                        children='Ne plus voir cette alerte'
-                    )
+                        children='Ne plus voir cette alerte',
+                        className="btn-layers",
+                        size="sm"
+                    ))
                 ]
             )
         ]
