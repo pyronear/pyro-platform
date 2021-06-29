@@ -88,9 +88,21 @@ def get_site_devices_data(client):
     """
     response = client.get_sites()
     sites = response.json()
-    data = {site['id']: client.get_site_devices(site['id']).json() for site in sites}
+    data = {site['name']: client.get_site_devices(site['id']).json() for site in sites}
 
     return data
+
+
+def retrieve_site_from_device_id(device_id, site_devices_data):
+
+    for key, value in site_devices_data.items():
+        if device_id in value:
+            site_name = key.replace('_', ' ').title()
+            return site_name
+        else:
+            continue
+
+    raise Exception('Device ID not found in site devices data.')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -199,7 +211,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
-def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
+def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocked_event_ids):
     """
     This function is used in the main.py file to create alerts-related elements such as the alert button (banner)
     or the alert markers on the map.
@@ -262,7 +274,9 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         # (It can be interesting to test returning [] instead of [hidden_header_alert_button] and erase all alerts one
         # by one if explanations are unclear)
 
-        return [hidden_header_alert_button], [], '#054546', 'Surveillez les départs de feux', []
+        return [hidden_header_alert_button], [], '#054546', 'Surveillez les départs de feux'
+
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
     for _, row in all_events.iterrows():
@@ -301,7 +315,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
             )
         )
 
-    return [alert_button, alerts_markers_layer, navbar_color, navbar_title, individual_alert_frame_placeholder_children]
+    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
@@ -495,7 +509,7 @@ def display_alert_selection_area(n_clicks):
     return [md_user, md_map, alert_button_status, alert_selection_area_style]
 
 
-def build_individual_alert_components(live_alerts, alert_frame_urls):
+def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_event_ids, site_devices_data):
     """
     This function builds the user selection area containing the alert list
 
@@ -515,6 +529,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls):
     if all_alerts.empty:
         return [], [], []
 
+    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
+
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
 
     # Instantiating the void lists that will contain the basic alert elements
@@ -527,16 +543,22 @@ def build_individual_alert_components(live_alerts, alert_frame_urls):
         alert_id = str(row['event_id'])
         alert_lat = round(row['lat'], 4)
         alert_lon = round(row['lon'], 4)
-        alert_azimuth = round(row['azimuth'], 1)
+        alert_azimuth = round(row['yaw'], 1)
         alert_date = datetime.fromisoformat(str(row['created_at'])).date()
         alert_time = datetime.fromisoformat(str(row['created_at'])).time()
+
+        device_id = row['device_id']
+        try:
+            site_name = retrieve_site_from_device_id(device_id, site_devices_data)
+        except Exception:
+            site_name = ''
 
         alert_selection_button = html.Div([
             dcc.Markdown('---'),
             dbc.Button(children=[
                        html.Span('Azimuth : {}°'.format(alert_azimuth), style={'font-weight': 'bold'}),
                        html.Span('Lat : {} / Lon : {}'.format(alert_lat, alert_lon), style={'display': 'block'}),
-                       html.Span('Tour : ', style={'display': 'block'}),  # Not possible to fetch from alert today
+                       html.Span(f'Tour : {site_name}', style={'display': 'block'}),
                        html.Span('{} / {}:{}'.format(alert_date, alert_time.hour, alert_time.minute),
                                  style={'display': 'block'})],
                        id={'type': 'alert_selection_btn', 'index': alert_id},
@@ -549,7 +571,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls):
             event_id=alert_id,
             site_lat=row['lat'],
             site_lon=row['lon'],
-            yaw=row['azimuth'],
+            yaw=row['yaw'],
             opening_angle=60,
             dist_km=2
         )
@@ -562,8 +584,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls):
             device_id=row['device_id'],
             lat=row['lat'],
             lon=row['lon'],
-            site_name="Tour de Serre en Don",
-            urls=alert_frame_urls[alert_id]
+            site_name=site_name,
+            urls=alert_frame_urls.get(alert_id, [''])
         )
 
         alert_modals_children.append(modal)
