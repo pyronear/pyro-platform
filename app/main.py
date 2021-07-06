@@ -93,6 +93,12 @@ app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
+response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+# Check token expiration
+if response.status_code == 422:
+    api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+    response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+
 # We create a rough layout, filled with the content of the homepage/alert page
 app.layout = html.Div(
     [
@@ -108,12 +114,6 @@ app.layout = html.Div(
         dcc.Store(id='update_live_alerts_frames_erase_buttons', data={}, storage_type="session"),
 
         # Storage component which contains data relative devices
-        response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
-        # Check token expiration
-        if response.status_code == 422:
-            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-            response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
-
         dcc.Store(
             id="devices_data_storage",
             storage_type="session",
