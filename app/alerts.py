@@ -113,7 +113,7 @@ def retrieve_site_from_device_id(device_id, site_devices_data):
 # Fetching the response in a variable
 response = api_client.get_sites()
 # Check token expiration
-if response.status_code == 422:
+if response.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
     response = api_client.get_sites()
 

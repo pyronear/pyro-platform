@@ -95,7 +95,7 @@ server = app.server  # Gunicorn will be looking for the server attribute of this
 
 response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
 # Check token expiration
-if response.status_code == 422:
+if response.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
     response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
 
@@ -378,7 +378,7 @@ def update_live_alerts_data(
     # Fetching live alerts where is_acknowledged is False
     response = api_client.get_ongoing_alerts()
     # Check token expiration
-    if response.status_code == 422:
+    if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_ongoing_alerts()
     response = response.json()
@@ -404,7 +404,7 @@ def update_live_alerts_data(
     # We start by making an API call to fetch all events
     url = cfg.API_URL + '/events/'
     response = requests.get(url, headers=api_client.headers)
-    if response.status_code == 422:
+    if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = requests.get(url, headers=api_client.headers)
     all_events = response.json()
@@ -454,7 +454,7 @@ def update_live_alerts_data(
                 try:
                     # For each live alert, we fetch the URL of the associated frame
                     response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 422:
+                    if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
                     img_url = response.json()['url']
@@ -543,7 +543,7 @@ def update_live_alerts_data(
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
                         response = api_client.get_media_url(row["media_id"])
-                        if response.status_code == 422:
+                        if response.status_code == 401:
                             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                             response = api_client.get_media_url(row["media_id"])
                         img_url = response.json()['url']
@@ -857,7 +857,7 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
         response = requests.get(url, headers=api_client.headers)
-        if response.status_code == 422:
+        if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = requests.get(url, headers=api_client.headers)
         acknowledged = response.json()['is_acknowledged']
@@ -1021,7 +1021,7 @@ def acknowledge_alert(n_clicks):
 
         # The event is actually acknowledged thanks to the acknowledge_event of the API client
         response = api_client.acknowledge_event(event_id=int(event_id))
-        if response.status_code == 422:
+        if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             api_client.acknowledge_event(event_id=int(event_id))
 
@@ -1351,7 +1351,7 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
         # We start by making an API call to fetch all events
         url = cfg.API_URL + '/events/'
         response = requests.get(url, headers=api_client.headers)
-        if response.status_code == 422:
+        if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = requests.get(url, headers=api_client.headers)
         all_events = response.json()
@@ -1422,7 +1422,7 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
 
                 try:
                     response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 422:
+                    if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
                     img_url = response.json()['url']
