@@ -382,6 +382,8 @@ def update_live_alerts_data(
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_ongoing_alerts()
     response = response.json()
+    # Only for demo purposes, this should be deleted for dev and later in production
+    response = {}
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
