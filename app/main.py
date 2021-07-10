@@ -93,6 +93,12 @@ app.title = 'Pyronear - Monitoring platform'
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
+response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+# Check token expiration
+if response.status_code == 401:
+    api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+    response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+
 # We create a rough layout, filled with the content of the homepage/alert page
 app.layout = html.Div(
     [
@@ -111,7 +117,7 @@ app.layout = html.Div(
         dcc.Store(
             id="devices_data_storage",
             storage_type="session",
-            data=requests.get('https://api.pyronear.org/devices/', headers=api_client.headers).json()
+            data=response.json()
         ),
 
         # Main interval that fetches API alerts data
@@ -370,7 +376,12 @@ def update_live_alerts_data(
     """
 
     # Fetching live alerts where is_acknowledged is False
-    response = api_client.get_ongoing_alerts().json()
+    response = api_client.get_ongoing_alerts()
+    # Check token expiration
+    if response.status_code == 401:
+        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        response = api_client.get_ongoing_alerts()
+    response = response.json()
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
@@ -392,7 +403,11 @@ def update_live_alerts_data(
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all events
     url = cfg.API_URL + '/events/'
-    all_events = requests.get(url, headers=api_client.headers).json()
+    response = requests.get(url, headers=api_client.headers)
+    if response.status_code == 401:
+        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        response = requests.get(url, headers=api_client.headers)
+    all_events = response.json()
 
     # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
     # "is_acknowledged" field in the events table (boolean)
@@ -438,7 +453,11 @@ def update_live_alerts_data(
             for _, row in live_alerts.iterrows():
                 try:
                     # For each live alert, we fetch the URL of the associated frame
-                    img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+                    response = api_client.get_media_url(row["media_id"])
+                    if response.status_code == 401:
+                        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                        response = api_client.get_media_url(row["media_id"])
+                    img_url = response.json()['url']
 
                 except Exception:
                     # This is just a security in case we cannot retrieve the URL of the detection frame
@@ -523,7 +542,11 @@ def update_live_alerts_data(
                 for _, row in new_alerts.iterrows():
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
-                        img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+                        response = api_client.get_media_url(row["media_id"])
+                        if response.status_code == 401:
+                            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                            response = api_client.get_media_url(row["media_id"])
+                        img_url = response.json()['url']
 
                     except Exception:
                         # This is just a security in case we cannot retrieve the URL of the detection frame
@@ -833,8 +856,11 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
-        response = requests.get(url, headers=api_client.headers).json()
-        acknowledged = response['is_acknowledged']
+        response = requests.get(url, headers=api_client.headers)
+        if response.status_code == 401:
+            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            response = requests.get(url, headers=api_client.headers)
+        acknowledged = response.json()['is_acknowledged']
 
         # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
         lat, lon, div = build_alert_overview(
@@ -994,7 +1020,10 @@ def acknowledge_alert(n_clicks):
         event_id = event_id.strip('"')
 
         # The event is actually acknowledged thanks to the acknowledge_event of the API client
-        api_client.acknowledge_event(event_id=int(event_id))
+        response = api_client.acknowledge_event(event_id=int(event_id))
+        if response.status_code == 401:
+            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            api_client.acknowledge_event(event_id=int(event_id))
 
         return [html.P('Alerte acquittée.')]
 
@@ -1321,7 +1350,11 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
         url = cfg.API_URL + '/events/'
-        all_events = requests.get(url, headers=api_client.headers).json()
+        response = requests.get(url, headers=api_client.headers)
+        if response.status_code == 401:
+            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            response = requests.get(url, headers=api_client.headers)
+        all_events = response.json()
 
         # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
         # "is_acknowledged" field in the events table (boolean)
@@ -1388,7 +1421,11 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
                 img_url = ""
 
                 try:
-                    img_url = api_client.get_media_url(row["media_id"]).json()["url"]
+                    response = api_client.get_media_url(row["media_id"])
+                    if response.status_code == 401:
+                        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                        response = api_client.get_media_url(row["media_id"])
+                    img_url = response.json()['url']
 
                 except Exception:
                     pass

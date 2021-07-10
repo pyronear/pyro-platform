@@ -112,6 +112,10 @@ def retrieve_site_from_device_id(device_id, site_devices_data):
 # We import the cameras's positions from the API that locates the cameras
 # Fetching the response in a variable
 response = api_client.get_sites()
+# Check token expiration
+if response.status_code == 401:
+    api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+    response = api_client.get_sites()
 
 # Getting the json data out of the response
 camera_positions = response.json()
