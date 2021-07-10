@@ -19,9 +19,12 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
+from alerts import retrieve_site_from_device_id
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
+
 def build_no_alert_detected_screen():
     """
     The following function builds the no alert screen.
@@ -40,7 +43,7 @@ def build_no_alert_detected_screen():
     return style
 
 
-def build_alert_detected_screen(img_url, last_alert):
+def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     """
     This function is used in the main.py file to create the alert screen when its on, i.e. when there is an alert
     ongoing.
@@ -56,8 +59,14 @@ def build_alert_detected_screen(img_url, last_alert):
     # Get device id for last_alert
     device_id = last_alert["device_id"]
 
+    # Retrieve the name of the site from the device id
+    try:
+        site_name = retrieve_site_from_device_id(device_id, site_devices_data)
+    except Exception:
+        site_name = ''
+
     # Get azimuth from last_alert
-    azimuth = round(last_alert["azimuth"], 1)
+    azimuth = round(last_alert["yaw"], 1)
 
     # Background image
     background_image = html.Img(
@@ -78,10 +87,10 @@ def build_alert_detected_screen(img_url, last_alert):
         style={"height": "100%"},
     )
 
-    # Detection frames
+    # Detection frame
     alert_frame = html.Img(
         id="alert_frame",
-        src=img_url,
+        src=img_url[-1],
         style={
             "position": "relative",
             "width": "100%",
@@ -104,10 +113,9 @@ def build_alert_detected_screen(img_url, last_alert):
     # Alert metadata div
     alert_metadata_div = html.Div(
         children=[
-            html.P("Tour: Serre en Don"),
-            html.P("Coordonnées de la tour: {}, {}".format(lat, lon)),
-            html.P("Id de caméra: {}".format(device_id)),
-            html.P("Azimuth: {}".format(azimuth)),
+            html.P("Coordonnées de la tour : {}, {}".format(lat, lon)),
+            html.P("Id de caméra : {}".format(device_id)),
+            html.P("Azimuth : {}".format(azimuth)),
         ]
     )
 
@@ -117,7 +125,7 @@ def build_alert_detected_screen(img_url, last_alert):
         children=[
             html.Div(
                 html.P(
-                    "DFCI: KD62D6.5",
+                    f"Tour : {site_name}",
                 ),
                 style={
                     "font-size": "2vw",
@@ -231,7 +239,7 @@ def AlertScreen():
     """
     layout = html.Div(
         children=[
-            dcc.Interval(id="interval-component-alert-screen", interval=3 * 1000),
+            dcc.Interval(id="interval-component-alert-screen", interval=10 * 1000),
             html.Div(id="core_layout_alert_screen", children=[]),
         ],
         style={

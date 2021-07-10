@@ -12,3 +12,5 @@ pyroclient@git+https://github.com/pyronear/pyro-api.git#egg=pyroclient&subdirect
 python-dotenv>=0.15.0
 geopy>=2.1.0
 requests>=2.25.0
+pytz>=2020.1
+

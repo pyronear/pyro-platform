@@ -12,4 +12,4 @@ services:
       - API_URL=${API_URL}
       - API_LOGIN=${API_LOGIN}
       - API_PWD=${API_PWD}
-      - LOGIN_CORRESPONDENCES_KEY=${LOGIN_CORRESPONDENCES_KEY}
+      - DEBUG=${DEBUG}

@@ -29,13 +29,12 @@ import datetime as dt
 
 # Various modules provided by Dash to build app components
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
-
-# ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Diverse
@@ -56,9 +55,13 @@ def build_layer_style_button():
     This function creates and returns the button allowing users to change the map
     background layer (either topographic/schematic or satellite).
     """
-    button = html.Button(children='Satellite',
-                         id='layer_style_button',
-                         className="btn-layers")
+    button = html.Div(
+        dbc.Button(
+            children='Satellite',
+            id='layer_style_button',
+            className="btn-layers"
+        )
+    )
 
     return html.Center(button)
 
@@ -93,7 +96,6 @@ def choose_layer_style(n_clicks):
 # Information box
 # The following block is used to build the map filters in the bottom left corner
 
-
 def build_filters_object(map_type):
     """
     This function builds upon the build_map_filters function defined above.
@@ -107,13 +109,16 @@ def build_filters_object(map_type):
     else:
         object_id = 'risks_info'
 
-    return html.Div(children=build_layer_style_button(),
-                    id=object_id,
-                    style={'position': 'absolute',
-                           'bottom': '30px',
-                           'left': '10px',
-                           'z-index': '1000'}
-                    )
+    return html.Div(
+        children=build_layer_style_button(),
+        id=object_id,
+        style={
+            'position': 'absolute',
+            'bottom': '30px',
+            'left': '10px',
+            'z-index': '1000'
+        }
+    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------

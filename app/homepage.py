@@ -29,8 +29,6 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
-from dash_extensions import WebSocket
-
 # From navbar.py to add the navigation bar at the top of the page
 from navbar import Navbar
 
@@ -246,6 +244,7 @@ def build_login_modal():
     dal object which prevent the user from closing the modal respectively by clicking next to it and by pressing the
     Escape key.
     """
+
     return dbc.Modal(
         [
             dbc.ModalBody(
@@ -303,7 +302,9 @@ def build_login_modal():
 
         # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,
-        style={"max-width": "none", "width": "500px"}
+        style={"max-width": "none", "width": "500px"},
+
+        is_open=True
     )
 
 
@@ -339,8 +340,12 @@ def Homepage():
             [
                 # Left column containing the user selection area
                 dbc.Col([
+                    # At first, the map is hidden (until the user logs in with valid credentials)
                     html.Div(build_user_selection_area(), id='selection_area', style={'display': 'none'}),
-                    html.Div(id='new_alerts_selection_list'),
+
+                    html.Div(id="alert_overview_area"),
+
+                    html.Div(id='new_alerts_selection_list', style={'display': 'none'}),
                     # Placeholder containing the detection data for any alert of interest
                     html.P(id="hp_alert_frame_metadata")],
                     id='user_selection_column',
@@ -349,7 +354,7 @@ def Homepage():
                 # Right column containing the map and various hidden components
                 dbc.Col([
                     # Map object added here
-                    html.Div(build_alerts_map(), id='hp_map'),
+                    html.Div(build_alerts_map(), id='hp_map', style={'display': 'none'}),
 
                     # Two placeholders updated by callbacks in main.py to trigger a change in map style
                     html.Div(id='map_style_btn_switch_view'),   # Associated with the main map style button
@@ -357,9 +362,16 @@ def Homepage():
 
                     # Simple placeholder - Source of truth for the map style being viewed
                     html.Div(id='current_map_style', children='alerts', style={'display': 'none'}),
-                    # Hidden div storing the websocket message sent by the API
-                    html.Div(id="msg", style={'display': 'none'}),
-                    WebSocket(id="ws"),
+
+                    # Two placeholders updated by callbacks in main.py to change center and zoom attributes of the map
+                    dcc.Store(id='login_zoom_and_center', data={}),
+                    dcc.Store(id='alert_zoom_and_center', data={}),
+
+                    # Placeholders for the three inputs that can affect the style attribute of the alert overview area
+                    html.Div(id='alert_overview_style_zoom', style={'display': 'none'}),
+                    html.Div(id='alert_overview_style_closing_buttons', style={'display': 'none'}),
+                    html.Div(id='alert_overview_style_erase_buttons', style={'display': 'none'})
+
                 ],
                     id='map_column',
                     md=12),
@@ -369,6 +381,8 @@ def Homepage():
         # Login modal added here
         build_login_modal(),
 
+        # HTML Div containing alert modals added here
+        html.Div(id='alert_modals')
     ],
         fluid=True,
     )
