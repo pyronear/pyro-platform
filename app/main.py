@@ -58,8 +58,6 @@ import requests
 # Various utils
 import numpy as np
 import json
-import pytz
-from datetime import datetime
 
 # --- Imports from other Python files
 
