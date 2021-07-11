@@ -383,24 +383,15 @@ def update_live_alerts_data(
         response = api_client.get_ongoing_alerts()
     response = response.json()
     # Only for demo purposes, this should be deleted for dev and later in production
-    response = {}
+    # response = {}
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
         raise PreventUpdate
 
     # We store all alerts in a DataFrame and we want to select "live alerts",
-    # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+    # Ie. alerts that correspond to a not-yet-acknowledged event
     all_alerts = pd.DataFrame(response)
-
-    # We first want to build the boolean indexing mask that corresponds to the time-related condition
-    # We convert values in the "created_at" column to datetime format
-    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
-
-    # For each of these creation dates, we check whether they were registered less than 12 hours ago
-    # This provides us with the first boolean indexing mask
-    mask_time = all_alerts['created_at'].map(
-        lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all events
@@ -420,11 +411,8 @@ def update_live_alerts_data(
     # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
     mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
 
-    # We link the two masks with an OR condition
-    mask = np.logical_or(mask_time, mask_acknowledgement)
-
     # And we deduce the subset of alerts that we can deem to be "live"
-    live_alerts = all_alerts[mask].copy()
+    live_alerts = all_alerts[mask_acknowledgement].copy()
 
     # Some of these live alerts may have been blocked by the user, clicking on a "Ne plus voir cette alerte" button
     # We filter these out thanks to the list of blocked_event_ids
@@ -997,37 +985,153 @@ def close_alert_overview_main(
             return {'display': 'none'}
 
 
+# @app.callback(
+#     [
+#         Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+#         Output(
+#             {
+#                 'type': 'manage_confirmation_modal_acknowlegdment_button',
+#                 'index': MATCH
+#             },
+#             'children'
+#         )
+#     ],
+#     Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
+# )
+# def acknowledge_alert(n_clicks):
+#     """
+#     --- Acknowledging an alert ---
+
+#     Taking as input the number of clicks on an acknowledge_alert_button, this callback interacts with the API to modify
+#     the "is_acknowledged" field of the corresponding event from False to True in the DB.
+
+#     Additionally, it changes the acknowledge_alert_button into a paragraph component, indicating that the alert has been
+#     acknowledged already.
+#     """
+#     ctx = dash.callback_context
+
+#     if n_clicks is None or n_clicks == 0:
+#         raise PreventUpdate
+
+#     else:
+#         text = ctx.triggered[0]['prop_id'].split(':')[1]
+#         event_id = text[:text.find(',')]
+#         event_id = event_id.strip('"')
+
+#         # The event is actually acknowledged thanks to the acknowledge_event of the API client
+#         response = api_client.acknowledge_event(event_id=int(event_id))
+#         if response.status_code == 401:
+#             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+#             api_client.acknowledge_event(event_id=int(event_id))
+
+#         return [html.P('Alerte acquittée.')]
+
+
 @app.callback(
-    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+    Output(
+        {
+            'type': 'manage_confirmation_modal_acknowlegdment_button',
+            'index': MATCH
+        },
+        'children'
+    ),
     Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
 )
 def acknowledge_alert(n_clicks):
-    """
-    --- Acknowledging an alert ---
-
-    Taking as input the number of clicks on an acknowledge_alert_button, this callback interacts with the API to modify
-    the "is_acknowledged" field of the corresponding event from False to True in the DB.
-
-    Additionally, it changes the acknowledge_alert_button into a paragraph component, indicating that the alert has been
-    acknowledged already.
-    """
-    ctx = dash.callback_context
-
     if n_clicks is None or n_clicks == 0:
         raise PreventUpdate
 
     else:
-        text = ctx.triggered[0]['prop_id'].split(':')[1]
-        event_id = text[:text.find(',')]
-        event_id = event_id.strip('"')
+        return 'open'
 
-        # The event is actually acknowledged thanks to the acknowledge_event of the API client
-        response = api_client.acknowledge_event(event_id=int(event_id))
-        if response.status_code == 401:
-            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-            api_client.acknowledge_event(event_id=int(event_id))
 
-        return [html.P('Alerte acquittée.')]
+@app.callback(
+    Output(
+        {
+            'type': 'acknowledgement_confirmation_modal',
+            'index': MATCH
+        },
+        'is_open'
+    ),
+    [
+        Input(
+            {
+                'type': 'manage_confirmation_modal_acknowlegdment_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Input(
+            {
+                'type': 'manage_confirmation_modal_close_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Input(
+            {
+                'type': 'manage_confirmation_modal_confirmation_button',
+                'index': MATCH
+            },
+            'children'
+        )
+    ]
+)
+def manage_confirmation_modal(acknowlegdment_button_input, close_button_input, confirmation_button_input):
+    ctx = dash.callback_context
+
+    text = ctx.triggered[0]['prop_id'].split(':')[0]
+    print(text)
+    input_type = text[:text.find(',')]
+    print(input_type)
+    input_type = input_type.strip('"')
+    print(input_type)
+    print('----')
+
+    if input_type == 'manage_confirmation_modal_acknowlegdment_button':
+        return True
+
+    else:
+        return False
+
+
+@app.callback(
+    Output(
+        {
+            'type': 'manage_confirmation_modal_close_button',
+            'index': MATCH
+        },
+        'children'
+    ),
+    Input({'type': 'close_confirmation_modal_button', 'index': MATCH}, 'n_clicks')
+)
+def close_confirmation_modal(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        return 'close'
+
+
+@app.callback(
+    [
+        Output(
+            {
+                'type': 'manage_confirmation_modal_confirmation_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children')
+    ],
+    Input({'type': 'acknowledgement_confirmation_button', 'index': MATCH}, 'n_clicks')
+)
+def confirm_alert_acknowledgement(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        return ['close', html.P('Alerte acquittée.')]
 
 
 @app.callback(
@@ -1278,13 +1382,15 @@ def update_individual_frame_components(images_url_live_alerts):
 
     for event_id, frame_url_list in images_url_live_alerts.items():
 
+        images_to_display = frame_url_list[-15:]
+
         individual_alert_frame_placeholder_children.append(
             html.Div(
                 id={
                     'type': 'individual_alert_frame_storage',
                     'index': str(event_id)
                 },
-                children=frame_url_list,
+                children=images_to_display,
                 style={'display': 'none'}
             )
         )
@@ -1326,7 +1432,7 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
         response = api_client.get_ongoing_alerts()
     response = response.json()
     # Only for demo purposes, this should be deleted for dev and later in production
-    response = {}
+    # response = {}
 
     # If there is no alert, we build the no alert screen
     if len(response) == 0:
@@ -1342,17 +1448,8 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
 
     else:
         # We store all alerts in a DataFrame and we want to select "live alerts",
-        # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+        # Ie. alerts that correspond to a not-yet-acknowledged event
         all_alerts = pd.DataFrame(response)
-
-        # We first want to build the boolean indexing mask that corresponds to the time-related condition
-        # We convert values in the "created_at" column to datetime format
-        all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
-
-        # For each of these creation dates, we check whether they were registered less than 12 hours ago
-        # This provides us with the first boolean indexing mask
-        mask_time = all_alerts['created_at'].map(
-            lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
@@ -1372,11 +1469,8 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
         # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
         mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
 
-        # We link the two masks with an OR condition
-        mask = np.logical_or(mask_time, mask_acknowledgement)
-
         # And we deduce the subset of alerts that we can deem to be "live"
-        live_alerts = all_alerts[mask].copy()
+        live_alerts = all_alerts[mask_acknowledgement].copy()
 
         # Some of these live alerts may have been blocked by the user, clicking on a "Ne plus voir cette alerte" button
         # We filter these out thanks to the list of blocked_event_ids
