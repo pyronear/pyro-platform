@@ -345,7 +345,7 @@ def update_live_alerts_data(
                             site_devices_data=site_devices_data
                         )
                     )
-                except:
+                except Exception:
                     pass
 
             # Merging yaw (azimuth) field from devices_data
@@ -460,7 +460,7 @@ def update_live_alerts_data(
                                 site_devices_data=site_devices_data
                             )
                         )
-                    except:
+                    except Exception:
                         pass
 
                 # Is there any new event among these new alerts?
