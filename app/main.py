@@ -382,6 +382,8 @@ def update_live_alerts_data(
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_ongoing_alerts()
     response = response.json()
+    # Only for demo purposes, this should be deleted for dev and later in production
+    response = {}
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
@@ -1317,9 +1319,14 @@ def modify_alert_slider_length(individual_alert_frame_storage):
 )
 def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devices_data):
 
-    client = Client(cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD)
-
-    response = client.get_ongoing_alerts().json()
+    response = api_client.get_ongoing_alerts()
+    # Check token expiration
+    if response.status_code == 401:
+        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        response = api_client.get_ongoing_alerts()
+    response = response.json()
+    # Only for demo purposes, this should be deleted for dev and later in production
+    response = {}
 
     # If there is no alert, we build the no alert screen
     if len(response) == 0:
