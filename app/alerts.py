@@ -125,7 +125,7 @@ site_devices = get_site_devices_data(client=api_client)
 camera_positions = response.json()
 
 
-def build_sites_markers(dpt_code=None):
+def build_sites_markers(dpt_code=None, sites_with_live_alerts=[]):
     """
     This function reads the site markers by making the API, that contains all the
     information about the sites equipped with detection units.
@@ -148,32 +148,37 @@ def build_sites_markers(dpt_code=None):
     # We build a list of markers containing the info of each site/camera
     markers = []
     for row in camera_positions:
-        site_id = row['id']
-        lat = round(row['lat'], 4)
-        lon = round(row['lon'], 4)
-        site_name = row['name'].replace('_', ' ').title()
-        markers.append(
-            dl.Marker(
-                id=f'site_{site_id}',    # Necessary to set an id for each marker to receive callbacks
-                position=(lat, lon),
-                icon=icon,
-                children=[
-                    dl.Tooltip(site_name),
-                    dl.Popup(
-                        [
-                            html.H2(f'Site {site_name}'),
-                            html.P(f'Coordonnées : ({lat}, {lon})'),
-                            html.P(
-                                f"Nombre de caméras : {len(site_devices.get(row['name']))}"
-                            )
-                        ]
-                    )
-                ]
+        # We do not output a marker if the site is associated with a live alert being displayed
+        if row['name'].replace('_', ' ').title() in sites_with_live_alerts:
+            continue
+
+        else:
+            site_id = row['id']
+            lat = round(row['lat'], 4)
+            lon = round(row['lon'], 4)
+            site_name = row['name'].replace('_', ' ').title()
+            markers.append(
+                dl.Marker(
+                    id=f'site_{site_id}',    # Necessary to set an id for each marker to receive callbacks
+                    position=(lat, lon),
+                    icon=icon,
+                    children=[
+                        dl.Tooltip(site_name),
+                        dl.Popup(
+                            [
+                                html.H2(f'Site {site_name}'),
+                                html.P(f'Coordonnées : ({lat}, {lon})'),
+                                html.P(
+                                    f"Nombre de caméras : {len(site_devices.get(row['name']))}"
+                                )
+                            ]
+                        )
+                    ]
+                )
             )
-        )
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
-    return dl.MarkerClusterGroup(children=markers, id='sites_markers')
+    return markers
 
 
 def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_km):
@@ -198,8 +203,6 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
 
     # The center corresponds the point from which the vision angle "starts"
     center = [site_lat, site_lon]
-
-    print(center)
 
     points1 = []
     points2 = []
@@ -233,7 +236,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
 # Fire alerts
 # The following block is dedicated to fetching information about fire alerts and displaying them on the map.
 
-def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocked_event_ids):
+def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     """
     This function is used in the main.py file to create alerts-related elements such as the alert button (banner)
     or the alert markers on the map.
@@ -287,7 +290,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocke
             'status' in live_alerts_check.keys() and
             live_alerts_check['status'] == 'never_loaded_alerts_data'
         )
-        or not live_alerts
+        or not live_alerts_check
     ):
         # When there is no live alert to display, we return a alert header button that will remain hidden
         hidden_header_alert_button = html.Div(
@@ -307,8 +310,6 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocke
 
     else:
         all_alerts = pd.read_json(live_alerts)
-
-    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
     for _, row in all_events.iterrows():
@@ -541,7 +542,7 @@ def display_alert_selection_area(n_clicks):
     return [md_user, md_map, alert_button_status, alert_selection_area_style]
 
 
-def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_event_ids, site_devices_data):
+def build_individual_alert_components(live_alerts, alert_frame_urls, site_devices_data):
     """
     This function builds the user selection area containing the alert list
 
@@ -570,8 +571,6 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, blocked_eve
 
     else:
         all_alerts = pd.read_json(live_alerts)
-
-    all_alerts = all_alerts[~all_alerts['event_id'].isin(blocked_event_ids['event_ids'])].copy()
 
     all_events = all_alerts.drop_duplicates(['id', 'event_id']).groupby('event_id').head(1)  # Get unique events
 
@@ -728,24 +727,26 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                         children=[
                             dbc.ModalHeader("Confirmer l'acquittement de l'alerte ?"),
                             dbc.ModalBody(
-                                dbc.Button(
-                                    id={
-                                        'type': 'acknowledgement_confirmation_button',
-                                        'index': event_id
-                                    },
-                                    children='Oui',
-                                    className='btn-layers',
-                                    size='sm'
-                                ),
-                                dbc.Button(
-                                    id={
-                                        'type': 'close_confirmation_modal_button',
-                                        'index': event_id
-                                    },
-                                    children='Non',
-                                    className='btn-layers',
-                                    size='sm'
-                                )
+                                children=[
+                                    dbc.Button(
+                                        id={
+                                            'type': 'acknowledgement_confirmation_button',
+                                            'index': event_id
+                                        },
+                                        children='Oui',
+                                        className='btn-layers',
+                                        size='sm'
+                                    ),
+                                    dbc.Button(
+                                        id={
+                                            'type': 'close_confirmation_modal_button',
+                                            'index': event_id
+                                        },
+                                        children='Non',
+                                        className='btn-layers',
+                                        size='sm'
+                                    )
+                                ]
                             )
                         ]
                     ),
@@ -794,7 +795,7 @@ def build_alerts_map():
                             build_departments_geojson(),
                             build_filters_object(map_type='alerts'),
                             build_legend_box(map_type='alerts'),
-                            build_sites_markers(),
+                            dl.MarkerClusterGroup(children=build_sites_markers(), id='sites_markers'),
                             dl.LayerGroup(id='vision_polygons'),
                             html.Div(id="live_alerts_marker"),
                             html.Div(id="live_alert_header_btn"),

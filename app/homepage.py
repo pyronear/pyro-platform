@@ -370,7 +370,7 @@ def Homepage():
                     # Placeholders for the three inputs that can affect the style attribute of the alert overview area
                     html.Div(id='alert_overview_style_zoom', style={'display': 'none'}),
                     html.Div(id='alert_overview_style_closing_buttons', style={'display': 'none'}),
-                    html.Div(id='alert_overview_style_erase_buttons', style={'display': 'none'})
+                    html.Div(id='alert_overview_style_acknowledgement', style={'display': 'none'})
 
                 ],
                     id='map_column',
