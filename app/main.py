@@ -58,8 +58,6 @@ import requests
 # Various utils
 import numpy as np
 import json
-import pytz
-from datetime import datetime
 
 # --- Imports from other Python files
 
@@ -75,7 +73,7 @@ from homepage import Homepage
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
 from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, \
-    build_alert_overview, display_alert_selection_area
+    build_alert_overview, display_alert_selection_area, build_sites_markers, retrieve_site_from_device_id
 from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
 
 # Importing the pre-instantiated Pyro-API client
@@ -105,14 +103,6 @@ app.layout = html.Div(
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"height": "100%"}),
 
-        # Placeholders for the two inputs that can affect the stored live alert data
-        dcc.Store(id='update_live_alerts_data_workflow', data={}, storage_type="session"),
-        dcc.Store(id='update_live_alerts_data_erase_buttons', data={}, storage_type="session"),
-
-        # Placeholders for the two inputs that can affect the stored live alert frame URLs
-        dcc.Store(id='update_live_alerts_frames_workflow', data={}, storage_type="session"),
-        dcc.Store(id='update_live_alerts_frames_erase_buttons', data={}, storage_type="session"),
-
         # Storage component which contains data relative devices
         dcc.Store(
             id="devices_data_storage",
@@ -137,9 +127,6 @@ app.layout = html.Div(
         html.Div(id='alert_frame_update_new_event', style={'display': 'none'}),
         html.Div(id='alert_frame_update_interval', style={'display': 'none'}),
 
-        # Placeholder storing the list of event_ids that the user has decided not to show during the session
-        dcc.Store(id='blocked_event_ids', data={'event_ids': []}, storage_type='session'),
-
         # Session storage component to avoid re-opening the login modal at each refresh
         # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
@@ -156,7 +143,10 @@ app.layout = html.Div(
         html.Div(id='individual_alert_frame_placeholder', style={'display': 'none'}),
 
         # Storage component saving the IDs of alerts whose frames have already been loaded
-        dcc.Store(id='loaded_frames', storage_type='session')
+        dcc.Store(id='loaded_frames', storage_type='session'),
+
+        # Placeholder that stores the names of the sites associated with a live alert displayed on the platform
+        html.Div(id='sites_with_live_alerts', children=[], style={'display': 'none'})
     ]
 )
 
@@ -231,143 +221,28 @@ def change_layer_style(n_clicks=None):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Callbacks determining what alert data and alert frame URLs are stored
-
-@app.callback(
-    Output('store_live_alerts_data', 'data'),
-    [Input('update_live_alerts_data_workflow', 'data'),
-     Input('update_live_alerts_data_erase_buttons', 'data')]
-)
-def update_live_alerts_data_main(workflow_input, erase_buttons_input):
-    """
-    --- Updating the alert data storage component / Main callback ---
-
-    This callback centralises the two interactions that can trigger an update of the stored alerts data:
-
-    - the usual alert workflow;
-    - a click on any of the alert erasing buttons by the user.
-
-    In practice, the callback is triggered by a change in any of the two corresponding HTML placeholders.
-    """
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        raise PreventUpdate
-
-    # We determine what input has triggered the callback
-    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    # If the usual alert workflow has triggered the callback
-    if input_id == 'update_live_alerts_data_workflow':
-        return workflow_input
-
-    # If a click on any of the alert erasing buttons has triggered the callback
-    else:
-        return erase_buttons_input
+# Callbacks determining what alert data and alert frame URLs are store
 
 
 @app.callback(
-    Output('images_url_live_alerts', 'data'),
-    [Input('update_live_alerts_frames_workflow', 'data'),
-     Input('update_live_alerts_frames_erase_buttons', 'data')]
-)
-def update_live_alerts_frames_main(workflow_input, erase_buttons_input):
-    """
-    --- Updating the alert frames storage component / Main callback ---
-
-    Similarly to the one defined above for live alert data, this callback centralises the two interactions that can
-    trigger an update of the stored alert frame URLs:
-
-    - the usual alert workflow;
-    - a click on any of the alert erasing buttons by the user.
-
-    In practice, the callback is triggered by a change in any of the two corresponding HTML placeholders.
-    """
-
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        raise PreventUpdate
-
-    # We determine what input has triggered the callback
-    input_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    # If the usual alert workflow has triggered the callback
-    if input_id == 'update_live_alerts_frames_workflow':
-        return workflow_input
-
-    # If a click on any of the alert erasing buttons has triggered the callback
-    else:
-        return erase_buttons_input
-
-
-@app.callback(
-    [Output('update_live_alerts_data_erase_buttons', 'data'),
-     Output('update_live_alerts_frames_erase_buttons', 'data'),
-     Output('alert_overview_style_erase_buttons', 'children'),
-     Output('blocked_event_ids', 'data')],
-    Input({'type': 'erase_alert_button', 'index': ALL}, 'n_clicks'),
-    [State('store_live_alerts_data', 'data'),
-     State('images_url_live_alerts', 'data'),
-     State('blocked_event_ids', 'data')]
-)
-def update_live_alerts_data_erase_buttons(n_clicks, alerts_data, alerts_frames, blocked_event_ids):
-    """
-    --- Erasing an alert for the rest of the browser session ---
-
-    In the alert overview of each alert, a button allows to erase an irrelevant alert for the rest of the browser ses-
-    sion. This callback is triggered by a click on any of these buttons and eliminates the alert / event from the alert
-    data and frames that are stored in dcc.Store components ("store_live_alerts_data" and "images_url_live_alerts").
-
-    It does so indirectly because two interactions can modify these components: this one and the usual alert workflow.
-    To account for this, the callback updates two HTML placeholders created in homepage.py. The new data and frames are
-    sent to these, which relay them to the storage components via two other callbacks defined right above.
-
-    Additionally, this callback hides the alert overview area when it is triggered.
-    """
-    ctx = dash.callback_context
-
-    # If the callback has not been triggered by any click on alert erasing buttons, we raise a PreventUpdate
-    if not ctx.triggered or all(elt is None for elt in n_clicks):
-        raise PreventUpdate
-
-    # These few lines allow to determine the event_id corresponding to the button that has triggered the callback
-    text = ctx.triggered[0]['prop_id'].split(':')[1]
-    event_id = text[:text.find(',')]
-    event_id = event_id.strip('"')
-
-    # We remove the corresponding key-value pair from the dictionary that contains alert frames
-    _ = alerts_frames.pop(event_id, None)
-
-    # We rebuild the live alerts as a DataFrame
-    live_alerts = pd.read_json(alerts_data)
-
-    # We will match the event_id with the corresponding column but we need to change its data type
-    live_alerts['event_id'] = live_alerts['event_id'].astype(str)
-
-    # We exclude the alerts that correspond to the event being erased
-    live_alerts = live_alerts[live_alerts['event_id'] != event_id].copy()
-
-    # Eventually, we modify the list of event_ids that must be blocked during the next updates generated by the Interval
-    blocked_event_ids['event_ids'].append(event_id)
-
-    return live_alerts.to_json(orient='records'), alerts_frames, 'hidden', blocked_event_ids
-
-
-@app.callback(
-    [Output('update_live_alerts_data_workflow', 'data'),
-     Output('update_live_alerts_frames_workflow', 'data'),
+    [Output('store_live_alerts_data', 'data'),
+     Output('images_url_live_alerts', 'data'),
      Output('loaded_frames', 'data'),
-     Output('main_api_fetch_interval', 'interval')],
+     Output('main_api_fetch_interval', 'interval'),
+     Output('sites_with_live_alerts', 'children')],
     Input('main_api_fetch_interval', 'n_intervals'),
     [State('store_live_alerts_data', 'data'),
      State('images_url_live_alerts', 'data'),
-     State('blocked_event_ids', 'data'),
      State('devices_data_storage', 'data'),
-     State('loaded_frames', 'data')]
+     State('loaded_frames', 'data'),
+     State('site_devices_data_storage', 'data')]
 )
 def update_live_alerts_data(
-    n_intervals, ongoing_live_alerts, ongoing_frame_urls, blocked_event_ids, devices_data, already_loaded_frames
+    n_intervals,
+    ongoing_live_alerts, ongoing_frame_urls,
+    devices_data,
+    already_loaded_frames,
+    site_devices_data
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -382,23 +257,16 @@ def update_live_alerts_data(
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_ongoing_alerts()
     response = response.json()
+    # Only for demo purposes, this should be deleted for dev and later in production
+    # response = {}
 
     # If there is no alert, we prevent the callback from updating anything
     if len(response) == 0:
         raise PreventUpdate
 
     # We store all alerts in a DataFrame and we want to select "live alerts",
-    # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+    # Ie. alerts that correspond to a not-yet-acknowledged event
     all_alerts = pd.DataFrame(response)
-
-    # We first want to build the boolean indexing mask that corresponds to the time-related condition
-    # We convert values in the "created_at" column to datetime format
-    all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
-
-    # For each of these creation dates, we check whether they were registered less than 12 hours ago
-    # This provides us with the first boolean indexing mask
-    mask_time = all_alerts['created_at'].map(
-        lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all events
@@ -418,22 +286,13 @@ def update_live_alerts_data(
     # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
     mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
 
-    # We link the two masks with an OR condition
-    mask = np.logical_or(mask_time, mask_acknowledgement)
-
     # And we deduce the subset of alerts that we can deem to be "live"
-    live_alerts = all_alerts[mask].copy()
-
-    # Some of these live alerts may have been blocked by the user, clicking on a "Ne plus voir cette alerte" button
-    # We filter these out thanks to the list of blocked_event_ids
-    live_alerts = live_alerts[
-        ~live_alerts['event_id'].isin(blocked_event_ids['event_ids'])
-    ].copy()
+    live_alerts = all_alerts[mask_acknowledgement].copy()
 
     # Is there any live alert to display?
     if live_alerts.empty:
         # If not, we do not update any of the callback's output
-        raise PreventUpdate
+        return json.dumps({}), {}, {'loaded_frames': []}, 5 * 1000, []
 
     else:
         # If yes, there is a bit of work to do!
@@ -448,6 +307,10 @@ def update_live_alerts_data(
 
             # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
             dict_images_url_live_alerts = {}
+
+            # This void list will store the names of the sites for which a live alert is being displayed,
+            # Enabling us later on to hide the corresponding site marker and only display the alert one
+            sites_with_live_alerts = []
 
             # We iterate over newly loaded live alerts
             for _, row in live_alerts.iterrows():
@@ -471,6 +334,17 @@ def update_live_alerts_data(
                 else:
                     # We already have some URLs for this event and we simply append the latest frame to the list of URLs
                     dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
+
+                try:
+                    # We use the device ID to retrieve the name of the corresponding site
+                    sites_with_live_alerts.append(
+                        retrieve_site_from_device_id(
+                            device_id=row['device_id'],
+                            site_devices_data=site_devices_data
+                        )
+                    )
+                except Exception:
+                    pass
 
             # Merging yaw (azimuth) field from devices_data
             all_devices = pd.DataFrame(devices_data)
@@ -503,9 +377,16 @@ def update_live_alerts_data(
             # So we update all outputs:
             # - the storage component that contains alert data in JSON format;
             # - the storage component that contains the dictionary with detection frame URLs;
-            # - the storage component that serves as source of truth for the list of already loaded alerts
+            # - the storage component that serves as source of truth for the list of already loaded alerts;
+            # - the HTML div that stores the list of sites where an alert is live
 
-            return live_alerts, dict_images_url_live_alerts, {'loaded_frames': new_loaded_frames}, 5 * 1000
+            return [
+                live_alerts,
+                dict_images_url_live_alerts,
+                {'loaded_frames': new_loaded_frames},
+                5 * 1000,
+                sites_with_live_alerts
+            ]
 
         else:
             # In this case, we have already loaded some alert data
@@ -513,10 +394,16 @@ def update_live_alerts_data(
             # We create a DataFrame with the data for already loaded alerts
             ongoing_live_alerts = pd.read_json(ongoing_live_alerts)
 
+            if ongoing_live_alerts.empty:
+                loaded_alert_ids = np.array([])
+
+            else:
+                loaded_alert_ids = ongoing_live_alerts['id'].unique()
+
             # Are all live alerts already stored on the platform?
             condition = np.array_equal(
                 live_alerts['id'].unique(),
-                ongoing_live_alerts['id'].unique()
+                loaded_alert_ids
             )
 
             # If this condition is verified,
@@ -537,6 +424,10 @@ def update_live_alerts_data(
                 # Besides, we want to update the dictionary that contains alert frame URLs
                 # We start from a copy of the existing one (which we got from the dedicated dcc.Store component)
                 dict_images_url_live_alerts = ongoing_frame_urls.copy()
+
+                # This void list will store the names of the sites for which a live alert is being displayed,
+                # Enabling us later on to hide the corresponding site marker and only display the alert one
+                sites_with_live_alerts = []
 
                 # We iterate over new live alerts
                 for _, row in new_alerts.iterrows():
@@ -559,8 +450,22 @@ def update_live_alerts_data(
                     else:
                         dict_images_url_live_alerts[str(row['event_id'])].append(img_url)
 
+                    try:
+                        # We use the device ID to retrieve the name of the corresponding site
+                        sites_with_live_alerts.append(
+                            retrieve_site_from_device_id(
+                                device_id=row['device_id'],
+                                site_devices_data=site_devices_data
+                            )
+                        )
+                    except Exception:
+                        pass
+
                 # Is there any new event among these new alerts?
-                condition = (~new_alerts['event_id'].isin(ongoing_live_alerts['event_id'].unique())).sum()
+                if ongoing_live_alerts.empty:
+                    condition = True
+                else:
+                    condition = (~new_alerts['event_id'].isin(ongoing_live_alerts['event_id'].unique())).sum()
 
                 # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
                 # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
@@ -590,7 +495,8 @@ def update_live_alerts_data(
                         live_alerts,
                         dict_images_url_live_alerts,
                         {'loaded_frames': new_loaded_frames},
-                        dash.no_update
+                        5 * 1000,
+                        sites_with_live_alerts
                     ]
 
                 # If the condition is not verified, we have no new "alert" / event to display on the platform but only
@@ -603,8 +509,23 @@ def update_live_alerts_data(
                         dash.no_update,
                         dict_images_url_live_alerts,
                         {'loaded_frames': new_loaded_frames},
-                        dash.no_update
+                        5 * 1000,
+                        sites_with_live_alerts
                     ]
+
+
+@app.callback(
+    Output('sites_markers', 'children'),
+    Input('sites_with_live_alerts', 'children')
+)
+def hide_or_show_site_markers(sites_with_live_alerts):
+    """
+    In reaction to changes in the list of site names associated with an alert being displayed, this callback creates
+    site markers. The goal is to hide the markers of sites associated with an alert being displayed, so that only the
+    alert marker can be seen on the map.
+    """
+    print(sites_with_live_alerts)
+    return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -947,15 +868,36 @@ def close_alert_overview_intermediary(n_clicks):
 
 
 @app.callback(
+    Output('alert_overview_style_acknowledgement', 'children'),
+    Input({'type': 'acknowledgement_confirmation_button', 'index': ALL}, 'n_clicks')
+)
+def close_alert_overview_following_acknowledgement(n_clicks):
+    """
+    --- Closing the alert overview / Alert acknowledgement ---
+
+    In reaction to the acknowledgement of any alert / event by the user, this callback closes the alert overview. To do
+    so, it first updates the "children" attribute of a placeholder HTML div, which will then trigger a multi-input call-
+    back centralising all the interactions that can open or close the alert overview.
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered or all(elt is None for elt in n_clicks):
+        raise PreventUpdate
+
+    else:
+        return 'hidden'
+
+
+@app.callback(
     Output('alert_overview_area', 'style'),
     [Input('alert_overview_style_zoom', 'children'),
      Input('alert_overview_style_closing_buttons', 'children'),
-     Input('alert_overview_style_erase_buttons', 'children')]
+     Input('alert_overview_style_acknowledgement', 'children')]
 )
 def close_alert_overview_main(
     alert_overview_style_zoom,
     alert_overview_style_closing_buttons,
-    alert_overview_style_erase_buttons
+    alert_overview_style_acknowledgement
 ):
     """
     --- Closing the alert overview / Main callback ---
@@ -990,42 +932,164 @@ def close_alert_overview_main(
             return {'display': 'none'}
 
         # If it is a click on any of the alert erasing buttons that has triggered the callback
-        elif input_id == 'alert_overview_style_erase_buttons':
+        elif input_id == 'alert_overview_style_acknowledgement':
             # Then we hide the alert overview
             return {'display': 'none'}
 
 
 @app.callback(
-    Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children'),
+    Output(
+        {
+            'type': 'manage_confirmation_modal_acknowlegdment_button',
+            'index': MATCH
+        },
+        'children'
+    ),
     Input({'type': 'acknowledge_alert_button', 'index': MATCH}, 'n_clicks')
 )
 def acknowledge_alert(n_clicks):
     """
-    --- Acknowledging an alert ---
+    --- Open acknowledgement confirmation modal ---
 
-    Taking as input the number of clicks on an acknowledge_alert_button, this callback interacts with the API to modify
-    the "is_acknowledged" field of the corresponding event from False to True in the DB.
-
-    Additionally, it changes the acknowledge_alert_button into a paragraph component, indicating that the alert has been
-    acknowledged already.
+    This callback, triggered by the user's click on any alert acknowledgement button, opens the corresponding alert
+    acknowledgement confirmation modal. It does so indirectly, by updating the "children" attribute of the dedicated
+    HTML Div placeholder.
     """
-    ctx = dash.callback_context
-
     if n_clicks is None or n_clicks == 0:
         raise PreventUpdate
 
     else:
+        return 'open'
+
+
+@app.callback(
+    Output(
+        {
+            'type': 'acknowledgement_confirmation_modal',
+            'index': MATCH
+        },
+        'is_open'
+    ),
+    [
+        Input(
+            {
+                'type': 'manage_confirmation_modal_acknowlegdment_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Input(
+            {
+                'type': 'manage_confirmation_modal_close_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Input(
+            {
+                'type': 'manage_confirmation_modal_confirmation_button',
+                'index': MATCH
+            },
+            'children'
+        )
+    ]
+)
+def manage_confirmation_modal(acknowlegdment_button_input, close_button_input, confirmation_button_input):
+    """
+    --- Managing the acknowledgement confirmation modal / Main callback ---
+
+    This callback centralises all the interactions that can open or close the alert acknowledgement confirmation modal.
+    It takes the "children" attribute of the dedicated HTML Div placeholders as inputs and eventually determines the
+    "is_open" attribute of the corresponding acknowledgement confirmation modal.
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    text = ctx.triggered[0]['prop_id'].split(':')[2]
+    input_type = text[:text.find('}')]
+    input_type = input_type.strip('"')
+
+    if input_type == 'manage_confirmation_modal_acknowlegdment_button':
+        return True
+
+    else:
+        return False
+
+
+@app.callback(
+    Output(
+        {
+            'type': 'manage_confirmation_modal_close_button',
+            'index': MATCH
+        },
+        'children'
+    ),
+    Input({'type': 'close_confirmation_modal_button', 'index': MATCH}, 'n_clicks')
+)
+def close_confirmation_modal(n_clicks):
+    """
+    --- Closing the acknowledgement confirmation modal ---
+
+    Triggered by the user's click on the button that allows to close the alert acknowledgement confirmation modal (the
+    one that displays "Non" in the acknowledgement confirmation modal), this callback closes the modal. It does so indi-
+    rectly by updating the "children" attribute of the dedicated HTML Div placeholder.
+    """
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        return 'close'
+
+
+@app.callback(
+    [
+        Output(
+            {
+                'type': 'manage_confirmation_modal_confirmation_button',
+                'index': MATCH
+            },
+            'children'
+        ),
+        Output({'type': 'acknowledge_alert_space', 'index': MATCH}, 'children')
+    ],
+    Input({'type': 'acknowledgement_confirmation_button', 'index': MATCH}, 'n_clicks')
+)
+def confirm_alert_acknowledgement(n_clicks):
+    """
+    --- Confirming alert acknowledgement ---
+
+    Once the user has clicked on an alert acknowledgement button, the corresponding confirmation modal is opened.
+
+    This callback is triggered by the user's click on the confirmation button (the one that displays "Oui").
+
+    It then does two things:
+
+    - it indirectly closes the acknowledgement confirmation modal through an HTML Div placeholder;
+
+    - it updates the content of the alert acknowledgement space to erase the acknowledgement button and replace it with
+    a text saying that the alert / event has already been acknowledged.
+    """
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    else:
+        ctx = dash.callback_context
+
+        # We retrieve the ID of the event
         text = ctx.triggered[0]['prop_id'].split(':')[1]
         event_id = text[:text.find(',')]
         event_id = event_id.strip('"')
 
-        # The event is actually acknowledged thanks to the acknowledge_event of the API client
+        # The event is actually acknowledged thanks to the acknowledge_event method of the API client
         response = api_client.acknowledge_event(event_id=int(event_id))
+
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             api_client.acknowledge_event(event_id=int(event_id))
 
-        return [html.P('Alerte acquittée.')]
+        return ['close', html.P('Alerte acquittée.')]
 
 
 @app.callback(
@@ -1215,11 +1279,10 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     Input("store_live_alerts_data", "data"),
     [State('map_style_button', 'children'),
      State('images_url_live_alerts', 'data'),
-     State('blocked_event_ids', 'data'),
      State('site_devices_data_storage', 'data')]
 )
 def update_live_alerts_components(
-    live_alerts, map_style_button_label, images_url_live_alerts, blocked_event_ids, site_devices_data
+    live_alerts, map_style_button_label, images_url_live_alerts, site_devices_data
 ):
     """
     -- Updating style components with corresponding alerts data --
@@ -1255,10 +1318,10 @@ def update_live_alerts_components(
         map_style = "risks"
 
     if map_style == 'alerts':
-        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style, blocked_event_ids)
+        output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
 
         output += build_individual_alert_components(
-            live_alerts, images_url_live_alerts, blocked_event_ids, site_devices_data
+            live_alerts, images_url_live_alerts, site_devices_data
         )
 
         return output
@@ -1276,13 +1339,15 @@ def update_individual_frame_components(images_url_live_alerts):
 
     for event_id, frame_url_list in images_url_live_alerts.items():
 
+        images_to_display = frame_url_list[-15:]
+
         individual_alert_frame_placeholder_children.append(
             html.Div(
                 id={
                     'type': 'individual_alert_frame_storage',
                     'index': str(event_id)
                 },
-                children=frame_url_list,
+                children=images_to_display,
                 style={'display': 'none'}
             )
         )
@@ -1311,15 +1376,19 @@ def modify_alert_slider_length(individual_alert_frame_storage):
         Output('images_to_display_on_big_screen', 'data')
     ],
     Input("interval-component-alert-screen", "n_intervals"),
-    [State('blocked_event_ids', 'data'),
-     State('devices_data_storage', 'data'),
+    [State('devices_data_storage', 'data'),
      State('site_devices_data_storage', 'data')],
 )
-def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devices_data):
+def update_alert_screen(n_intervals, devices_data, site_devices_data):
 
-    client = Client(cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD)
-
-    response = client.get_ongoing_alerts().json()
+    response = api_client.get_ongoing_alerts()
+    # Check token expiration
+    if response.status_code == 401:
+        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        response = api_client.get_ongoing_alerts()
+    response = response.json()
+    # Only for demo purposes, this should be deleted for dev and later in production
+    # response = {}
 
     # If there is no alert, we build the no alert screen
     if len(response) == 0:
@@ -1335,17 +1404,8 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
 
     else:
         # We store all alerts in a DataFrame and we want to select "live alerts",
-        # Ie. alerts that either correspond to a not-yet-acknowledged event or have been created less than 12 hours ago
+        # Ie. alerts that correspond to a not-yet-acknowledged event
         all_alerts = pd.DataFrame(response)
-
-        # We first want to build the boolean indexing mask that corresponds to the time-related condition
-        # We convert values in the "created_at" column to datetime format
-        all_alerts['created_at'] = pd.to_datetime(all_alerts['created_at'], utc=True)
-
-        # For each of these creation dates, we check whether they were registered less than 12 hours ago
-        # This provides us with the first boolean indexing mask
-        mask_time = all_alerts['created_at'].map(
-            lambda x: pd.Timestamp(datetime.now(tz=pytz.UTC)) - x) <= pd.Timedelta('12 hours')
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
@@ -1365,17 +1425,8 @@ def update_alert_screen(n_intervals, blocked_event_ids, devices_data, site_devic
         # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
         mask_acknowledgement = ~all_alerts['event_id'].map(is_event_acknowledged)
 
-        # We link the two masks with an OR condition
-        mask = np.logical_or(mask_time, mask_acknowledgement)
-
         # And we deduce the subset of alerts that we can deem to be "live"
-        live_alerts = all_alerts[mask].copy()
-
-        # Some of these live alerts may have been blocked by the user, clicking on a "Ne plus voir cette alerte" button
-        # We filter these out thanks to the list of blocked_event_ids
-        live_alerts = live_alerts[
-            ~live_alerts['event_id'].isin(blocked_event_ids['event_ids'])
-        ].copy()
+        live_alerts = all_alerts[mask_acknowledgement].copy()
 
         # Is there any live alert to display?
         if live_alerts.empty:
