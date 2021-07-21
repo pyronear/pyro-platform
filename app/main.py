@@ -524,7 +524,6 @@ def hide_or_show_site_markers(sites_with_live_alerts):
     site markers. The goal is to hide the markers of sites associated with an alert being displayed, so that only the
     alert marker can be seen on the map.
     """
-    print(sites_with_live_alerts)
     return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts)
 
 
