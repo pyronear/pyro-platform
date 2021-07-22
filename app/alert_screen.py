@@ -87,35 +87,12 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
         style={"height": "100%"},
     )
 
-    # Detection frame
-    alert_frame = html.Img(
-        id="alert_frame",
-        src=img_url[-1],
-        style={
-            "position": "relative",
-            "width": "100%",
-            "height": "100%",
-            "object-fit": "contain",
-        },
-    )
-
-    # Fire alert image div (right of the screen)
-    # Multiple frames are rendered here (to make it look like a GIF)
-    fire_images_div = html.Div(
-        id="fire_alert_div",
-        children=[
-            alert_frame,
-            dcc.Interval(id="interval-component-img-refresh", interval=3 * 1000),
-        ],
-        style={"display": "flex", "height": "100%", "width": "100%"},
-    )
-
     # Alert metadata div
     alert_metadata_div = html.Div(
         children=[
             html.P("Coordonnées de la tour : {}, {}".format(lat, lon)),
-            html.P("Id de caméra : {}".format(device_id)),
-            html.P("Azimuth : {}".format(azimuth)),
+            html.P("ID de caméra : {}".format(device_id)),
+            html.P("Azimuth : {}°".format(azimuth)),
         ]
     )
 
@@ -128,7 +105,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                     f"Tour : {site_name}",
                 ),
                 style={
-                    "font-size": "2vw",
+                    "font-size": "3.5vw",
                     "color": "#054546",
                     "font-weight": "bold",
                 },
@@ -136,13 +113,13 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
             html.Div(
                 alert_metadata_div,
                 style={
-                    "font-size": "1.75vw",
+                    "font-size": "2vw",
                     "color": "#054546",
                 },
             ),
         ],
         style={
-            "margin-top": "5%",
+            "margin-top": "7.5%",
         },
     )
 
@@ -160,18 +137,9 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                             style={
                                 "display": "flex",
                                 "justify-content": "center",
-                                "height": "30%",
+                                "height": "75%",
                             },
-                        ),
-                        dbc.Row(
-                            id="fire_text_row",
-                            children=fire_text_div,
-                            style={
-                                "display": "flex",
-                                "justify-content": "center",
-                                "margin-right": "2.5%",
-                            },
-                        ),
+                        )
                     ],
                     style={
                         "width": "50%",
@@ -186,9 +154,10 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                                 html.Div(
                                     html.P("DÉPART DE FEU"),
                                     style={
-                                        "font-size": "4vw",
+                                        "font-size": "6vw",
                                         "color": "#fd4848",
                                         "font-weight": "bold",
+                                        "margin-top": '5%'
                                     },
                                     className="blink-image",
                                 ),
@@ -200,14 +169,14 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                             },
                         ),
                         dbc.Row(
-                            id="fire_images_row",
-                            children=fire_images_div,
+                            id="fire_text_row",
+                            children=fire_text_div,
                             style={
                                 "display": "flex",
                                 "justify-content": "center",
-                                "margin-right": "2.5%",
+                                # "margin-right": "2.5%",
                             },
-                        ),
+                        )
                     ],
                     style={
                         "width": "50%",
