@@ -58,6 +58,7 @@ import requests
 # Various utils
 import numpy as np
 import json
+from datetime import datetime, timedelta
 
 # --- Imports from other Python files
 
@@ -74,7 +75,7 @@ from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
 from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, \
     build_alert_overview, display_alert_selection_area, build_sites_markers, retrieve_site_from_device_id
-from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
+from utils import choose_layer_style, build_filters_object, build_legend_box, is_hour_between
 
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
@@ -131,6 +132,15 @@ app.layout = html.Div(
         # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
 
+        # Session storage component which fetches sunrise and sunset times to filter night alerts
+        dcc.Store(id='night_time',
+                  storage_type='session',
+                  data=requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533 '
+                                    '&lng=4.273138903528911&formatted=0&date=today').json()),
+
+        # Interval that refreshes the night_time storage and API fetch every 24h
+        dcc.Interval(id='refresh_night_time', interval=24 * 3600 * 1000),
+
         # Storage component which contains data relative to site devices
         dcc.Store(
             id="site_devices_data_storage",
@@ -158,12 +168,12 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 60
 })
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
+
 
 @app.callback(
     Output("page-content", "children"),
@@ -220,6 +230,13 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
+@app.callback(Output('night_time', 'data'),
+              Input('refresh_night_time', 'n_intervals'),)
+def refresh_night_time(n_intervals):
+    return requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533 '
+                        '&lng=4.273138903528911&formatted=0&date=today').json()
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks determining what alert data and alert frame URLs are store
 
@@ -235,14 +252,16 @@ def change_layer_style(n_clicks=None):
      State('images_url_live_alerts', 'data'),
      State('devices_data_storage', 'data'),
      State('loaded_frames', 'data'),
-     State('site_devices_data_storage', 'data')]
+     State('site_devices_data_storage', 'data'),
+     State('night_time', 'data')]
 )
 def update_live_alerts_data(
     n_intervals,
     ongoing_live_alerts, ongoing_frame_urls,
     devices_data,
     already_loaded_frames,
-    site_devices_data
+    site_devices_data,
+    night_time_data
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -288,6 +307,19 @@ def update_live_alerts_data(
 
     # And we deduce the subset of alerts that we can deem to be "live"
     live_alerts = all_alerts[mask_acknowledgement].copy()
+
+    # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
+    sunrise = night_time_data['results']['sunrise'][:-6]
+    sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
+    sunrise = sunrise.time()
+
+    sunset = night_time_data['results']['sunset'][:-6]
+    sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
+    sunset = sunset.time()
+
+    # Are there some live alerts during night time ? If yes let's filter them out
+    mask = live_alerts['created_at'].map(lambda x: is_hour_between(sunrise, sunset, x))
+    live_alerts = live_alerts[mask].copy()
 
     # Is there any live alert to display?
     if live_alerts.empty:
