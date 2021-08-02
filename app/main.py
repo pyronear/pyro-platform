@@ -58,6 +58,7 @@ import requests
 # Various utils
 import numpy as np
 import json
+from datetime import datetime, timedelta
 
 # --- Imports from other Python files
 
@@ -131,6 +132,12 @@ app.layout = html.Div(
         # [NOT SUCCESSFUL YET]
         dcc.Store(id='login_storage', storage_type='session', data={'login': 'no'}),
 
+        # Session storage component which fetches sunrise and sunset times to filter night alerts
+        dcc.Store(id='night_time',
+                  storage_type='session',
+                  data=requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533n'\
+                                    '&lng=4.273138903528911&formatted=0&date=today').json()),
+
         # Storage component which contains data relative to site devices
         dcc.Store(
             id="site_devices_data_storage",
@@ -158,12 +165,28 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 60
 })
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Diverse
+# The following block is dedicated to the definition of variables and functions that will be used in main
+
+
+def is_hour_between(sunrise, sunset, alert_time):
+
+    alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
+    alert_time = alert_time.time()
+
+    is_between = False
+    is_between |= sunrise <= alert_time <= sunset
+    is_between |= sunset <= sunrise and (sunrise <= alert_time or alert_time <= sunset)
+
+    return is_between
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
 
 # ----------------------------------------------------------------------------------------------------------------------
 # General callbacks
+
 
 @app.callback(
     Output("page-content", "children"),
@@ -235,14 +258,16 @@ def change_layer_style(n_clicks=None):
      State('images_url_live_alerts', 'data'),
      State('devices_data_storage', 'data'),
      State('loaded_frames', 'data'),
-     State('site_devices_data_storage', 'data')]
+     State('site_devices_data_storage', 'data'),
+     State('night_time', 'data')]
 )
 def update_live_alerts_data(
     n_intervals,
     ongoing_live_alerts, ongoing_frame_urls,
     devices_data,
     already_loaded_frames,
-    site_devices_data
+    site_devices_data,
+    night_time_data
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -288,6 +313,23 @@ def update_live_alerts_data(
 
     # And we deduce the subset of alerts that we can deem to be "live"
     live_alerts = all_alerts[mask_acknowledgement].copy()
+
+    # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
+    sunrise = night_time_data['results']['sunrise'][:-6]
+    sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
+    sunrise = sunrise.time()
+
+    sunset = night_time_data['results']['sunset'][:-6]
+    sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
+    sunset = sunset.time()
+
+    # Are there some live alerts during night time ? If yes let's filter them out
+    index = []
+    for idx, row in live_alerts.iterrows():
+        if not is_hour_between(sunrise, sunset, row['created_at']):
+            index.append(idx)
+
+    live_alerts = live_alerts.drop(index)
 
     # Is there any live alert to display?
     if live_alerts.empty:
