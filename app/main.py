@@ -75,7 +75,8 @@ from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
 from alerts import build_alerts_elements, get_site_devices_data, build_individual_alert_components, \
     build_alert_overview, display_alert_selection_area, build_sites_markers, retrieve_site_from_device_id
-from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box
+from utils import choose_layer_style, build_filters_object, build_historic_markers, build_legend_box, \
+    is_hour_between
 
 # Importing the pre-instantiated Pyro-API client
 from services import api_client
@@ -135,8 +136,11 @@ app.layout = html.Div(
         # Session storage component which fetches sunrise and sunset times to filter night alerts
         dcc.Store(id='night_time',
                   storage_type='session',
-                  data=requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533n'\
+                  data=requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533 '
                                     '&lng=4.273138903528911&formatted=0&date=today').json()),
+
+        # Interval that refreshes the night_time storage and API fetch every 24h
+        dcc.Interval(id='refresh_night_time', interval=24 * 3600 * 1000),
 
         # Storage component which contains data relative to site devices
         dcc.Store(
@@ -164,22 +168,6 @@ cache = Cache(app.server, config={
     'CACHE_DIR': '.cache',
     'CACHE_DEFAULT_TIMEOUT': 60
 })
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Diverse
-# The following block is dedicated to the definition of variables and functions that will be used in main
-
-
-def is_hour_between(sunrise, sunset, alert_time):
-
-    alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
-    alert_time = alert_time.time()
-
-    is_between = False
-    is_between |= sunrise <= alert_time <= sunset
-    is_between |= sunset <= sunrise and (sunrise <= alert_time or alert_time <= sunset)
-
-    return is_between
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CALLBACKS
@@ -241,6 +229,13 @@ def change_layer_style(n_clicks=None):
         n_clicks = 0
 
     return choose_layer_style(n_clicks)
+
+
+@app.callback(Output('night_time', 'data'),
+              Input('refresh_night_time', 'n_intervals'),)
+def refresh_night_time(n_intervals):
+    return requests.get('https://api.sunrise-sunset.org/json?lat=44.62112179704533 '
+                        '&lng=4.273138903528911&formatted=0&date=today').json()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -324,12 +319,8 @@ def update_live_alerts_data(
     sunset = sunset.time()
 
     # Are there some live alerts during night time ? If yes let's filter them out
-    index = []
-    for idx, row in live_alerts.iterrows():
-        if not is_hour_between(sunrise, sunset, row['created_at']):
-            index.append(idx)
-
-    live_alerts = live_alerts.drop(index)
+    mask = live_alerts['created_at'].map(lambda x: is_hour_between(sunrise, sunset, x))
+    live_alerts = live_alerts[mask].copy()
 
     # Is there any live alert to display?
     if live_alerts.empty:
