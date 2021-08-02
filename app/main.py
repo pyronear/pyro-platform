@@ -1408,9 +1408,10 @@ def modify_alert_slider_length(individual_alert_frame_storage):
     ],
     Input("interval-component-alert-screen", "n_intervals"),
     [State('devices_data_storage', 'data'),
-     State('site_devices_data_storage', 'data')],
+     State('site_devices_data_storage', 'data'),
+     State('night_time', 'data')],
 )
-def update_alert_screen(n_intervals, devices_data, site_devices_data):
+def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data):
 
     response = api_client.get_ongoing_alerts()
     # Check token expiration
@@ -1458,6 +1459,19 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data):
 
         # And we deduce the subset of alerts that we can deem to be "live"
         live_alerts = all_alerts[mask_acknowledgement].copy()
+
+        # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
+        sunrise = night_time_data['results']['sunrise'][:-6]
+        sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
+        sunrise = sunrise.time()
+
+        sunset = night_time_data['results']['sunset'][:-6]
+        sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
+        sunset = sunset.time()
+
+        # Are there some live alerts during night time ? If yes let's filter them out
+        mask = live_alerts['created_at'].map(lambda x: is_hour_between(sunrise, sunset, x))
+        live_alerts = live_alerts[mask].copy()
 
         # Is there any live alert to display?
         if live_alerts.empty:
