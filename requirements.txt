@@ -8,7 +8,7 @@ dash-extensions>=0.0.51
 gunicorn>=20.0.4
 Flask-Caching>=1.3.3
 Flask-Sockets>=0.2.1
-pyroclient@git+https://github.com/pyronear/pyro-api.git#egg=pyroclient&subdirectory=client
+git+https://github.com/pyronear/pyro-api.git#subdirectory=client
 python-dotenv>=0.15.0
 geopy>=2.1.0
 requests>=2.25.0
