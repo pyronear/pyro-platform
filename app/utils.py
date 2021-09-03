@@ -25,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 
 # Useful import to reformat the date information associated with past fires
-import datetime as dt
+from datetime import datetime, timedelta
 
 # Various modules provided by Dash to build app components
 import dash_html_components as html
@@ -44,6 +44,18 @@ map_style = {'width': '100%',
              'height': '90vh',
              'margin': 'auto',
              'display': 'block'}
+
+
+def is_hour_between(sunrise, sunset, alert_time):
+
+    alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
+    alert_time = alert_time.time()
+
+    is_between = False
+    is_between |= sunrise <= alert_time <= sunset
+    is_between |= sunset <= sunrise and (sunrise <= alert_time or alert_time <= sunset)
+
+    return is_between
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -218,8 +230,8 @@ def build_historic_markers(dpt_code=None):
         lat = row['latitude']
         lon = row['longitude']
         location = row['location']
-        date = dt.datetime.strptime(row['acq_date'], '%Y-%m-%d')\
-                          .strftime('%d %b %Y')
+        date = datetime.datetime.strptime(row['acq_date'], '%Y-%m-%d')\
+                                .strftime('%d %b %Y')
 
         if row['daynight'] == 'D':
             daynight = 'Diurne'
