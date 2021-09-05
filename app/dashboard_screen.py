@@ -5,6 +5,7 @@
 
 """
 The following Python file is dedicated to the alert screen of the web application.
+
 The alert screen corresponds to a web page which will be displayed on a big screen in the CODIS room. There will be no
 interaction with the user. The main use of this page is to display a "sober" screen when there are no alerts. When an
 alert pops out, the screen will automatically change to display various information.
