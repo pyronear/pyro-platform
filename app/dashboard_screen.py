@@ -64,11 +64,9 @@ def build_dashboard_table(sdis_devices_data):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
-# The following block gathers elements defined above and returns them via the alert_screen function
+# The following block gathers elements defined above and returns them via the DashboardScreen function
 def DashboardScreen():
-    """
-    The following function is used in the main.py file to build the layout of the dashboard screen page.
-    """
+
     pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
     # Navbar Title
