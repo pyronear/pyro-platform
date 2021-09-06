@@ -3,15 +3,6 @@
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
 
-"""
-The following Python file is dedicated to the alert screen of the web application.
-
-The alert screen corresponds to a web page which will be displayed on a big screen in the CODIS room. There will be no
-interaction with the user. The main use of this page is to display a "sober" screen when there are no alerts. When an
-alert pops out, the screen will automatically change to display various information.
-Most functions defined below are designed to be called in the main.py file.
-"""
-
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORTS
 
@@ -39,7 +30,7 @@ def build_dashboard_table(sdis_devices_data):
             {'name': 'Device Id', 'id': 'login', 'type': 'text'},
             {'name': 'Azimuth', 'id': 'yaw', 'type': 'numeric'},
             {'name': 'Latitude', 'id': 'lat', 'type': 'numeric'},
-            {'name': 'longitude', 'id': 'lon', 'type': 'numeric'},
+            {'name': 'Longitude', 'id': 'lon', 'type': 'numeric'},
             {'name': 'Last Ping', 'id': 'last_ping', 'type': 'datetime'},
             {'name': 'Last Ping Diff', 'id': 'last_ping_hours_dif', 'type': 'numeric'},
             {'name': 'Status', 'id': 'status', 'type': 'text'},
