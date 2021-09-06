@@ -1626,12 +1626,13 @@ def update_dashboard_table(n_intervals):
     # last_ping and datetime.now()
     all_devices = pd.DataFrame(response.json())
 
-    sdis_devices = all_devices.sort_values('login').loc[all_devices['id'].isin(list(range(2, 18)))].drop(
-        columns=['id', 'created_at', 'pitch', 'elevation', 'specs', 'angle_of_view', 'software_hash', 'owner_id'])
-    sdis_devices['last_ping_hours_dif'] = sdis_devices['last_ping'].apply(lambda x: (pd.to_datetime(x) - pd.to_datetime(
-        datetime.utcnow().isoformat())).total_seconds() // 3600)
-    sdis_devices['last_ping'] = sdis_devices['last_ping'].apply(
-        lambda x: datetime.fromisoformat(x) + timedelta(hours=2))
+    sdis_devices = all_devices[all_devices['id'].isin(range(2, 18))].sort_values(by='login')[
+        ['yaw', 'lat', 'lon', 'login', 'last_ping']].copy()
+
+    sdis_devices['last_ping_hours_dif'] = sdis_devices['last_ping'].apply(
+        lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600)
+
+    sdis_devices['last_ping'] = pd.to_datetime(sdis_devices['last_ping']) + timedelta(hours=2)
 
     return build_dashboard_table(sdis_devices_data=sdis_devices)
 
