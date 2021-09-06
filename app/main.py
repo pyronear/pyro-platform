@@ -70,6 +70,9 @@ from alert_screen import AlertScreen, build_no_alert_detected_screen, build_aler
 # From homepage.py, we import the main layout instantiation function
 from homepage import Homepage
 
+# From dashboard_screen.py, we import the main layout instantiation function
+from dashboard_screen import DashboardScreen, build_dashboard_table
+
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
 from risks import build_risks_geojson_and_colorbar
@@ -186,6 +189,8 @@ def display_page(pathname):
     """
     if pathname == "/alert_screen":
         return AlertScreen()
+    elif pathname == "/dashboard_screen":
+        return DashboardScreen()
     else:
         return Homepage()
 
@@ -1598,6 +1603,38 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
     elif input_id == 'alert_frame_update_interval':
 
         return alert_frame_update_interval, dash.no_updates
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Callbacks related to the "dashboard_screen" page
+
+@app.callback(
+    Output('dashboard_table', 'children'),
+    Input('interval-component-dashboard-screen', 'n_intervals'), )
+def update_dashboard_table(n_intervals):
+    """
+    This builds and refreshes the dashboard table to monitor devices status every minute
+    Had to fetch devices data again for freshness purposes
+    """
+    response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+    # Check token expiration
+    if response.status_code == 401:
+        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        response = requests.get('https://api.pyronear.org/devices/', headers=api_client.headers)
+
+    # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
+    # last_ping and datetime.now()
+    all_devices = pd.DataFrame(response.json())
+
+    sdis_devices = all_devices[all_devices['id'].isin(range(2, 18))].sort_values(by='login')[
+        ['yaw', 'lat', 'lon', 'login', 'last_ping']].copy()
+
+    sdis_devices['last_ping_hours_dif'] = sdis_devices['last_ping'].apply(
+        lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600)
+
+    sdis_devices['last_ping'] = pd.to_datetime(sdis_devices['last_ping']) + timedelta(hours=2)
+
+    return build_dashboard_table(sdis_devices_data=sdis_devices)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
