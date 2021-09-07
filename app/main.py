@@ -44,7 +44,7 @@ from dash.exceptions import PreventUpdate
 from flask_caching import Cache
 
 # Various modules provided by Dash and Dash Leaflet to build the page layout
-import dash_core_components as dcc
+from dash import dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
@@ -71,7 +71,7 @@ from alert_screen import AlertScreen, build_no_alert_detected_screen, build_aler
 from homepage import Homepage
 
 # From dashboard_screen.py, we import the main layout instantiation function
-from dashboard_screen import DashboardScreen, build_dashboard_table
+from dashboard_screen import DashboardScreen, build_dashboard_table, build_dashboard_sites_overview, build_downloadable_report
 
 # From other Python files, we import some functions needed for interactivity
 from homepage import choose_map_style, display_alerts_frames
@@ -1609,9 +1609,15 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
 # Callbacks related to the "dashboard_screen" page
 
 @app.callback(
-    Output('dashboard_table', 'children'),
-    Input('interval-component-dashboard-screen', 'n_intervals'), )
-def update_dashboard_table(n_intervals):
+    [
+        Output('dashboard_table', 'children'),
+        Output('dashboard_per_site_summary', 'children'),
+        Output('downloadable_report_storage', 'data')
+    ],
+    Input('interval-component-dashboard-screen', 'n_intervals'),
+    State('site_devices_data_storage', 'data')
+)
+def update_dashboard_components(n_intervals, site_devices_data):
     """
     This builds and refreshes the dashboard table to monitor devices status every minute
     Had to fetch devices data again for freshness purposes
@@ -1626,15 +1632,50 @@ def update_dashboard_table(n_intervals):
     # last_ping and datetime.now()
     all_devices = pd.DataFrame(response.json())
 
+    # In the following line, the "owner_id" used to filter relevant devices will have to be variabilized
+    # For now, it is set to 2, which corresponds to the Ardèche SDIS
     sdis_devices = all_devices[all_devices['id'].isin(range(2, 18))].sort_values(by='login')[
-        ['yaw', 'lat', 'lon', 'login', 'last_ping']].copy()
+        ['yaw', 'lat', 'lon', 'login', 'last_ping', 'id']].copy()
 
     sdis_devices['last_ping_hours_dif'] = sdis_devices['last_ping'].apply(
         lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600)
 
     sdis_devices['last_ping'] = pd.to_datetime(sdis_devices['last_ping']) + timedelta(hours=2)
 
-    return build_dashboard_table(sdis_devices_data=sdis_devices)
+    # Adding a column with the site corresponding to the device
+    site_devices_reorganised = {}
+
+    for key, value in site_devices_data.items():
+        for device_id in value:
+            site_devices_reorganised[device_id] = key
+
+    sdis_devices['site'] = sdis_devices['id'].map(site_devices_reorganised)
+
+    sdis_devices.drop(columns=['id'], inplace=True)
+
+    return [
+        build_dashboard_table(sdis_devices_data=sdis_devices),
+        build_dashboard_sites_overview(sdis_devices_data=sdis_devices),
+        build_downloadable_report(sdis_devices=sdis_devices)
+    ]
+
+
+@app.callback(
+    Output('dashboard_download_report', 'data'),
+    Input('dashboard_download_button', 'n_clicks'),
+    State('downloadable_report_storage', 'data'),
+    prevent_initial_call=True,
+)
+def update_dashboard_components(n_clicks, downloadable_report):
+
+    downloadable_report = pd.read_json(downloadable_report)
+
+    return dcc.send_data_frame(
+        downloadable_report.to_excel,
+        'Rapport de connectivité.xlsx',
+        sheet_name='rapport_connectivité'
+    )
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------

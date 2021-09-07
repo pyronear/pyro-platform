@@ -26,7 +26,7 @@ Most functions defined below are designed to be called in the main.py file.
 
 # Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
+from dash import dcc
 import dash_html_components as html
 
 # From navbar.py to add the navigation bar at the top of the page
