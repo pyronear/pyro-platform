@@ -27,7 +27,7 @@ import requests
 import config as cfg
 
 # Various modules provided by Dash to build app components
-from dash import dcc
+import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx

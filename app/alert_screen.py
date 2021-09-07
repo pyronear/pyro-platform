@@ -16,7 +16,7 @@ Most functions defined below are designed to be called in the main.py file.
 
 # Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
-from dash import dcc
+import dash_core_components as dcc
 import dash_html_components as html
 
 from alerts import retrieve_site_from_device_id

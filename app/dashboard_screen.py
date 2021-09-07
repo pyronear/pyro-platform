@@ -8,7 +8,7 @@
 
 # Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
-from dash import dcc
+import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
 import pandas as pd
@@ -107,34 +107,6 @@ def build_dashboard_table(sdis_devices_data):
     return dashboard
 
 
-def build_downloadable_report(sdis_devices):
-
-    sdis_devices['Statut'] = (sdis_devices['last_ping_hours_dif'] >= -3).map(
-        {True: 'OK', False: 'KO'}
-    )
-
-    sdis_devices.drop(columns='last_ping_hours_dif', inplace=True)
-
-    sdis_devices = sdis_devices[['login', 'site', 'lat', 'lon', 'yaw', 'last_ping', 'Statut']].copy()
-
-    sdis_devices.rename(
-        columns={
-            'login': 'ID de la caméra',
-            'site': 'Site',
-            'lat': 'Latitude',
-            'lon': 'Longitude',
-            'yaw': 'Azimuth',
-            'last_ping': 'Dernier ping',
-        },
-        inplace=True
-    )
-
-    sdis_devices.reset_index(drop=True, inplace=True)
-
-    return sdis_devices.to_json()
-
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
 # The following block gathers elements defined above and returns them via the DashboardScreen function
@@ -188,19 +160,5 @@ def DashboardScreen():
                 id='dashboard_table',
                 style={'width': '90%'}
             )
-        ),
-        html.Center(
-            [
-                html.Button(
-                    id='dashboard_download_button',
-                    children='Télécharger le rapport (Excel)',
-                    style={'margin-top': '25px'}
-                ),
-                dcc.Download(id='dashboard_download_report')
-            ]
-        ),
-        dcc.Store(
-            id='downloadable_report_storage',
-            data={}
         )
     ]
