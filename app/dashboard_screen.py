@@ -13,6 +13,7 @@ import dash_html_components as html
 import dash_table
 import pandas as pd
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
 
