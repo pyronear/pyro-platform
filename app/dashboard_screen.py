@@ -18,7 +18,8 @@ import pandas as pd
 # CONTENT
 
 def build_dashboard_sites_overview(sdis_devices_data):
-    """
+    """To build the site overview section.
+
     This function, called in main.py, builds the site overview which provides the user with an overview of the con-
     nectivity status of the relevant sites. Building upon data gathered in main.py (which corresponds to the
     "sdis_devices_data" argument), we create one Div per site with the following font and border columns:
