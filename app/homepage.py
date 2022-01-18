@@ -26,8 +26,8 @@ Most functions defined below are designed to be called in the main.py file.
 
 # Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc, html
+
 
 # From navbar.py to add the navigation bar at the top of the page
 from navbar import Navbar
@@ -254,27 +254,19 @@ def build_login_modal():
                             html.Div(style={'height': '10px'}),
                             html.Img(src=pyro_logo, width="190px"),
                             html.Div(style={'height': '30px'}),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Input(
-                                        id='username_input',
-                                        type='text',
-                                        placeholder="UTILISATEUR",
-                                        style={'width': '250px'},
-                                        autoFocus=True
-                                    )
-                                ],
+                            dbc.Input(
+                                    id='username_input',
+                                    type='text',
+                                    placeholder="UTILISATEUR",
+                                    style={'width': '250px'},
+                                    autoFocus=True
                             ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Input(
-                                        id='password_input',
-                                        type='password',
-                                        placeholder='MOT DE PASSE',
-                                        style={'width': '250px'},
-                                    )
-                                ],
-                            ),
+                            dbc.Input(
+                                    id='password_input',
+                                    type='password',
+                                    placeholder='MOT DE PASSE',
+                                    style={'width': '250px'},
+                            )
                         ],
                     ),
                     html.Div(style={'height': '15px'}),

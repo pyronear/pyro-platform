@@ -44,10 +44,9 @@ from dash.exceptions import PreventUpdate
 from flask_caching import Cache
 
 # Various modules provided by Dash and Dash Leaflet to build the page layout
-import dash_core_components as dcc
-import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+from dash import dcc, html, dcc, html, dash_table
 
 # Pandas to read the login correspondences file
 import pandas as pd

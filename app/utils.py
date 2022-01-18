@@ -28,8 +28,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # Various modules provided by Dash to build app components
-import dash_html_components as html
 import dash_bootstrap_components as dbc
+from dash import html
 import dash_leaflet as dl
 
 

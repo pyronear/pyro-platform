@@ -27,10 +27,9 @@ import requests
 import config as cfg
 
 # Various modules provided by Dash to build app components
-import dash_core_components as dcc
-import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
+from dash import dcc, html
 
 # Various imports from utils.py, useful for both Alerts and Risks dashboards
 from utils import map_style, build_filters_object, build_legend_box
