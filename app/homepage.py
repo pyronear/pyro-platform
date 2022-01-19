@@ -140,19 +140,19 @@ def build_user_selection_area():
     return [dcc.Markdown('---'),
 
             # Map filters added below
-            html.H5(("Filtres Cartes"), style={'text-align': 'center'}),
+            html.H5(("Filtres Cartes"), style={'textALign': 'center'}),
 
             # Button allowing users to change the map style (alerts / risks)
-            html.P(build_map_style_button()),
+            html.Div(build_map_style_button()),
             dcc.Markdown('---'),
 
             # Radio button allowing users to display or not past fires as markers on the map
             html.Center(dcc.Markdown("Afficher l'historique des feux :")),
-            html.P(build_historic_fires_radio_button()),
+            html.Div(build_historic_fires_radio_button()),
             dcc.Markdown('---'),
 
             # Opacity slider for the risks view
-            html.P(id="hp_slider")
+            html.Div(id="hp_slider")
 
             ]
 
@@ -187,12 +187,12 @@ def display_alerts_frames(n_clicks=None, img_url=None):
         'height': '35vh',
         'margin': 'auto',
         'display': 'block',
-        'text-align': 'center',
+        'textALign': 'center',
     }
 
     if n_clicks is not None:
         # Title located above the detection frame
-        frame_title = html.H5("Image de détection", style={'text-align': 'center'})
+        frame_title = html.H5("Image de détection", style={'textALign': 'center'})
 
         # Detection frame
         alert_frame = html.Img(
@@ -204,7 +204,7 @@ def display_alerts_frames(n_clicks=None, img_url=None):
         separator = dcc.Markdown('---')
 
         # Title located above the detection metadata
-        alert_metadata_title = html.H5("Données de détection", style={'text-align': 'center'})
+        alert_metadata_title = html.H5("Données de détection", style={'textALign': 'center'})
 
         # Summary of the detection metadata
         alert_metadata = html.Div(
@@ -294,7 +294,7 @@ def build_login_modal():
 
         # Prevents the user from closing the modal by pressing the Escape key
         keyboard=False,
-        style={"max-width": "none", "width": "500px"},
+        style={"maxWidth": "none", "width": "500px"},
 
         is_open=True
     )
@@ -339,7 +339,8 @@ def Homepage():
 
                     html.Div(id='new_alerts_selection_list', style={'display': 'none'}),
                     # Placeholder containing the detection data for any alert of interest
-                    html.P(id="hp_alert_frame_metadata")],
+                    #html.Div(id="hp_alert_frame_metadata")
+                    ],
                     id='user_selection_column',
                 ),
 

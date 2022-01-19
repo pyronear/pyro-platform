@@ -330,7 +330,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     alert_button = html.Div(dbc.Button(
         "Nouvelles alertes | {}".format(nb_alerts), className="btn-header-alerts"),
         id=f'alert_button_{map_style}',
-        style={'position': 'absolute', 'top': '10px', 'right': '30px', 'z-index': '1000'}
+        style={'position': 'absolute', 'top': '10px', 'right': '30px', 'Zindex': '1000'}
     )
 
     individual_alert_frame_placeholder_children = []
@@ -375,7 +375,7 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                             style={
                                                 'color': 'white',
                                                 'text-indent': '15px',
-                                                'font-size': '20px'
+                                                'fontSize': '20px'
                                             }
                                         ),
                                         style={
@@ -388,7 +388,7 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                             f'Caméra ID {device_id}',
                                             style={
                                                 'color': '#054546',
-                                                'font-size': '15px',
+                                                'fontSize': '15px',
                                                 'text-indent': '15px'
                                             }
                                         ),
@@ -403,14 +403,14 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                                 f'Latitude : {round(lat, 4)}',
                                                 style={
                                                     'text-indent': '15px',
-                                                    'font-size': '18px'
+                                                    'fontSize': '18px'
                                                 }
                                             ),
                                             html.P(
                                                 f'Longitude : {round(lon, 4)}',
                                                 style={
                                                     'text-indent': '15px',
-                                                    'font-size': '18px'
+                                                    'fontSize': '18px'
                                                 }
                                             )
                                         ],
@@ -634,7 +634,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
     user_alerts_selection = [html.Div([
         dcc.Markdown('---'),
-        html.H5(children="Nouvelles alertes !", style={'text-align': 'center'})]),
+        html.H5(children="Nouvelles alertes !", style={'textAlign': 'center'})]),
         dbc.Container(alert_list)]
 
     return [
@@ -788,7 +788,7 @@ def build_alerts_map():
     instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
     """
     map_object = dl.Map(center=[44.73, 4.27],  # Determines the point around which the map is centered
-                        zoom=9,               # Determines the initial level of zoom around the center point
+                        zoom=9,       # Determines the initial level of zoom around the center point
                         children=[
                             dl.TileLayer(id='tile_layer'),
                             build_departments_geojson(),

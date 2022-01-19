@@ -82,7 +82,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     fire_icon = html.Img(
         id="fire_icon",
         src="/assets/pyro_fire_logo.png",
-        className="blink-image",
+        className="blinkImage",
         style={"height": "100%"},
     )
 
@@ -104,21 +104,21 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                     f"Tour : {site_name}",
                 ),
                 style={
-                    "font-size": "3.5vw",
+                    "fontSize": "3.5vw",
                     "color": "#054546",
-                    "font-weight": "bold",
+                    "fontWeight": "bold",
                 },
             ),
             html.Div(
                 alert_metadata_div,
                 style={
-                    "font-size": "2vw",
+                    "fontSize": "2vw",
                     "color": "#054546",
                 },
             ),
         ],
         style={
-            "margin-top": "7.5%",
+            "marginTop": "7.5%",
         },
     )
 
@@ -153,7 +153,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                                 html.Div(
                                     html.P("DÉPART DE FEU"),
                                     style={
-                                        "font-size": "6vw",
+                                        "fontSize": "6vw",
                                         "color": "#fd4848",
                                         "font-weight": "bold",
                                         "margin-top": '5%'

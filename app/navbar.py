@@ -72,7 +72,7 @@ def Navbar(dropdown=False):
         ],
         href="alert_screen",
         style={
-            "font-size": "15px",
+            "fontSize": "15px",
             "color": "white",
         },
         className="btn btn-warning"
