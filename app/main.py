@@ -334,6 +334,11 @@ def update_live_alerts_data(
     else:
         # If yes, there is a bit of work to do!
 
+        # Let's only display the last 5 fire events!
+
+        last_5_events = live_alerts['event_id'].drop_duplicates().sort_values().tail(5)
+        live_alerts = live_alerts[live_alerts['event_id'].isin(last_5_events)]
+
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
 
@@ -1632,7 +1637,8 @@ def update_dashboard_table(n_intervals):
     sdis_devices['last_ping_hours_dif'] = sdis_devices['last_ping'].apply(
         lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600)
 
-    sdis_devices['last_ping'] = pd.to_datetime(sdis_devices['last_ping']) + timedelta(hours=2)
+    sdis_devices['last_ping'] = pd.to_datetime(
+        sdis_devices['last_ping']).dt.tz_localize('UTC').dt.tz_convert('Europe/Paris')
 
     return build_dashboard_table(sdis_devices_data=sdis_devices)
 
