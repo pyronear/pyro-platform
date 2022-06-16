@@ -640,7 +640,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
-                user_client = Client(cfg.API_URL, username, password)
+                Client(cfg.API_URL, username, password)
                 # All checks are successful and we add the appropriate feedback
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
