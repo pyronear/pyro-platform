@@ -83,17 +83,6 @@ def build_departments_geojson():
 # The following block is used to load the data relative to site devices.
 # It is called in main.py by the callback that is itself triggered by the user's login.
 
-def get_site_devices_data(client):
-    """
-    This short function takes as input a pre-instantiated Pyro-API client and returns the site devices data as a dict.
-    """
-    response = client.get_sites()
-    sites = response.json()
-    data = {site['name']: client.get_site_devices(site['id']).json() for site in sites}
-
-    return data
-
-
 def retrieve_site_from_device_id(device_id, site_devices_data):
 
     for key, value in site_devices_data.items():
@@ -119,7 +108,7 @@ if response.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
     response = api_client.get_sites()
 
-site_devices = get_site_devices_data(client=api_client)
+site_devices = {site['name']: client.get_site_devices(site['id']).json() for site in response.json()}
 
 # Getting the json data out of the response
 camera_positions = response.json()
