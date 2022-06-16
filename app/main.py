@@ -294,11 +294,10 @@ def update_live_alerts_data(
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all events
-    url = cfg.API_URL + '/events/'
-    response = requests.get(url, headers=api_client.headers)
+    response = api_client.get_past_events()
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-        response = requests.get(url, headers=api_client.headers)
+        response = api_client.get_past_events()
     all_events = response.json()
 
     # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
@@ -640,35 +639,11 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
         else:
             # This is the route of the API that we are going to use for the credential check
-            login_route_url = cfg.API_URL + '/login/access-token'
-
-            # We create a mini-dictionary with the credentials passsed by the user
-            data = {
-                'username': username,
-                'password': password
-            }
-
-            # We make the HTTP request to the login route of the API
-            response = requests.post(login_route_url, data=data).json()
-
-            # Boolean that indicates whether the authentication was successful or not
-            check = ('access_token' in response.keys())
-
-            if not check:
-                # This if statement is verified if credentials are invalid
-                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
-
-                # We make the HTTP request to the login route of the API
-                response = requests.post(login_route_url, data=data).json()
-
-                # The login modal remains open; other outputs are updated with arbitrary values
-                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
-
-            else:
+            try:
+                user_client = Client(cfg.API_URL, username, password)
                 # All checks are successful and we add the appropriate feedback
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
-
                 # For now the group_id is not fetched, we equalize it artificially to 1
                 group_id = '1'
 
@@ -689,6 +664,12 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
                 # The login modal is closed and the appropriate outputs are returned
                 return False, {'login': 'yes'}, form_feedback, {'center': [lat, lon], 'zoom': zoom}, {}
+
+            except Exception:
+                # This if statement is verified if credentials are invalid
+                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
+                # The login modal remains open; other outputs are updated with arbitrary values
+                return True, {'login': 'no'}, form_feedback, {'center': [10, 10], 'zoom': 3}, {'display': 'none'}
 
 
 @app.callback(
@@ -1446,11 +1427,10 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
-        url = cfg.API_URL + '/events/'
-        response = requests.get(url, headers=api_client.headers)
+        response = api_client.get_past_events()
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-            response = requests.get(url, headers=api_client.headers)
+            response = api_client.get_past_events()
         all_events = response.json()
 
         # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
