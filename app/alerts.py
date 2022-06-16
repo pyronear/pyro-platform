@@ -108,7 +108,7 @@ if response.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
     response = api_client.get_sites()
 
-site_devices = {site['name']: client.get_site_devices(site['id']).json() for site in response.json()}
+site_devices = {site['name']: api_client.get_site_devices(site['id']).json() for site in response.json()}
 
 # Getting the json data out of the response
 camera_positions = response.json()
