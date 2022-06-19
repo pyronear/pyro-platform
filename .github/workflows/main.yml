@@ -2,9 +2,9 @@ name: tests
 
 on:
   push:
-    branches: main
+    branches: master
   pull_request:
-    branches: main
+    branches: master
 
 jobs:
   dash-run:
@@ -37,7 +37,7 @@ jobs:
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          screen -dm python src/main.py
+          screen -dm python app/main.py
           sleep 10
           curl http://localhost:8050/
 
