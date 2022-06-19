@@ -43,7 +43,7 @@ jobs:
         run: |
           pip install isort
           isort --version
-          isort src/
+          isort app/
           if [ -n "$(git status --porcelain --untracked-files=no)" ]; then exit 1; else echo "All clear"; fi
 
   mypy:
