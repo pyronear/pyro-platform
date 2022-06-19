@@ -1,100 +1,60 @@
-name: dash-project
+name: tests
 
 on:
   push:
-    branches: [ master ]
+    branches: main
   pull_request:
-    branches: [ master ]
+    branches: main
 
 jobs:
-  install-deps:
-    runs-on: ubuntu-latest
+  dash-run:
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.6, 3.7]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache python modules
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-deps-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-deps-${{ matrix.python-version }}-
-          ${{ runner.os }}-deps-
-          ${{ runner.os }}-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-  flake8-py3:
-    runs-on: ubuntu-latest
+        os: [ubuntu-latest]
+        python: [3.8]
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          python-version: 3.7
-          architecture: x64
-      - name: Run flake8
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8
-          flake8 --version
-          flake8 ./
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-          architecture: x64
-      - name: Run unittests
-        run: |
-          python -m unittest discover test/
-
-  docker-ready:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build & run docker
-        env:
-          API_URL: ${{ secrets.API_URL }}
-          API_LOGIN: ${{ secrets.API_LOGIN }}
-          API_PWD: ${{ secrets.API_PWD }}
-        run: docker-compose up -d --build
-      - name: Ping app inside the container
-        run: nc -vz localhost 8050
-
-  docker-gunicorn:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
+          python-version: ${{ matrix.python }}
           architecture: x64
       - name: Cache python modules
         uses: actions/cache@v2
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-deps-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-deps-${{ matrix.python-version }}-
-            ${{ runner.os }}-deps-
-            ${{ runner.os }}-
+          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Run demo
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          API_LOGIN: ${{ secrets.API_LOGIN }}
+          API_PWD: ${{ secrets.API_PWD }}
+        run: |
+          screen -dm python src/main.py
+          sleep 10
+          curl http://localhost:8050/
+
+  headers:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [3.8]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Run unittests
+        run: python .github/validate_headers.py
