@@ -1,4 +1,4 @@
-# Copyright (C) 2021, Pyronear contributors.
+# Copyright (C) 2020-2022, Pyronear.
 
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
@@ -15,7 +15,6 @@ Its main component is the Navbar function that instantiates the navigation bar.
 
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Content
@@ -39,9 +38,9 @@ def Navbar(dropdown=False):
     if dropdown is True:
         dropdown = dbc.DropdownMenu(
             children=[
-                dbc.DropdownMenuItem("Page d'Accueil", href='home'),
-                dbc.DropdownMenuItem('Alertes et Infrastructures', href='alerts'),
-                dbc.DropdownMenuItem('Niveaux de Risque', href='risks'),
+                dbc.DropdownMenuItem("Page d'Accueil", href="home"),
+                dbc.DropdownMenuItem("Alertes et Infrastructures", href="alerts"),
+                dbc.DropdownMenuItem("Niveaux de Risque", href="risks"),
             ],
             label="Tableaux de bord",
             className="ml-auto flex-nowrap mt-3 mt-md-0 btn-group dropleft",
@@ -56,7 +55,8 @@ def Navbar(dropdown=False):
         "Surveillez les départs de feux",
         id="user-div",
         className="mx-auto order-0",
-        style={'color': 'white', 'align': 'center', 'justify': 'center'})
+        style={"color": "white", "align": "center", "justify": "center"},
+    )
 
     # Alert monitoring screen, to be displayed in CODIS
     alert_screen_button = dbc.NavLink(
@@ -75,7 +75,7 @@ def Navbar(dropdown=False):
             "font-size": "15px",
             "color": "white",
         },
-        className="btn btn-warning"
+        className="btn btn-warning",
     )
 
     # Navbar
@@ -93,12 +93,12 @@ def Navbar(dropdown=False):
             ),
             dbc.NavbarToggler(id="navbar-toggler"),
             dbc.Collapse([user_item, dropdown], id="navbar-collapse", navbar=True),
-            html.Div(alert_screen_button)
+            html.Div(alert_screen_button),
         ],
         id="main_navbar",
-        color='#044448',
+        color="#044448",
         dark=True,
-        style={'display': 'none'}
+        style={"display": "none"},
     )
 
     return navbar

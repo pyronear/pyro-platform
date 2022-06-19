@@ -1,4 +1,4 @@
-# Copyright (C) 2021, Pyronear contributors.
+# Copyright (C) 2020-2022, Pyronear.
 
 # This program is licensed under the Apache License version 2.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
@@ -18,12 +18,11 @@ Most functions defined below are designed to be called in the main.py file.
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-
 from alerts import retrieve_site_from_device_id
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
+
 
 def build_no_alert_detected_screen():
     """
@@ -63,7 +62,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     try:
         site_name = retrieve_site_from_device_id(device_id, site_devices_data)
     except Exception:
-        site_name = ''
+        site_name = ""
 
     # Get azimuth from last_alert
     azimuth = round(last_alert["yaw"], 1)
@@ -157,7 +156,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                                         "font-size": "6vw",
                                         "color": "#fd4848",
                                         "font-weight": "bold",
-                                        "margin-top": '5%'
+                                        "margin-top": "5%",
                                     },
                                     className="blink-image",
                                 ),
@@ -176,7 +175,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
                                 "justify-content": "center",
                                 # "margin-right": "2.5%",
                             },
-                        )
+                        ),
                     ],
                     style={
                         "width": "50%",
