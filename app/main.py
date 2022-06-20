@@ -336,8 +336,7 @@ def update_live_alerts_data(
 
         # Let's only display the last 5 fire events!
 
-        last_5_events = live_alerts['event_id'].drop_duplicates().sort_values().tail(5)
-        live_alerts = live_alerts[live_alerts['event_id'].isin(last_5_events)]
+        live_alerts = all_alerts[all_alerts.event_id.isin(all_alerts.event_id.unique()[-5:])]
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
