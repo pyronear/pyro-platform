@@ -1366,7 +1366,6 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
 
         # We then filter all alerts with unacknowledged events ids to obtain live alerts
         live_alerts = all_alerts[all_alerts.event_id.isin(all_events.id.unique())]
-        live_alerts
 
         # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
         sunrise = night_time_data["results"]["sunrise"][:-6]
