@@ -18,4 +18,4 @@ jobs:
           API_PWD: ${{ secrets.API_PWD }}
         run: docker-compose up -d --build
       - name: Check docker sanity
-        run: sleep 10 && curl http://localhost:8050/
+        run: sleep 20 && docker-compose logs && curl http://localhost:8050/
