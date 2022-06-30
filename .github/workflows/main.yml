@@ -38,7 +38,7 @@ jobs:
           API_PWD: ${{ secrets.API_PWD }}
         run: |
           screen -dm python app/main.py
-          sleep 10
+          sleep 20
           curl http://localhost:8050/
 
   headers:
