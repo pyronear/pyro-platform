@@ -299,10 +299,10 @@ def update_live_alerts_data(
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_unacknowledged_events()
-    all_events = pd.DataFrame(response.json())
+    live_events = pd.DataFrame(response.json())
 
     # We then filter all alerts with unacknowledged events ids to obtain live alerts
-    live_alerts = all_alerts[all_alerts.event_id.isin(all_events.id.unique())]
+    live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
     # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
     sunrise = night_time_data["results"]["sunrise"][:-6]
@@ -412,7 +412,6 @@ def update_live_alerts_data(
             # - the storage component that contains the dictionary with detection frame URLs;
             # - the storage component that serves as source of truth for the list of already loaded alerts;
             # - the HTML div that stores the list of sites where an alert is live
-            print(live_alerts, dict_images_url_live_alerts, new_loaded_frames, sites_with_live_alerts)
 
             return [
                 live_alerts,
@@ -1362,10 +1361,10 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = api_client.get_unacknowledged_events()
-        all_events = pd.DataFrame(response.json())
+        live_events = pd.DataFrame(response.json())
 
         # We then filter all alerts with unacknowledged events ids to obtain live alerts
-        live_alerts = all_alerts[all_alerts.event_id.isin(all_events.id.unique())]
+        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
         # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
         sunrise = night_time_data["results"]["sunrise"][:-6]
