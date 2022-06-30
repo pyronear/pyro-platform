@@ -302,15 +302,9 @@ def update_live_alerts_data(
 
     # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
     # "is_acknowledged" field in the events table (boolean)
-    is_event_acknowledged = {}
-    for event in all_events:
-        is_event_acknowledged[event["id"]] = event["is_acknowledged"]
-
-    # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
-    mask_acknowledgement = ~all_alerts["event_id"].map(is_event_acknowledged)
-
+    unacknowledged_ids = [event["id"] for event in all_events if not event["is_acknowledged"]]
     # And we deduce the subset of alerts that we can deem to be "live"
-    live_alerts = all_alerts[mask_acknowledgement].copy()
+    live_alerts = all_alerts[all_alerts.event_id.isin(unacknowledged_ids)].copy()
 
     # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
     sunrise = night_time_data["results"]["sunrise"][:-6]
