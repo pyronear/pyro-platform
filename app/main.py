@@ -321,7 +321,7 @@ def update_live_alerts_data(
     live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
     # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-    live_alerts.groupby(['device_id', 'event_id']).head(15).reset_index(drop=True)
+    live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
     if live_alerts.empty:
@@ -335,7 +335,7 @@ def update_live_alerts_data(
         live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
         # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts = live_alerts.groupby(['device_id', 'event_id']).head(15).reset_index(drop=True)
+        live_alerts = live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
@@ -416,7 +416,7 @@ def update_live_alerts_data(
             return [
                 live_alerts,
                 dict_images_url_live_alerts,
-                {"loaded_frames": new_loaded_frames},
+                {"loade    d_frames": new_loaded_frames},
                 5 * 1000,
                 sites_with_live_alerts,
             ]
@@ -1383,7 +1383,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
         # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts.groupby(['device_id', 'event_id']).head(15).reset_index(drop=True)
+        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # Is there any live alert to display?
         if live_alerts.empty:
@@ -1532,8 +1532,9 @@ def update_dashboard_table(n_intervals):
         lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
     )
 
-    sdis_devices['last_ping'] = pd.to_datetime(
-        sdis_devices['last_ping']).dt.tz_localize('UTC').dt.tz_convert('Europe/Paris')
+    sdis_devices["last_ping"] = (
+        pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
+    )
 
     return build_dashboard_table(sdis_devices_data=sdis_devices)
 
