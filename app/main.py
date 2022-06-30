@@ -416,7 +416,7 @@ def update_live_alerts_data(
             return [
                 live_alerts,
                 dict_images_url_live_alerts,
-                {"loade    d_frames": new_loaded_frames},
+                {"loaded_frames": new_loaded_frames},
                 5 * 1000,
                 sites_with_live_alerts,
             ]
