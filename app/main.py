@@ -110,15 +110,16 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
 # Check token expiration
-if response.status_code == 401:
+if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+    response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
 
 # Site devices
 response = api_client.get_sites()
 site_devices = {site["name"]: api_client.get_site_devices(site["id"]).json() for site in response.json()}
+
 
 # We create a rough layout, filled with the content of the homepage/alert page
 app.layout = html.Div(
@@ -126,7 +127,7 @@ app.layout = html.Div(
         dcc.Location(id="url", refresh=False),
         html.Div(id="page-content", style={"height": "100%"}),
         # Storage component which contains data relative devices
-        dcc.Store(id="devices_data_storage", storage_type="session", data=response.json()),
+        dcc.Store(id="devices_data_storage", storage_type="session", data=response_devices.json()),
         # Main interval that fetches API alerts data
         dcc.Interval(id="main_api_fetch_interval", interval=25 * 1000),
         # Storage components which contains data relative to alerts
@@ -293,18 +294,15 @@ def update_live_alerts_data(
     all_alerts = pd.DataFrame(response)
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
-    # We start by making an API call to fetch all events
-    response = api_client.get_past_events()
+    # We start by making an API call to fetch all unacknowledged events
+    response = api_client.get_unacknowledged_events()
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-        response = api_client.get_past_events()
-    all_events = response.json()
+        response = api_client.get_unacknowledged_events()
+    live_events = pd.DataFrame(response.json())
 
-    # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
-    # "is_acknowledged" field in the events table (boolean)
-    unacknowledged_ids = [event["id"] for event in all_events if not event["is_acknowledged"]]
-    # And we deduce the subset of alerts that we can deem to be "live"
-    live_alerts = all_alerts[all_alerts.event_id.isin(unacknowledged_ids)].copy()
+    # We then filter all alerts with unacknowledged events ids to obtain live alerts
+    live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
     # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
     sunrise = night_time_data["results"]["sunrise"][:-6]
@@ -319,6 +317,12 @@ def update_live_alerts_data(
     mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
     live_alerts = live_alerts[mask].copy()
 
+    # Let's only display the last 5 fire events!
+    live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
+
+    # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+    live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
+
     # Is there any live alert to display?
     if live_alerts.empty:
         # If not, we do not update any of the callback's output
@@ -326,6 +330,12 @@ def update_live_alerts_data(
 
     else:
         # If yes, there is a bit of work to do!
+
+        # Let's only display the last 5 fire events!
+        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
+
+        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+        live_alerts = live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
@@ -1347,23 +1357,14 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
-        response = api_client.get_past_events()
+        response = api_client.get_unacknowledged_events()
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-            response = api_client.get_past_events()
-        all_events = response.json()
+            response = api_client.get_unacknowledged_events()
+        live_events = pd.DataFrame(response.json())
 
-        # Then, we construct a dictionary whose keys are the event IDs (as integers) and values are the corresponding
-        # "is_acknowledged" field in the events table (boolean)
-        is_event_acknowledged = {}
-        for event in all_events:
-            is_event_acknowledged[event["id"]] = event["is_acknowledged"]
-
-        # We map this dictionary upon the column and revert the booleans with ~ as we want unacknowledged events
-        mask_acknowledgement = ~all_alerts["event_id"].map(is_event_acknowledged)
-
-        # And we deduce the subset of alerts that we can deem to be "live"
-        live_alerts = all_alerts[mask_acknowledgement].copy()
+        # We then filter all alerts with unacknowledged events ids to obtain live alerts
+        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
         # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
         sunrise = night_time_data["results"]["sunrise"][:-6]
@@ -1377,6 +1378,12 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         # Are there some live alerts during night time ? If yes let's filter them out
         mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
         live_alerts = live_alerts[mask].copy()
+
+        # Let's only display the last 5 fire events!
+        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
+
+        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # Is there any live alert to display?
         if live_alerts.empty:
@@ -1525,7 +1532,9 @@ def update_dashboard_table(n_intervals):
         lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
     )
 
-    sdis_devices["last_ping"] = pd.to_datetime(sdis_devices["last_ping"]) + timedelta(hours=2)
+    sdis_devices["last_ping"] = (
+        pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
+    )
 
     return build_dashboard_table(sdis_devices_data=sdis_devices)
 
