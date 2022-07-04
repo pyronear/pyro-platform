@@ -12,7 +12,7 @@ style:
 
 # Build the docker
 build:
-	docker build . -t pyroplatform:latest-py:3.7.9-slim
+	docker build . -t pyroplatform:python3.7.9-slim
 
 # Run the docker
 run:
@@ -24,5 +24,5 @@ stop:
 
 # Pin the dependencies
 lock:
-	poetry lock
+	poetry lock -vvv
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
