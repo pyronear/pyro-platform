@@ -29,9 +29,10 @@ import requests
 from geopy import Point
 from geopy.distance import geodesic
 
-from . import config as cfg
-from .services import api_client
-from .utils import build_filters_object, build_legend_box, map_style
+import config as cfg
+from services import api_client
+
+from ._utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT

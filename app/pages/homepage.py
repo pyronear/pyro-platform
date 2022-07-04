@@ -25,8 +25,9 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
-from .alerts import build_alerts_map
-from .navbar import Navbar
+from components.navbar import Navbar
+from utils.alerts import build_alerts_map
+
 from .risks import build_opacity_slider, build_risks_map
 
 # ----------------------------------------------------------------------------------------------------------------------

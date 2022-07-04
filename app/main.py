@@ -48,29 +48,30 @@ from flask_caching import Cache
 from pyroclient import Client
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from . import config as cfg
-from .alert_screen import (
+import config as cfg
+from pages.device_status import DashboardScreen, build_dashboard_table
+from pages.homepage import Homepage, choose_map_style
+from pages.screen import (
     AlertScreen,
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-from .alerts import (
+
+# from pages.risks import build_risks_geojson_and_colorbar
+from services import api_client
+from utils._utils import (
+    build_filters_object,
+    build_legend_box,
+    choose_layer_style,
+    is_hour_between,
+)
+from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
     build_individual_alert_components,
     build_sites_markers,
     display_alert_selection_area,
     retrieve_site_from_device_id,
-)
-from .dashboard_screen import DashboardScreen, build_dashboard_table
-from .homepage import Homepage, choose_map_style
-from .risks import build_risks_geojson_and_colorbar
-from .services import api_client
-from .utils import (
-    build_filters_object,
-    build_legend_box,
-    choose_layer_style,
-    is_hour_between,
 )
 
 # --- Imports from other Python files
@@ -168,14 +169,14 @@ cache = Cache(app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": ".cac
 
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
-def display_page(pathname):
+def display_page(pathname: str):
     """
     This callback takes the url path as input and returns the corresponding page layout,
     thanks to the instantiation functions built in the various .py files.
     """
-    if pathname == "/alert_screen":
+    if pathname == "/screen":
         return AlertScreen()
-    elif pathname == "/dashboard_screen":
+    elif pathname == "/device_status":
         return DashboardScreen()
     else:
         return Homepage()
@@ -418,14 +419,10 @@ def update_live_alerts_data(
             # We create a DataFrame with the data for already loaded alerts
             ongoing_live_alerts = pd.read_json(ongoing_live_alerts)
 
-            if ongoing_live_alerts.empty:
-                loaded_alert_ids: np.ndarray = np.array([])
-
-            else:
-                loaded_alert_ids = ongoing_live_alerts["id"].unique()
-
-            # Are all live alerts already stored on the platform?
-            condition = np.array_equal(live_alerts["id"].unique(), loaded_alert_ids)
+            condition = False
+            if not ongoing_live_alerts.empty:
+                # Are all live alerts already stored on the platform?
+                condition = np.array_equal(live_alerts["id"].unique(), ongoing_live_alerts["id"].unique())
 
             # If this condition is verified,
             if condition:
@@ -1086,53 +1083,53 @@ def select_alert_frame_to_display(slider_value, urls):
 # Callbacks related to the "Risk Score" page
 
 
-@app.callback(Output("map", "children"), Input("opacity_slider_risks", "value"))
-def change_color_opacity(opacity_level):
-    """
-    -- Managing color opacity in the choropleth map --
+# @app.callback(Output("map", "children"), Input("opacity_slider_risks", "value"))
+# def change_color_opacity(opacity_level):
+#     """
+#     -- Managing color opacity in the choropleth map --
 
-    This callback takes as input the opacity level chosen by the user on the slider.
-    It then reinstantiates the colorbar and geojson objects accordingly.
-    These new objects are finally returned into the risks map's children attribute.
-    """
-    colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
+#     This callback takes as input the opacity level chosen by the user on the slider.
+#     It then reinstantiates the colorbar and geojson objects accordingly.
+#     These new objects are finally returned into the risks map's children attribute.
+#     """
+#     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
-    return [
-        dl.TileLayer(id="tile_layer"),
-        geojson,
-        colorbar,
-        build_filters_object(map_type="risks"),
-        build_legend_box(map_type="risks"),
-        html.Div(id="fire_markers_risks"),  # Will contain the past fire markers of the risks map
-        html.Div(id="live_alerts_marker"),
-    ]
+#     return [
+#         dl.TileLayer(id="tile_layer"),
+#         geojson,
+#         colorbar,
+#         build_filters_object(map_type="risks"),
+#         build_legend_box(map_type="risks"),
+#         html.Div(id="fire_markers_risks"),  # Will contain the past fire markers of the risks map
+#         html.Div(id="live_alerts_marker"),
+#     ]
 
 
-@app.callback(
-    Output("alert_btn_switch_view", "children"),
-    Input("alert_button_risks", "n_clicks"),
-    [State("map_style_button", "children"), State("current_map_style", "children")],
-)
-@cache.memoize()
-def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
-    """
-    -- Moving between alerts and risks views (1/3) --
+# @app.callback(
+#     Output("alert_btn_switch_view", "children"),
+#     Input("alert_button_risks", "n_clicks"),
+#     [State("map_style_button", "children"), State("current_map_style", "children")],
+# )
+# @cache.memoize()
+# def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
+#     """
+#     -- Moving between alerts and risks views (1/3) --
 
-    This callback detects clicks on the alert banner associated with the risks view of the map and updates the
-    "alert_btn_switch_view" object (an HTML placeholder built by via the Homepage function which is defined in
-    homepage.py). This update will itself trigger the "change_map_style" callback defined below.
+#     This callback detects clicks on the alert banner associated with the risks view of the map and updates the
+#     "alert_btn_switch_view" object (an HTML placeholder built by via the Homepage function which is defined in
+#     homepage.py). This update will itself trigger the "change_map_style" callback defined below.
 
-    It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
-    effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
-    """
-    if n_clicks is None:
-        raise PreventUpdate
+#     It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
+#     effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
+#     """
+#     if n_clicks is None:
+#         raise PreventUpdate
 
-    if current_map_style == "risks":
-        return "switch map style"
+#     if current_map_style == "risks":
+#         return "switch map style"
 
-    elif current_map_style == "alerts":
-        raise PreventUpdate
+#     elif current_map_style == "alerts":
+#         raise PreventUpdate
 
 
 # ----------------------------------------------------------------------------------------------------------------------

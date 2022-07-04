@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -11,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 VERSION: str = "0.1.2.dev0"
-DEBUG: bool = os.environ.get("DEBUG", "") != "False"
+DEBUG: bool = os.environ.get("DEBUG", "").lower() != "false"
 API_URL: str = os.environ.get("API_URL", "")
 API_LOGIN: str = os.environ.get("API_LOGIN", "")
 API_PWD: str = os.environ.get("API_PWD", "")

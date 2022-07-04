@@ -20,11 +20,10 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
-import numpy as np
 import requests
 
-from . import config as cfg
-from .utils import build_filters_object, build_legend_box, map_style
+import config as cfg
+from utils._utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -73,7 +72,7 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
     # First step is to prepare the choropleth map by building the color scale corresponding to score risks
     # To define 8 risk levels between 0 and 1, we need to choose 9 floats that will serve as borders
-    classes = np.linspace(0, 1, 9)
+    classes = [idx / 8 for idx in range(9)]
 
     # We choose 8 shades of yellow and red to define our color scale
     colorscale = ["#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", "#E31A1C", "#BD0026", "#800026"]

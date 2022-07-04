@@ -15,7 +15,7 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
-from .alerts import retrieve_site_from_device_id
+from utils.alerts import retrieve_site_from_device_id
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
