@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following file is dedicated to the "Risk Score" view of the dashboard.
@@ -16,25 +16,15 @@ Most functions defined below are called in the main.py file, in the risks callba
 """
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-import config as cfg
-
-# Various modules provided by Dash to build app components
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
-
-# NumPy to generate the score classes in the color scale
 import numpy as np
-
-# Useful imports to open and read the GeoJSON file and get risk data from the API
 import requests
 
-# Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import build_filters_object, build_legend_box, map_style
+from . import config as cfg
+from .utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT

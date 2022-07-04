@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following is the main file and the script to run in order to launch the app locally.
@@ -26,43 +26,35 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# --- General imports
 
 import json
-
-# Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-import config as cfg  # Cf. config.py file
 import dash
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash and Dash Leaflet to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
-
-# Various utils
 import numpy as np
-
-# Pandas to read the login correspondences file
 import pandas as pd
-
-# Import used to make the API call in the login callback
 import requests
+import sentry_sdk
+from dash.dependencies import ALL, MATCH, Input, Output, State
+from dash.exceptions import PreventUpdate
+from flask_caching import Cache
+from pyroclient import Client
+from sentry_sdk.integrations.flask import FlaskIntegration
 
-# From alert_screen.py, we import the main layout instantiation function and some others needed for interactivity
-from alert_screen import (
+from . import config as cfg
+from .alert_screen import (
     AlertScreen,
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-from alerts import (
+from .alerts import (
     build_alert_overview,
     build_alerts_elements,
     build_individual_alert_components,
@@ -70,26 +62,11 @@ from alerts import (
     display_alert_selection_area,
     retrieve_site_from_device_id,
 )
-from dash.dependencies import ALL, MATCH, Input, Output, State
-from dash.exceptions import PreventUpdate
-
-# From dashboard_screen.py, we import the main layout instantiation function
-from dashboard_screen import DashboardScreen, build_dashboard_table
-
-# Flask caching import
-from flask_caching import Cache
-
-# From other Python files, we import some functions needed for interactivity
-# From homepage.py, we import the main layout instantiation function
-from homepage import Homepage, choose_map_style
-
-# From the pyroclient package
-from pyroclient import Client
-from risks import build_risks_geojson_and_colorbar
-
-# Importing the pre-instantiated Pyro-API client
-from services import api_client
-from utils import (
+from .dashboard_screen import DashboardScreen, build_dashboard_table
+from .homepage import Homepage, choose_map_style
+from .risks import build_risks_geojson_and_colorbar
+from .services import api_client
+from .utils import (
     build_filters_object,
     build_legend_box,
     choose_layer_style,
@@ -101,6 +78,20 @@ from utils import (
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
+logger = logging.getLogger("uvicorn.error")
+# Sentry
+if isinstance(cfg.SENTRY_DSN, str):
+    sentry_sdk.init(
+        dsn=cfg.SENTRY_DSN,
+        release=cfg.VERSION,
+        server_name=cfg.SERVER_NAME,
+        environment="production" if isinstance(cfg.SERVER_NAME, str) else None,
+        integrations=[
+            FlaskIntegration(),
+        ],
+        traces_sample_rate=1.0,
+    )
+    logger.info(f"Sentry middleware enabled on server {cfg.SERVER_NAME}")
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])

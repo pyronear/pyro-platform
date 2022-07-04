@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following file gathers several items (variables, functions...) that are common to both views of the dashboard.
@@ -17,18 +17,10 @@ Following a first section dedicated to imports, the content section is made of 5
 NB: some sections and/or functions still have to be completed, especially API calls.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# Useful import to reformat the date information associated with past fires
 from datetime import datetime, timedelta
-
-# Useful imports to open and read the 'historic_fires.csv' file
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash to build app components
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd

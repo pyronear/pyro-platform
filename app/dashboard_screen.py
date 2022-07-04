@@ -1,12 +1,8 @@
 # Copyright (C) 2021-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html

@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following Python file is dedicated to the "Alerts and Infrastructure" view of the dashboard.
@@ -17,34 +17,21 @@ Most functions defined below are called in the main.py file, in the alerts callb
 """
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
 import json
 from datetime import datetime, timedelta
 
-# Useful imports to handle API payloads
-import config as cfg
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash to build app components
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd
-
-# Useful imports to read the GeoJSON file from Pyro-Risk release
 import requests
-
-# Imports allowing to build the vision angle of the cameras
 from geopy import Point
 from geopy.distance import geodesic
 
-# Importing a pre-instantiated client
-from services import api_client
-
-# Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import build_filters_object, build_legend_box, map_style
+from . import config as cfg
+from .services import api_client
+from .utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
