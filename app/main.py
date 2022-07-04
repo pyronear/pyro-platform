@@ -37,7 +37,6 @@ import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_leaflet as dl
 import numpy as np
 import pandas as pd
 import requests
@@ -56,15 +55,8 @@ from pages.screen import (
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-
-# from pages.risks import build_risks_geojson_and_colorbar
 from services import api_client
-from utils._utils import (
-    build_filters_object,
-    build_legend_box,
-    choose_layer_style,
-    is_hour_between,
-)
+from utils._utils import choose_layer_style, is_hour_between
 from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
