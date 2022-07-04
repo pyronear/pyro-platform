@@ -174,12 +174,15 @@ def display_page(pathname: str):
     This callback takes the url path as input and returns the corresponding page layout,
     thanks to the instantiation functions built in the various .py files.
     """
-    if pathname == "/screen":
+    if len(pathname) == 0 or pathname == "/":
+        return Homepage()
+    elif pathname == "/screen":
         return AlertScreen()
     elif pathname == "/device_status":
         return DashboardScreen()
+    # Implement a 404 error
     else:
-        return Homepage()
+        return html.Div([dbc.Alert("Unable to find this page.", color="warning")])
 
 
 @app.callback(
