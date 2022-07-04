@@ -4,17 +4,6 @@
 The building blocks of our wildfire detection & monitoring API.
 
 
-
-## Table of Contents
-
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-- [License](#license)
-
-
-
 ## Getting started
 
 ### Prerequisites
