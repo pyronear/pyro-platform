@@ -27,7 +27,7 @@ def build_no_alert_detected_screen():
     """
     # background image as style
     style = {
-        "backgroundImage": 'url("/assets/pyro_alert_off.png")',
+        "backgroundImage": 'url("/assets/images/pyro_alert_off.png")',
         "backgroundRepeat": "no-repeat",
         "backgroundPosition": "center",
         "backgroundSize": "cover",
@@ -67,7 +67,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     # Background image
     background_image = html.Img(
         id="alert_background",
-        src="/assets/pyro_alert_on.png",
+        src="/assets/images/pyro_alert_on.png",
         style={
             "position": "fixed",
             "width": "100vw",
@@ -78,7 +78,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     # Fire icon
     fire_icon = html.Img(
         id="fire_icon",
-        src="/assets/pyro_fire_logo.png",
+        src="/assets/images/pyro_fire_logo.png",
         className="blink-image",
         style={"height": "100%"},
     )

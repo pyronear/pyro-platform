@@ -113,7 +113,7 @@ def build_sites_markers(sites_with_live_alerts, dpt_code=None):
 
     # Building alerts_markers objects and wraps them in a dl.LayerGroup object
     icon = {
-        "iconUrl": "../assets/pyro_site_icon.png",
+        "iconUrl": "../assets/images/pyro_site_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
@@ -241,7 +241,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
     # Format of the alert marker icon
     icon = {
-        "iconUrl": "../assets/pyro_alert_icon.png",
+        "iconUrl": "../assets/images/pyro_alert_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's and popup's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor

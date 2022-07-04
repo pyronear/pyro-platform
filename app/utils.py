@@ -128,9 +128,9 @@ def build_legend_box(map_type=None):
 
     It returns the appropriate legend for each of the two maps in the box, with a dedicated id.
     """
-    site_img_url = "../assets/pyro_site_icon.png"
-    past_fire_img_url = "../assets/pyro_oldfire_icon.png"
-    alert_img_url = "../assets/pyro_alert_icon.png"
+    site_img_url = "../assets/images/pyro_site_icon.png"
+    past_fire_img_url = "../assets/images/pyro_oldfire_icon.png"
+    alert_img_url = "../assets/images/pyro_alert_icon.png"
 
     img_style = {"width": "4.5vh", "height": "4.5vh"}
 
@@ -209,13 +209,13 @@ def build_historic_markers(dpt_code=None):
         return None
 
     # We read the csv file that locates the old fires
-    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("data", "historic_fires.csv"), ",")
+    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("assets", "data", "historic_fires.csv"), ",")
 
     # The line below allows us to filter for the department of interest
     old_fire_positions = old_fire_positions[old_fire_positions["Département"] == int(dpt_code)].copy()
 
     icon = {
-        "iconUrl": "../assets/pyro_oldfire_icon.png",
+        "iconUrl": "../assets/images/pyro_oldfire_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's and popup's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor

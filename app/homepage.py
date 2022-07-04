@@ -305,7 +305,7 @@ def Homepage():
                     id="login_background",
                     children=[
                         # The background image is directly stored in the /assets folder
-                        html.Img(src="assets/background.png", width="100%", height="100%")
+                        html.Img(src="assets/images/background.png", width="100%", height="100%")
                     ],
                 )
             ),

@@ -631,7 +631,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
                 # We load the group correspondences stored in a dedicated JSON file in the data folder
                 path = os.path.dirname(os.path.abspath(__file__))
-                path = os.path.join(path, "data", "group_correspondences.json")
+                path = os.path.join(path, "assets", "data", "group_correspondences.json")
 
                 with open(path, "r") as file:
                     group_correspondences = json.load(file)
