@@ -21,7 +21,6 @@ pip install -r pyro-platform/requirements.txt
 ```
 
 
-
 ## Usage
 
 Beforehand, you will need to set a few environment variables either manually or by writing an `.env` file in the root directory of this project, like in the example below:
