@@ -680,7 +680,7 @@ quality = ["flake8", "isort", "mypy", "black"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "a0a5d998872e1740dba52a50d646ae3ae09de3e981bc1e0b8fd32041ccd48a56"
+content-hash = "6fa727d15782fc3331a4b6aa91bdb6eb2648d4632c96eb897234eeeece161540"
 
 [metadata.files]
 black = [
