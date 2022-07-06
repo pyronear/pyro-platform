@@ -70,7 +70,7 @@ def Navbar(dropdown=False):
                 ]
             )
         ],
-        href="screen",
+        href="minimal",
         style={
             "font-size": "15px",
             "color": "white",

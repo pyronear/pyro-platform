@@ -48,10 +48,10 @@ from pyroclient import Client
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 import config as cfg
-from pages.device_status import DashboardScreen, build_dashboard_table
+from pages.device_status import DeviceStatus, build_device_table
 from pages.homepage import Homepage, choose_map_style
-from pages.screen import (
-    AlertScreen,
+from pages.minimal import (
+    AlertMinimal,
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
@@ -168,10 +168,10 @@ def display_page(pathname: str):
     """
     if len(pathname) == 0 or pathname == "/":
         return Homepage()
-    elif pathname == "/screen":
-        return AlertScreen()
+    elif pathname == "/minimal":
+        return AlertMinimal()
     elif pathname == "/device_status":
-        return DashboardScreen()
+        return DeviceStatus()
     # Implement a 404 error
     else:
         return html.Div([dbc.Alert("Unable to find this page.", color="warning")])
@@ -1519,7 +1519,7 @@ def update_dashboard_table(n_intervals):
         pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
     )
 
-    return build_dashboard_table(sdis_devices_data=sdis_devices)
+    return build_device_table(sdis_devices_data=sdis_devices)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
