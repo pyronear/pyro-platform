@@ -14,7 +14,7 @@ import pandas as pd
 # The following block builds the dashboard_table, adding a status column that indicates if devices are KO or OK
 
 
-def build_dashboard_table(sdis_devices_data):
+def build_device_table(sdis_devices_data):
 
     sdis_devices = pd.DataFrame(sdis_devices_data)
 
@@ -65,7 +65,7 @@ def build_dashboard_table(sdis_devices_data):
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
 # The following block gathers elements defined above and returns them via the DashboardScreen function
-def DashboardScreen():
+def DeviceStatus():
 
     pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 

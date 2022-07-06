@@ -198,7 +198,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
 # The following block gathers elements defined above and returns them via the alert_screen function
-def AlertScreen():
+def AlertMinimal():
     """
     The following function is used in the main.py file to build the layout of the big screen page.
     """
