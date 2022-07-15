@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following is the main file and the script to run in order to launch the app locally.
@@ -26,43 +26,38 @@ It is built around 5 main sections:
 - Running the web-app server, which allows to launch the app via the Terminal command.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# --- General imports
 
 import json
-
-# Main Dash imports, used to instantiate the web-app and create callbacks (ie. to generate interactivity)
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-import config as cfg  # Cf. config.py file
 import dash
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash and Dash Leaflet to build the page layout
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_leaflet as dl
-
-# Various utils
 import numpy as np
-
-# Pandas to read the login correspondences file
 import pandas as pd
-
-# Import used to make the API call in the login callback
 import requests
+import sentry_sdk
+from dash.dependencies import ALL, MATCH, Input, Output, State
+from dash.exceptions import PreventUpdate
+from flask_caching import Cache
+from pyroclient import Client
+from sentry_sdk.integrations.flask import FlaskIntegration
 
-# From alert_screen.py, we import the main layout instantiation function and some others needed for interactivity
-from alert_screen import (
-    AlertScreen,
+import config as cfg
+from pages.device_status import DeviceStatus, build_device_table
+from pages.homepage import Homepage, choose_map_style
+from pages.minimal import (
+    AlertMinimal,
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-from alerts import (
+from services import api_client
+from utils._utils import choose_layer_style, is_hour_between
+from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
     build_individual_alert_components,
@@ -70,37 +65,26 @@ from alerts import (
     display_alert_selection_area,
     retrieve_site_from_device_id,
 )
-from dash.dependencies import ALL, MATCH, Input, Output, State
-from dash.exceptions import PreventUpdate
-
-# From dashboard_screen.py, we import the main layout instantiation function
-from dashboard_screen import DashboardScreen, build_dashboard_table
-
-# Flask caching import
-from flask_caching import Cache
-
-# From other Python files, we import some functions needed for interactivity
-# From homepage.py, we import the main layout instantiation function
-from homepage import Homepage, choose_map_style
-
-# From the pyroclient package
-from pyroclient import Client
-from risks import build_risks_geojson_and_colorbar
-
-# Importing the pre-instantiated Pyro-API client
-from services import api_client
-from utils import (
-    build_filters_object,
-    build_legend_box,
-    choose_layer_style,
-    is_hour_between,
-)
 
 # --- Imports from other Python files
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
+logger = logging.getLogger("uvicorn.error")
+# Sentry
+if isinstance(cfg.SENTRY_DSN, str):
+    sentry_sdk.init(
+        dsn=cfg.SENTRY_DSN,
+        release=cfg.VERSION,
+        server_name=cfg.SERVER_NAME,
+        environment="production" if isinstance(cfg.SERVER_NAME, str) else None,
+        integrations=[
+            FlaskIntegration(),
+        ],
+        traces_sample_rate=1.0,
+    )
+    logger.info(f"Sentry middleware enabled on server {cfg.SERVER_NAME}")
 
 # We start by instantiating the app (NB: did not try to look for other stylesheets yet)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.UNITED])
@@ -177,17 +161,20 @@ cache = Cache(app.server, config={"CACHE_TYPE": "filesystem", "CACHE_DIR": ".cac
 
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
-def display_page(pathname):
+def display_page(pathname: str):
     """
     This callback takes the url path as input and returns the corresponding page layout,
     thanks to the instantiation functions built in the various .py files.
     """
-    if pathname == "/alert_screen":
-        return AlertScreen()
-    elif pathname == "/dashboard_screen":
-        return DashboardScreen()
-    else:
+    if len(pathname) == 0 or pathname == "/":
         return Homepage()
+    elif pathname == "/minimal":
+        return AlertMinimal()
+    elif pathname == "/device_status":
+        return DeviceStatus()
+    # Implement a 404 error
+    else:
+        return html.Div([dbc.Alert("Unable to find this page.", color="warning")])
 
 
 @app.callback(
@@ -427,14 +414,10 @@ def update_live_alerts_data(
             # We create a DataFrame with the data for already loaded alerts
             ongoing_live_alerts = pd.read_json(ongoing_live_alerts)
 
-            if ongoing_live_alerts.empty:
-                loaded_alert_ids: np.ndarray = np.array([])
-
-            else:
-                loaded_alert_ids = ongoing_live_alerts["id"].unique()
-
-            # Are all live alerts already stored on the platform?
-            condition = np.array_equal(live_alerts["id"].unique(), loaded_alert_ids)
+            condition = False
+            if not ongoing_live_alerts.empty:
+                # Are all live alerts already stored on the platform?
+                condition = np.array_equal(live_alerts["id"].unique(), ongoing_live_alerts["id"].unique())
 
             # If this condition is verified,
             if condition:
@@ -640,7 +623,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
                 # We load the group correspondences stored in a dedicated JSON file in the data folder
                 path = os.path.dirname(os.path.abspath(__file__))
-                path = os.path.join(path, "data", "group_correspondences.json")
+                path = os.path.join(path, "assets", "data", "group_correspondences.json")
 
                 with open(path, "r") as file:
                     group_correspondences = json.load(file)
@@ -1095,53 +1078,53 @@ def select_alert_frame_to_display(slider_value, urls):
 # Callbacks related to the "Risk Score" page
 
 
-@app.callback(Output("map", "children"), Input("opacity_slider_risks", "value"))
-def change_color_opacity(opacity_level):
-    """
-    -- Managing color opacity in the choropleth map --
+# @app.callback(Output("map", "children"), Input("opacity_slider_risks", "value"))
+# def change_color_opacity(opacity_level):
+#     """
+#     -- Managing color opacity in the choropleth map --
 
-    This callback takes as input the opacity level chosen by the user on the slider.
-    It then reinstantiates the colorbar and geojson objects accordingly.
-    These new objects are finally returned into the risks map's children attribute.
-    """
-    colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
+#     This callback takes as input the opacity level chosen by the user on the slider.
+#     It then reinstantiates the colorbar and geojson objects accordingly.
+#     These new objects are finally returned into the risks map's children attribute.
+#     """
+#     colorbar, geojson = build_risks_geojson_and_colorbar(opacity_level=opacity_level)
 
-    return [
-        dl.TileLayer(id="tile_layer"),
-        geojson,
-        colorbar,
-        build_filters_object(map_type="risks"),
-        build_legend_box(map_type="risks"),
-        html.Div(id="fire_markers_risks"),  # Will contain the past fire markers of the risks map
-        html.Div(id="live_alerts_marker"),
-    ]
+#     return [
+#         dl.TileLayer(id="tile_layer"),
+#         geojson,
+#         colorbar,
+#         build_filters_object(map_type="risks"),
+#         build_legend_box(map_type="risks"),
+#         html.Div(id="fire_markers_risks"),  # Will contain the past fire markers of the risks map
+#         html.Div(id="live_alerts_marker"),
+#     ]
 
 
-@app.callback(
-    Output("alert_btn_switch_view", "children"),
-    Input("alert_button_risks", "n_clicks"),
-    [State("map_style_button", "children"), State("current_map_style", "children")],
-)
-@cache.memoize()
-def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
-    """
-    -- Moving between alerts and risks views (1/3) --
+# @app.callback(
+#     Output("alert_btn_switch_view", "children"),
+#     Input("alert_button_risks", "n_clicks"),
+#     [State("map_style_button", "children"), State("current_map_style", "children")],
+# )
+# @cache.memoize()
+# def change_map_style_alert_button(n_clicks, map_style_button_label, current_map_style):
+#     """
+#     -- Moving between alerts and risks views (1/3) --
 
-    This callback detects clicks on the alert banner associated with the risks view of the map and updates the
-    "alert_btn_switch_view" object (an HTML placeholder built by via the Homepage function which is defined in
-    homepage.py). This update will itself trigger the "change_map_style" callback defined below.
+#     This callback detects clicks on the alert banner associated with the risks view of the map and updates the
+#     "alert_btn_switch_view" object (an HTML placeholder built by via the Homepage function which is defined in
+#     homepage.py). This update will itself trigger the "change_map_style" callback defined below.
 
-    It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
-    effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
-    """
-    if n_clicks is None:
-        raise PreventUpdate
+#     It also takes as a "State" input the map style currently in use, so as to prevent this callback for having any
+#     effect when the map being viewed is the alerts one. This avoids certain non-desirable behaviors.
+#     """
+#     if n_clicks is None:
+#         raise PreventUpdate
 
-    if current_map_style == "risks":
-        return "switch map style"
+#     if current_map_style == "risks":
+#         return "switch map style"
 
-    elif current_map_style == "alerts":
-        raise PreventUpdate
+#     elif current_map_style == "alerts":
+#         raise PreventUpdate
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1536,7 +1519,7 @@ def update_dashboard_table(n_intervals):
         pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
     )
 
-    return build_dashboard_table(sdis_devices_data=sdis_devices)
+    return build_device_table(sdis_devices_data=sdis_devices)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

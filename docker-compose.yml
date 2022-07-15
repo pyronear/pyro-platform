@@ -12,4 +12,5 @@ services:
       - API_URL=${API_URL}
       - API_LOGIN=${API_LOGIN}
       - API_PWD=${API_PWD}
+      - SENTRY_DSN=${SENTRY_DSN}
       - DEBUG=${DEBUG}

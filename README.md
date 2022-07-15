@@ -4,17 +4,6 @@
 The building blocks of our wildfire detection & monitoring API.
 
 
-
-## Table of Contents
-
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-- [License](#license)
-
-
-
 ## Getting started
 
 ### Prerequisites
@@ -30,7 +19,6 @@ You can clone and install the project dependencies as follows:
 git clone https://github.com/pyronear/pyro-platform.git
 pip install -r pyro-platform/requirements.txt
 ```
-
 
 
 ## Usage

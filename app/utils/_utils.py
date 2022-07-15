@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following file gathers several items (variables, functions...) that are common to both views of the dashboard.
@@ -17,18 +17,10 @@ Following a first section dedicated to imports, the content section is made of 5
 NB: some sections and/or functions still have to be completed, especially API calls.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# Useful import to reformat the date information associated with past fires
 from datetime import datetime, timedelta
-
-# Useful imports to open and read the 'historic_fires.csv' file
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash to build app components
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd
@@ -136,9 +128,9 @@ def build_legend_box(map_type=None):
 
     It returns the appropriate legend for each of the two maps in the box, with a dedicated id.
     """
-    site_img_url = "../assets/pyro_site_icon.png"
-    past_fire_img_url = "../assets/pyro_oldfire_icon.png"
-    alert_img_url = "../assets/pyro_alert_icon.png"
+    site_img_url = "../assets/images/pyro_site_icon.png"
+    past_fire_img_url = "../assets/images/pyro_oldfire_icon.png"
+    alert_img_url = "../assets/images/pyro_alert_icon.png"
 
     img_style = {"width": "4.5vh", "height": "4.5vh"}
 
@@ -217,13 +209,13 @@ def build_historic_markers(dpt_code=None):
         return None
 
     # We read the csv file that locates the old fires
-    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("data", "historic_fires.csv"), ",")
+    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("assets", "data", "historic_fires.csv"), ",")
 
     # The line below allows us to filter for the department of interest
     old_fire_positions = old_fire_positions[old_fire_positions["Département"] == int(dpt_code)].copy()
 
     icon = {
-        "iconUrl": "../assets/pyro_oldfire_icon.png",
+        "iconUrl": "../assets/images/pyro_oldfire_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's and popup's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor

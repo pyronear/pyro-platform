@@ -1,7 +1,7 @@
 # this target runs checks on all files
 quality:
 	isort . -c
-	flake8 ./
+	flake8
 	mypy
 	black --check .
 
@@ -12,7 +12,7 @@ style:
 
 # Build the docker
 build:
-	docker build . -t pyroplatform:latest-py:3.7.9-slim
+	docker build . -t pyroplatform:python3.7.9-slim
 
 # Run the docker
 run:
@@ -21,3 +21,8 @@ run:
 # Run the docker
 stop:
 	docker-compose down
+
+# Pin the dependencies
+lock:
+	poetry lock -vvv
+	poetry export -f requirements.txt --without-hashes --output requirements.txt

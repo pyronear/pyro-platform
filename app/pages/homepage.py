@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following Python file is dedicated to the homepage of the web application.
@@ -21,22 +21,14 @@ More precisely, after a first block dedicated to imports, the content section is
 Most functions defined below are designed to be called in the main.py file.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 
-# Importing alerts map builder from alerts.py
-from alerts import build_alerts_map
+from components.navbar import Navbar
+from utils.alerts import build_alerts_map
 
-# From navbar.py to add the navigation bar at the top of the page
-from navbar import Navbar
-
-# Importing risks map and opacity slider builders from risks.py
-from risks import build_opacity_slider, build_risks_map
+from .risks import build_opacity_slider, build_risks_map
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -314,7 +306,7 @@ def Homepage():
                     id="login_background",
                     children=[
                         # The background image is directly stored in the /assets folder
-                        html.Img(src="assets/background.png", width="100%", height="100%")
+                        html.Img(src="assets/images/background.png", width="100%", height="100%")
                     ],
                 )
             ),

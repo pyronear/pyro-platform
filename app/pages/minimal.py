@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following Python file is dedicated to the alert screen of the web application.
@@ -11,14 +11,11 @@ alert pops out, the screen will automatically change to display various informat
 Most functions defined below are designed to be called in the main.py file.
 """
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-# Various modules provided by Dash to build the page layout
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-from alerts import retrieve_site_from_device_id
+
+from utils.alerts import retrieve_site_from_device_id
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -30,7 +27,7 @@ def build_no_alert_detected_screen():
     """
     # background image as style
     style = {
-        "backgroundImage": 'url("/assets/pyro_alert_off.png")',
+        "backgroundImage": 'url("/assets/images/pyro_alert_off.png")',
         "backgroundRepeat": "no-repeat",
         "backgroundPosition": "center",
         "backgroundSize": "cover",
@@ -70,7 +67,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     # Background image
     background_image = html.Img(
         id="alert_background",
-        src="/assets/pyro_alert_on.png",
+        src="/assets/images/pyro_alert_on.png",
         style={
             "position": "fixed",
             "width": "100vw",
@@ -81,7 +78,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
     # Fire icon
     fire_icon = html.Img(
         id="fire_icon",
-        src="/assets/pyro_fire_logo.png",
+        src="/assets/images/pyro_fire_logo.png",
         className="blink-image",
         style={"height": "100%"},
     )
@@ -201,7 +198,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
 # ----------------------------------------------------------------------------------------------------------------------
 # App layout
 # The following block gathers elements defined above and returns them via the alert_screen function
-def AlertScreen():
+def AlertMinimal():
     """
     The following function is used in the main.py file to build the layout of the big screen page.
     """

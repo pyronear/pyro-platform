@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following file is dedicated to the "Risk Score" view of the dashboard.
@@ -16,25 +16,14 @@ Most functions defined below are called in the main.py file, in the risks callba
 """
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
-import config as cfg
-
-# Various modules provided by Dash to build app components
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
-
-# NumPy to generate the score classes in the color scale
-import numpy as np
-
-# Useful imports to open and read the GeoJSON file and get risk data from the API
 import requests
 
-# Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import build_filters_object, build_legend_box, map_style
+import config as cfg
+from utils._utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -83,7 +72,7 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
     # First step is to prepare the choropleth map by building the color scale corresponding to score risks
     # To define 8 risk levels between 0 and 1, we need to choose 9 floats that will serve as borders
-    classes = np.linspace(0, 1, 9)
+    classes = [idx / 8 for idx in range(9)]
 
     # We choose 8 shades of yellow and red to define our color scale
     colorscale = ["#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", "#E31A1C", "#BD0026", "#800026"]

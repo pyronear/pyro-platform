@@ -1,7 +1,7 @@
 # Copyright (C) 2020-2022, Pyronear.
 
-# This program is licensed under the Apache License version 2.
-# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0.txt> for full license details.
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 """
 The following Python file is dedicated to the "Alerts and Infrastructure" view of the dashboard.
@@ -17,34 +17,22 @@ Most functions defined below are called in the main.py file, in the alerts callb
 """
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# IMPORTS
-
 import json
 from datetime import datetime, timedelta
 
-# Useful imports to handle API payloads
-import config as cfg
 import dash_bootstrap_components as dbc
-
-# Various modules provided by Dash to build app components
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd
-
-# Useful imports to read the GeoJSON file from Pyro-Risk release
 import requests
-
-# Imports allowing to build the vision angle of the cameras
 from geopy import Point
 from geopy.distance import geodesic
 
-# Importing a pre-instantiated client
+import config as cfg
 from services import api_client
 
-# Various imports from utils.py, useful for both Alerts and Risks dashboards
-from utils import build_filters_object, build_legend_box, map_style
+from ._utils import build_filters_object, build_legend_box, map_style
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -126,7 +114,7 @@ def build_sites_markers(sites_with_live_alerts, dpt_code=None):
 
     # Building alerts_markers objects and wraps them in a dl.LayerGroup object
     icon = {
-        "iconUrl": "../assets/pyro_site_icon.png",
+        "iconUrl": "../assets/images/pyro_site_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
@@ -254,7 +242,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
     # Format of the alert marker icon
     icon = {
-        "iconUrl": "../assets/pyro_alert_icon.png",
+        "iconUrl": "../assets/images/pyro_alert_icon.png",
         "iconSize": [50, 50],  # Size of the icon
         "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's and popup's location
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
