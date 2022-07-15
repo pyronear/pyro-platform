@@ -146,6 +146,9 @@ app.layout = html.Div(
         dcc.Store(id="loaded_frames", storage_type="session"),
         # Placeholder that stores the names of the sites associated with a live alert displayed on the platform
         html.Div(id="sites_with_live_alerts", children=[], style={"display": "none"}),
+        # Storage components saving the user's headers and credentials
+        dcc.Store(id="user_headers", storage_type="session"),
+        dcc.Store(id="user_credentials", storage_type="session")
     ]
 )
 
@@ -245,6 +248,7 @@ def refresh_night_time(n_intervals):
         State("loaded_frames", "data"),
         State("site_devices_data_storage", "data"),
         State("night_time", "data"),
+        State("user_headers", "data")
     ],
 )
 def update_live_alerts_data(
@@ -255,6 +259,7 @@ def update_live_alerts_data(
     already_loaded_frames,
     site_devices_data,
     night_time_data,
+    user_headers
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -262,8 +267,11 @@ def update_live_alerts_data(
     string should be completed but more details can be found in the comments below.
     """
 
+    if user_headers is None:
+        raise PreventUpdate
+
     # Fetching live alerts where is_acknowledged is False
-    response = api_client.get_ongoing_alerts()
+    response = requests.get(cfg.API_URL + "/alerts/ongoing", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -282,7 +290,7 @@ def update_live_alerts_data(
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all unacknowledged events
-    response = api_client.get_unacknowledged_events()
+    response = requests.get(cfg.API_URL + "/events/unacknowledged", headers=user_headers)
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_unacknowledged_events()
@@ -343,7 +351,7 @@ def update_live_alerts_data(
             for _, row in live_alerts.iterrows():
                 try:
                     # For each live alert, we fetch the URL of the associated frame
-                    response = api_client.get_media_url(row["media_id"])
+                    response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
                     if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
@@ -446,7 +454,7 @@ def update_live_alerts_data(
                 for _, row in new_alerts.iterrows():
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
-                        response = api_client.get_media_url(row["media_id"])
+                        response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
                         if response.status_code == 401:
                             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                             response = api_client.get_media_url(row["media_id"])
@@ -543,6 +551,8 @@ def hide_or_show_site_markers(sites_with_live_alerts):
         Output("form_feedback_area", "children"),
         Output("login_zoom_and_center", "data"),
         Output("hp_map", "style"),
+        Output("user_headers", "data"),
+        Output("user_credentials", "data")
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -591,7 +601,15 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
     # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the
     # connection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, {"login": "no"}, None, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+        return [
+            True,
+            {"login": "no"},
+            None,
+            {"center": [10, 10], "zoom": 3},
+            {"display": "none"},
+            dash.no_update,
+            dash.no_update
+        ]
 
     # if login_storage['login'] == 'yes':
     #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
@@ -609,12 +627,20 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
             form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return True, {"login": "no"}, form_feedback, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+            return [
+                True,
+                {"login": "no"},
+                form_feedback,
+                {"center": [10, 10], "zoom": 3},
+                {"display": "none"},
+                dash.no_update,
+                dash.no_update
+            ]
 
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
-                Client(cfg.API_URL, username, password)
+                client = Client(cfg.API_URL, username, password)
                 # All checks are successful and we add the appropriate feedback
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
@@ -637,13 +663,29 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 zoom = group_correspondences[group_id]["zoom"]
 
                 # The login modal is closed and the appropriate outputs are returned
-                return False, {"login": "yes"}, form_feedback, {"center": [lat, lon], "zoom": zoom}, {}
+                return [
+                    False,
+                    {"login": "yes"},
+                    form_feedback,
+                    {"center": [lat, lon], "zoom": zoom},
+                    {},
+                    client.headers,
+                    {"username": username, "password": password}
+                ]
 
             except Exception:
                 # This if statement is verified if credentials are invalid
                 form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
                 # The login modal remains open; other outputs are updated with arbitrary values
-                return True, {"login": "no"}, form_feedback, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+                return [
+                    True,
+                    {"login": "no"},
+                    form_feedback,
+                    {"center": [10, 10], "zoom": 3},
+                    {"display": "none"},
+                    dash.no_update,
+                    dash.no_update
+                ]
 
 
 @app.callback(Output("login_background", "children"), Output("main_navbar", "style"), Input("login_modal", "is_open"))
@@ -739,9 +781,13 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
         Output("alert_overview_style_zoom", "children"),
     ],
     Input({"type": "alert_selection_btn", "index": ALL}, "n_clicks"),
-    [State("store_live_alerts_data", "data"), State("images_url_live_alerts", "data")],
+    [
+        State("store_live_alerts_data", "data"),
+        State("images_url_live_alerts", "data"),
+        State("user_headers", "data")
+    ],
 )
-def zoom_on_alert(n_clicks, live_alerts, frame_urls):
+def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers):
     """
     --- Zooming on the alert marker and displaying the alert overview ---
 
@@ -754,7 +800,7 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
     """
     ctx = dash.callback_context
 
-    if not ctx.triggered or all(elt is None for elt in n_clicks):
+    if not ctx.triggered or all(elt is None for elt in n_clicks) or user_headers is None:
         raise PreventUpdate
 
     else:
@@ -767,7 +813,7 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
-        response = requests.get(url, headers=api_client.headers)
+        response = requests.get(url, headers=user_headers)
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = requests.get(url, headers=api_client.headers)
@@ -998,8 +1044,9 @@ def close_confirmation_modal(n_clicks):
         Output({"type": "acknowledge_alert_space", "index": MATCH}, "children"),
     ],
     Input({"type": "acknowledgement_confirmation_button", "index": MATCH}, "n_clicks"),
+    State("user_headers", "data")
 )
-def confirm_alert_acknowledgement(n_clicks):
+def confirm_alert_acknowledgement(n_clicks, user_headers):
     """
     --- Confirming alert acknowledgement ---
 
@@ -1014,7 +1061,7 @@ def confirm_alert_acknowledgement(n_clicks):
     - it updates the content of the alert acknowledgement space to erase the acknowledgement button and replace it with
     a text saying that the alert / event has already been acknowledged.
     """
-    if n_clicks is None or n_clicks == 0:
+    if n_clicks is None or n_clicks == 0 or user_headers is None:
         raise PreventUpdate
 
     else:
@@ -1026,7 +1073,7 @@ def confirm_alert_acknowledgement(n_clicks):
         event_id = event_id.strip('"')
 
         # The event is actually acknowledged thanks to the acknowledge_event method of the API client
-        response = api_client.acknowledge_event(event_id=int(event_id))
+        response = requests.get(cfg.API_URL + f"/events/{event_id}/acknowledge", headers=user_headers)
 
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -1312,11 +1359,19 @@ def modify_alert_slider_length(individual_alert_frame_storage):
         Output("images_to_display_on_big_screen", "data"),
     ],
     Input("interval-component-alert-screen", "n_intervals"),
-    [State("devices_data_storage", "data"), State("site_devices_data_storage", "data"), State("night_time", "data")],
+    [
+        State("devices_data_storage", "data"),
+        State("site_devices_data_storage", "data"),
+        State("night_time", "data"),
+        State("user_headers", "data")
+    ],
 )
-def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data):
+def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers):
 
-    response = api_client.get_ongoing_alerts()
+    if user_headers is None:
+        raise PreventUpdate
+
+    response = requests.get(cfg.API_URL + "/alerts/ongoing", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -1340,7 +1395,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
-        response = api_client.get_unacknowledged_events()
+        response = requests.get(cfg.API_URL + "/events/unacknowledged", headers=user_headers)
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = api_client.get_unacknowledged_events()
@@ -1404,7 +1459,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
                 img_url = ""
 
                 try:
-                    response = api_client.get_media_url(row["media_id"])
+                    response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
                     if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
@@ -1489,13 +1544,17 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
 @app.callback(
     Output("dashboard_table", "children"),
     Input("interval-component-dashboard-screen", "n_intervals"),
+    State("user_headers", "data")
 )
-def update_dashboard_table(n_intervals):
+def update_dashboard_table(n_intervals, user_headers):
     """
     This builds and refreshes the dashboard table to monitor devices status every minute
     Had to fetch devices data again for freshness purposes
     """
-    response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+    if user_headers is None:
+        raise PreventUpdate
+
+    response = requests.get("https://api.pyronear.org/devices/", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
