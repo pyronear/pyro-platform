@@ -66,8 +66,6 @@ from utils.alerts import (
     retrieve_site_from_device_id,
 )
 
-# --- Imports from other Python files
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
