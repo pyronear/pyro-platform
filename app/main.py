@@ -50,14 +50,21 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 import config as cfg
 from pages.device_status import DeviceStatus, build_device_table
 from pages.homepage import Homepage, choose_map_style
-from pages.minimal import (AlertMinimal, build_alert_detected_screen,
-                           build_no_alert_detected_screen)
+from pages.minimal import (
+    AlertMinimal,
+    build_alert_detected_screen,
+    build_no_alert_detected_screen,
+)
 from services import api_client
 from utils._utils import choose_layer_style, is_hour_between
-from utils.alerts import (build_alert_overview, build_alerts_elements,
-                          build_individual_alert_components,
-                          build_sites_markers, display_alert_selection_area,
-                          retrieve_site_from_device_id)
+from utils.alerts import (
+    build_alert_overview,
+    build_alerts_elements,
+    build_individual_alert_components,
+    build_sites_markers,
+    display_alert_selection_area,
+    retrieve_site_from_device_id,
+)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
