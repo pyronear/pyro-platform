@@ -146,7 +146,6 @@ app.layout = html.Div(
         html.Div(id="sites_with_live_alerts", children=[], style={"display": "none"}),
         # Storage components saving the user's headers and credentials
         dcc.Store(id="user_headers", storage_type="session"),
-        dcc.Store(id="user_credentials", storage_type="session")
     ]
 )
 
@@ -550,7 +549,6 @@ def hide_or_show_site_markers(sites_with_live_alerts):
         Output("login_zoom_and_center", "data"),
         Output("hp_map", "style"),
         Output("user_headers", "data"),
-        Output("user_credentials", "data")
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -606,7 +604,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
             {"center": [10, 10], "zoom": 3},
             {"display": "none"},
             dash.no_update,
-            dash.no_update
         ]
 
     # if login_storage['login'] == 'yes':
@@ -632,7 +629,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 {"center": [10, 10], "zoom": 3},
                 {"display": "none"},
                 dash.no_update,
-                dash.no_update
             ]
 
         else:
@@ -669,7 +665,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                     {"center": [lat, lon], "zoom": zoom},
                     {},
                     client.headers,
-                    {"username": username, "password": password}
                 ]
 
             except Exception:
@@ -683,7 +678,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                     {"center": [10, 10], "zoom": 3},
                     {"display": "none"},
                     dash.no_update,
-                    dash.no_update
                 ]
 
 
