@@ -643,6 +643,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
                 # For now the group_id is not fetched, we equalize it artificially to 1
+                # NB: TO BE MODIFIED, check how we can get the ID of the user's group?
                 group_id = "1"
 
                 # We load the group correspondences stored in a dedicated JSON file in the data folder
