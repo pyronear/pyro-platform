@@ -50,22 +50,14 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 import config as cfg
 from pages.device_status import DeviceStatus, build_device_table
 from pages.homepage import Homepage, choose_map_style
-from pages.minimal import (
-    AlertMinimal,
-    build_alert_detected_screen,
-    build_no_alert_detected_screen,
-)
+from pages.minimal import (AlertMinimal, build_alert_detected_screen,
+                           build_no_alert_detected_screen)
 from services import api_client
 from utils._utils import choose_layer_style, is_hour_between
-from utils.alerts import (
-    build_alert_overview,
-    build_alerts_elements,
-    build_individual_alert_components,
-    build_sites_markers,
-    display_alert_selection_area,
-    retrieve_site_from_device_id,
-)
-
+from utils.alerts import (build_alert_overview, build_alerts_elements,
+                          build_individual_alert_components,
+                          build_sites_markers, display_alert_selection_area,
+                          retrieve_site_from_device_id)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -245,7 +237,7 @@ def refresh_night_time(n_intervals):
         State("loaded_frames", "data"),
         State("site_devices_data_storage", "data"),
         State("night_time", "data"),
-        State("user_headers", "data")
+        State("user_headers", "data"),
     ],
 )
 def update_live_alerts_data(
@@ -256,7 +248,7 @@ def update_live_alerts_data(
     already_loaded_frames,
     site_devices_data,
     night_time_data,
-    user_headers
+    user_headers,
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -774,11 +766,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
         Output("alert_overview_style_zoom", "children"),
     ],
     Input({"type": "alert_selection_btn", "index": ALL}, "n_clicks"),
-    [
-        State("store_live_alerts_data", "data"),
-        State("images_url_live_alerts", "data"),
-        State("user_headers", "data")
-    ],
+    [State("store_live_alerts_data", "data"), State("images_url_live_alerts", "data"), State("user_headers", "data")],
 )
 def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers):
     """
@@ -1037,7 +1025,7 @@ def close_confirmation_modal(n_clicks):
         Output({"type": "acknowledge_alert_space", "index": MATCH}, "children"),
     ],
     Input({"type": "acknowledgement_confirmation_button", "index": MATCH}, "n_clicks"),
-    State("user_headers", "data")
+    State("user_headers", "data"),
 )
 def confirm_alert_acknowledgement(n_clicks, user_headers):
     """
@@ -1356,7 +1344,7 @@ def modify_alert_slider_length(individual_alert_frame_storage):
         State("devices_data_storage", "data"),
         State("site_devices_data_storage", "data"),
         State("night_time", "data"),
-        State("user_headers", "data")
+        State("user_headers", "data"),
     ],
 )
 def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers):
@@ -1537,7 +1525,7 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
 @app.callback(
     Output("dashboard_table", "children"),
     Input("interval-component-dashboard-screen", "n_intervals"),
-    State("user_headers", "data")
+    State("user_headers", "data"),
 )
 def update_dashboard_table(n_intervals, user_headers):
     """
