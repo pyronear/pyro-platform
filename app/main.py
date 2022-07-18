@@ -777,7 +777,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
     Input({"type": "alert_selection_btn", "index": ALL}, "n_clicks"),
     [State("store_live_alerts_data", "data"), State("images_url_live_alerts", "data"), State("user_headers", "data")],
 )
-def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_token):
+def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers):
     """
     --- Zooming on the alert marker and displaying the alert overview ---
 
