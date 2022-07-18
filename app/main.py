@@ -267,7 +267,9 @@ def update_live_alerts_data(
         raise PreventUpdate
 
     # Fetching live alerts where is_acknowledged is False
-    response = requests.get(cfg.API_URL + "/alerts/ongoing", headers=user_headers)
+    user_token = user_headers["Authorization"].split(" ")[1]
+    api_client.token = user_token
+    response = api_client.get_ongoing_alerts()
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -286,7 +288,7 @@ def update_live_alerts_data(
 
     # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
     # We start by making an API call to fetch all unacknowledged events
-    response = requests.get(cfg.API_URL + "/events/unacknowledged", headers=user_headers)
+    response = api_client.get_unacknowledged_events()
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
         response = api_client.get_unacknowledged_events()
@@ -347,7 +349,7 @@ def update_live_alerts_data(
             for _, row in live_alerts.iterrows():
                 try:
                     # For each live alert, we fetch the URL of the associated frame
-                    response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
+                    response = api_client.get_media_url(row["media_id"])
                     if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
@@ -450,7 +452,7 @@ def update_live_alerts_data(
                 for _, row in new_alerts.iterrows():
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
-                        response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
+                        response = api_client.get_media_url(row["media_id"])
                         if response.status_code == 401:
                             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                             response = api_client.get_media_url(row["media_id"])
@@ -775,7 +777,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
     Input({"type": "alert_selection_btn", "index": ALL}, "n_clicks"),
     [State("store_live_alerts_data", "data"), State("images_url_live_alerts", "data"), State("user_headers", "data")],
 )
-def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers):
+def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_token):
     """
     --- Zooming on the alert marker and displaying the alert overview ---
 
@@ -1061,7 +1063,9 @@ def confirm_alert_acknowledgement(n_clicks, user_headers):
         event_id = event_id.strip('"')
 
         # The event is actually acknowledged thanks to the acknowledge_event method of the API client
-        response = requests.get(cfg.API_URL + f"/events/{event_id}/acknowledge", headers=user_headers)
+        user_token = user_headers["Authorization"].split(" ")[1]
+        api_client.token = user_token
+        api_client.acknowledge_event(event_id=int(event_id))
 
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -1359,7 +1363,9 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
     if user_headers is None:
         raise PreventUpdate
 
-    response = requests.get(cfg.API_URL + "/alerts/ongoing", headers=user_headers)
+    user_token = user_headers["Authorization"].split(" ")[1]
+    api_client.token = user_token
+    response = api_client.get_ongoing_alerts()
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
@@ -1383,7 +1389,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
 
         # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
         # We start by making an API call to fetch all events
-        response = requests.get(cfg.API_URL + "/events/unacknowledged", headers=user_headers)
+        response = api_client.get_unacknowledged_events()
         if response.status_code == 401:
             api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
             response = api_client.get_unacknowledged_events()
@@ -1447,7 +1453,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
                 img_url = ""
 
                 try:
-                    response = requests.get(cfg.API_URL + f"/media/{row['media_id']}/url", headers=user_headers)
+                    response = api_client.get_media_url(row["media_id"])
                     if response.status_code == 401:
                         api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
                         response = api_client.get_media_url(row["media_id"])
