@@ -669,7 +669,7 @@ def build_alerts_map():
                 id="sites_markers_div",
                 children=dl.MarkerClusterGroup(
                     children=build_sites_markers(sites_with_live_alerts=[]), id="sites_markers"
-                )
+                ),
             ),
             dl.LayerGroup(id="vision_polygons"),
             html.Div(id="live_alerts_marker"),

@@ -530,9 +530,7 @@ def update_live_alerts_data(
 
 
 @app.callback(
-    Output("sites_markers", "children"),
-    Input("sites_with_live_alerts", "children"),
-    State("sites_data", "data")
+    Output("sites_markers", "children"), Input("sites_with_live_alerts", "children"), State("sites_data", "data")
 )
 def hide_or_show_site_markers(sites_with_live_alerts, sites_in_scope):
     """
@@ -558,7 +556,7 @@ def hide_or_show_site_markers(sites_with_live_alerts, sites_in_scope):
         Output("devices_data_storage", "data"),
         Output("site_devices_data_storage", "data"),
         Output("sites_data", "data"),
-        Output("sites_markers_div", "children")
+        Output("sites_markers_div", "children"),
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -662,17 +660,12 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
 
                 # We also update the site_devices dictionary, restricting it to the user's scope
                 response_sites = client.get_sites().json()
-                site_devices = {
-                    site["name"]: client.get_site_devices(site["id"]).json() for site in response_sites
-                }
+                site_devices = {site["name"]: client.get_site_devices(site["id"]).json() for site in response_sites}
 
                 # Eventually, we update the markers on the map
                 sites_markers_div_children = dl.MarkerClusterGroup(
-                    children=build_sites_markers(
-                        sites_with_live_alerts=[],
-                        camera_positions=response_sites
-                    ),
-                    id="sites_markers"
+                    children=build_sites_markers(sites_with_live_alerts=[], camera_positions=response_sites),
+                    id="sites_markers",
                 )
 
                 # We sum the latitudes and longitudes of the sites that are in the user's scope
@@ -700,7 +693,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                     response_devices.json(),
                     site_devices,
                     response_sites,
-                    sites_markers_div_children
+                    sites_markers_div_children,
                 ]
 
             except Exception:
