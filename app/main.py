@@ -29,7 +29,6 @@ It is built around 5 main sections:
 
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from typing import Dict, List
 
