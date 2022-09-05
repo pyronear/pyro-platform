@@ -37,6 +37,7 @@ import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_leaflet as dl
 import numpy as np
 import pandas as pd
 import requests
@@ -134,7 +135,8 @@ app.layout = html.Div(
         ),
         # Interval that refreshes the night_time storage and API fetch every 24h
         dcc.Interval(id="refresh_night_time", interval=24 * 3600 * 1000),
-        # Storage component which contains data relative to site devices
+        # Storage components which contain data relative to sites and site devices
+        dcc.Store(id="sites_data", storage_type="session", data=response.json()),
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=site_devices),
         # Storing alerts data for each event separately
         html.Div(id="individual_alert_data_placeholder", style={"display": "none"}),
@@ -528,14 +530,18 @@ def update_live_alerts_data(
                     ]
 
 
-@app.callback(Output("sites_markers", "children"), Input("sites_with_live_alerts", "children"))
-def hide_or_show_site_markers(sites_with_live_alerts):
+@app.callback(
+    Output("sites_markers", "children"),
+    Input("sites_with_live_alerts", "children"),
+    State("sites_data", "data")
+)
+def hide_or_show_site_markers(sites_with_live_alerts, sites_in_scope):
     """
     In reaction to changes in the list of site names associated with an alert being displayed, this callback creates
     site markers. The goal is to hide the markers of sites associated with an alert being displayed, so that only the
     alert marker can be seen on the map.
     """
-    return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts)
+    return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts, camera_positions=sites_in_scope)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -550,6 +556,10 @@ def hide_or_show_site_markers(sites_with_live_alerts):
         Output("login_zoom_and_center", "data"),
         Output("hp_map", "style"),
         Output("user_headers", "data"),
+        Output("devices_data_storage", "data"),
+        Output("site_devices_data_storage", "data"),
+        Output("sites_data", "data"),
+        Output("sites_markers_div", "children")
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -605,6 +615,10 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
             {"center": [10, 10], "zoom": 3},
             {"display": "none"},
             dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
         ]
 
     # if login_storage['login'] == 'yes':
@@ -630,6 +644,10 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 {"center": [10, 10], "zoom": 3},
                 {"display": "none"},
                 dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
             ]
 
         else:
@@ -639,24 +657,38 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 # All checks are successful and we add the appropriate feedback
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
-                # For now the group_id is not fetched, we equalize it artificially to 1
-                # NB: TO BE MODIFIED, check how we can get the ID of the user's group?
-                group_id = "1"
 
-                # We load the group correspondences stored in a dedicated JSON file in the data folder
-                path = os.path.dirname(os.path.abspath(__file__))
-                path = os.path.join(path, "assets", "data", "group_correspondences.json")
+                # Based on the user's credentials, we request the set of relevant devices
+                response_devices = requests.get("https://api.pyronear.org/devices/", headers=client.headers)
 
-                with open(path, "r") as file:
-                    group_correspondences = json.load(file)
+                # We also update the site_devices dictionary, restricting it to the user's scope
+                response_sites = client.get_sites().json()
+                site_devices = {
+                    site["name"]: client.get_site_devices(site["id"]).json() for site in response_sites
+                }
 
-                # We fetch the latitude and longitude of the point around which we want to center the map
-                # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
-                lat = group_correspondences[group_id]["center_lat"]
-                lon = group_correspondences[group_id]["center_lon"]
+                # Eventually, we update the markers on the map
+                sites_markers_div_children = dl.MarkerClusterGroup(
+                    children=build_sites_markers(
+                        sites_with_live_alerts=[],
+                        camera_positions=response_sites
+                    ),
+                    id="sites_markers"
+                )
 
-                # We fetch the zoom level for the map display
-                zoom = group_correspondences[group_id]["zoom"]
+                # We sum the latitudes and longitudes of the sites that are in the user's scope
+                latitudes = 0
+                longitudes = 0
+                for site in response_sites:
+                    latitudes += site["lat"]
+                    longitudes += site["lon"]
+
+                # We deduce the mid-point around which we want to center the map
+                lat = latitudes / len(response_sites)
+                lon = longitudes / len(response_sites)
+
+                # We set the zoom level for the map display at 9 by default
+                zoom = 9
 
                 # The login modal is closed and the appropriate outputs are returned
                 return [
@@ -666,6 +698,10 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                     {"center": [lat, lon], "zoom": zoom},
                     {},
                     client.headers,
+                    response_devices.json(),
+                    site_devices,
+                    response_sites,
+                    sites_markers_div_children
                 ]
 
             except Exception:
@@ -678,6 +714,10 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                     form_feedback,
                     {"center": [10, 10], "zoom": 3},
                     {"display": "none"},
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
                     dash.no_update,
                 ]
 

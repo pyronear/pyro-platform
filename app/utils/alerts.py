@@ -100,7 +100,7 @@ site_devices = {site["name"]: api_client.get_site_devices(site["id"]).json() for
 camera_positions = response.json()
 
 
-def build_sites_markers(sites_with_live_alerts, dpt_code=None):
+def build_sites_markers(sites_with_live_alerts, camera_positions=camera_positions, dpt_code=None):
     """
     This function reads the site markers by making the API, that contains all the
     information about the sites equipped with detection units.
@@ -665,7 +665,12 @@ def build_alerts_map():
             build_departments_geojson(),
             build_filters_object(map_type="alerts"),
             build_legend_box(map_type="alerts"),
-            dl.MarkerClusterGroup(children=build_sites_markers(sites_with_live_alerts=[]), id="sites_markers"),
+            html.Div(
+                id="sites_markers_div",
+                children=dl.MarkerClusterGroup(
+                    children=build_sites_markers(sites_with_live_alerts=[]), id="sites_markers"
+                )
+            ),
             dl.LayerGroup(id="vision_polygons"),
             html.Div(id="live_alerts_marker"),
             html.Div(id="live_alert_header_btn"),
