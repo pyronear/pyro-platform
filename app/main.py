@@ -146,7 +146,6 @@ app.layout = html.Div(
         html.Div(id="sites_with_live_alerts", children=[], style={"display": "none"}),
         # Storage components saving the user's headers and credentials
         dcc.Store(id="user_headers", storage_type="session"),
-
         # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
         dcc.Store(id="user_credentials", storage_type="session"),
     ]
@@ -261,7 +260,7 @@ def update_live_alerts_data(
     site_devices_data,
     night_time_data,
     user_headers,
-    user_credentials
+    user_credentials,
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -821,7 +820,7 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
         State("store_live_alerts_data", "data"),
         State("images_url_live_alerts", "data"),
         State("user_headers", "data"),
-        State("user_credentials", "data")
+        State("user_credentials", "data"),
     ],
 )
 def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credentials):
@@ -1403,7 +1402,7 @@ def modify_alert_slider_length(individual_alert_frame_storage):
         State("site_devices_data_storage", "data"),
         State("night_time", "data"),
         State("user_headers", "data"),
-        State("user_credentials", "data")
+        State("user_credentials", "data"),
     ],
 )
 def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers, user_credentials):
