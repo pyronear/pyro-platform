@@ -1605,19 +1605,23 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     # last_ping and datetime.now()
     all_devices = pd.DataFrame(response.json())
 
-    sdis_devices = (
-        all_devices[all_devices["id"].isin(range(2, 18))]
-        .sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]]
-        .copy()
-    )
+    if not all_devices.empty:
+        sdis_devices = all_devices.sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]].copy()
 
-    sdis_devices["last_ping_hours_dif"] = sdis_devices["last_ping"].apply(
-        lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
-    )
+        # For some Reolink devices, it seems that the last ping is missing
+        # We add this line to prevent these cases from breaking the logic below
+        sdis_devices = sdis_devices.dropna(subset=["last_ping"]).copy()
 
-    sdis_devices["last_ping"] = (
-        pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
-    )
+        sdis_devices["last_ping_hours_dif"] = sdis_devices["last_ping"].apply(
+            lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
+        )
+
+        sdis_devices["last_ping"] = (
+            pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
+        )
+
+    else:
+        sdis_devices = all_devices.copy()
 
     return build_device_table(sdis_devices_data=sdis_devices)
 
