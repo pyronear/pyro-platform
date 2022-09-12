@@ -29,7 +29,6 @@ It is built around 5 main sections:
 
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from typing import Dict, List
 
@@ -37,6 +36,7 @@ import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_leaflet as dl
 import numpy as np
 import pandas as pd
 import requests
@@ -65,9 +65,6 @@ from utils.alerts import (
     display_alert_selection_area,
     retrieve_site_from_device_id,
 )
-
-# --- Imports from other Python files
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # APP INSTANTIATION & OVERALL LAYOUT
@@ -137,7 +134,8 @@ app.layout = html.Div(
         ),
         # Interval that refreshes the night_time storage and API fetch every 24h
         dcc.Interval(id="refresh_night_time", interval=24 * 3600 * 1000),
-        # Storage component which contains data relative to site devices
+        # Storage components which contain data relative to sites and site devices
+        dcc.Store(id="sites_data", storage_type="session", data=response.json()),
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=site_devices),
         # Storing alerts data for each event separately
         html.Div(id="individual_alert_data_placeholder", style={"display": "none"}),
@@ -146,6 +144,10 @@ app.layout = html.Div(
         dcc.Store(id="loaded_frames", storage_type="session"),
         # Placeholder that stores the names of the sites associated with a live alert displayed on the platform
         html.Div(id="sites_with_live_alerts", children=[], style={"display": "none"}),
+        # Storage components saving the user's headers and credentials
+        dcc.Store(id="user_headers", storage_type="session"),
+        # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
+        dcc.Store(id="user_credentials", storage_type="session"),
     ]
 )
 
@@ -245,6 +247,8 @@ def refresh_night_time(n_intervals):
         State("loaded_frames", "data"),
         State("site_devices_data_storage", "data"),
         State("night_time", "data"),
+        State("user_headers", "data"),
+        State("user_credentials", "data"),
     ],
 )
 def update_live_alerts_data(
@@ -255,6 +259,8 @@ def update_live_alerts_data(
     already_loaded_frames,
     site_devices_data,
     night_time_data,
+    user_headers,
+    user_credentials,
 ):
     """
     This is the key callback of the platform. Triggered by the interval component, it queries the database via the API
@@ -262,11 +268,16 @@ def update_live_alerts_data(
     string should be completed but more details can be found in the comments below.
     """
 
+    if user_headers is None:
+        raise PreventUpdate
+
     # Fetching live alerts where is_acknowledged is False
+    user_token = user_headers["Authorization"].split(" ")[1]
+    api_client.token = user_token
     response = api_client.get_ongoing_alerts()
     # Check token expiration
     if response.status_code == 401:
-        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
         response = api_client.get_ongoing_alerts()
     response = response.json()
     # Only for demo purposes, this should be deleted for dev and later in production
@@ -284,7 +295,7 @@ def update_live_alerts_data(
     # We start by making an API call to fetch all unacknowledged events
     response = api_client.get_unacknowledged_events()
     if response.status_code == 401:
-        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
         response = api_client.get_unacknowledged_events()
     live_events = pd.DataFrame(response.json())
 
@@ -345,7 +356,7 @@ def update_live_alerts_data(
                     # For each live alert, we fetch the URL of the associated frame
                     response = api_client.get_media_url(row["media_id"])
                     if response.status_code == 401:
-                        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
                         response = api_client.get_media_url(row["media_id"])
                     img_url = response.json()["url"]
 
@@ -448,7 +459,7 @@ def update_live_alerts_data(
                         # For each new live alert, we fetch the URL of the associated frame
                         response = api_client.get_media_url(row["media_id"])
                         if response.status_code == 401:
-                            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
                             response = api_client.get_media_url(row["media_id"])
                         img_url = response.json()["url"]
 
@@ -522,14 +533,16 @@ def update_live_alerts_data(
                     ]
 
 
-@app.callback(Output("sites_markers", "children"), Input("sites_with_live_alerts", "children"))
-def hide_or_show_site_markers(sites_with_live_alerts):
+@app.callback(
+    Output("sites_markers", "children"), Input("sites_with_live_alerts", "children"), State("sites_data", "data")
+)
+def hide_or_show_site_markers(sites_with_live_alerts, sites_in_scope):
     """
     In reaction to changes in the list of site names associated with an alert being displayed, this callback creates
     site markers. The goal is to hide the markers of sites associated with an alert being displayed, so that only the
     alert marker can be seen on the map.
     """
-    return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts)
+    return build_sites_markers(sites_with_live_alerts=sites_with_live_alerts, camera_positions=sites_in_scope)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -543,6 +556,12 @@ def hide_or_show_site_markers(sites_with_live_alerts):
         Output("form_feedback_area", "children"),
         Output("login_zoom_and_center", "data"),
         Output("hp_map", "style"),
+        Output("user_headers", "data"),
+        Output("devices_data_storage", "data"),
+        Output("site_devices_data_storage", "data"),
+        Output("sites_data", "data"),
+        Output("sites_markers_div", "children"),
+        Output("user_credentials", "data"),
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -591,7 +610,19 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
     # The modal is opened and other outputs are updated with arbitrary values if no click has been registered on the
     # connection button yet (the user arrives on the page)
     if n_clicks is None:
-        return True, {"login": "no"}, None, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+        return [
+            True,
+            {"login": "no"},
+            None,
+            {"center": [10, 10], "zoom": 3},
+            {"display": "none"},
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+        ]
 
     # if login_storage['login'] == 'yes':
     #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
@@ -609,41 +640,87 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
             form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return True, {"login": "no"}, form_feedback, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+            return [
+                True,
+                {"login": "no"},
+                form_feedback,
+                {"center": [10, 10], "zoom": 3},
+                {"display": "none"},
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+            ]
 
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
-                Client(cfg.API_URL, username, password)
+                client = Client(cfg.API_URL, username, password)
                 # All checks are successful and we add the appropriate feedback
                 # (although the login modal does not remain open long enough for it to be readable by the user)
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
-                # For now the group_id is not fetched, we equalize it artificially to 1
-                group_id = "1"
 
-                # We load the group correspondences stored in a dedicated JSON file in the data folder
-                path = os.path.dirname(os.path.abspath(__file__))
-                path = os.path.join(path, "assets", "data", "group_correspondences.json")
+                # Based on the user's credentials, we request the set of relevant devices
+                response_devices = requests.get("https://api.pyronear.org/devices/", headers=client.headers)
 
-                with open(path, "r") as file:
-                    group_correspondences = json.load(file)
+                # We also update the site_devices dictionary, restricting it to the user's scope
+                response_sites = client.get_sites().json()
+                site_devices = {site["name"]: client.get_site_devices(site["id"]).json() for site in response_sites}
 
-                # We fetch the latitude and longitude of the point around which we want to center the map
-                # To do so, we use the group_correspondences dictionary defined in "APP INSTANTIATION & OVERALL LAYOUT"
-                lat = group_correspondences[group_id]["center_lat"]
-                lon = group_correspondences[group_id]["center_lon"]
+                # Eventually, we update the markers on the map
+                sites_markers_div_children = dl.MarkerClusterGroup(
+                    children=build_sites_markers(sites_with_live_alerts=[], camera_positions=response_sites),
+                    id="sites_markers",
+                )
 
-                # We fetch the zoom level for the map display
-                zoom = group_correspondences[group_id]["zoom"]
+                # We sum the latitudes and longitudes of the sites that are in the user's scope
+                latitudes = 0
+                longitudes = 0
+                for site in response_sites:
+                    latitudes += site["lat"]
+                    longitudes += site["lon"]
+
+                # We deduce the mid-point around which we want to center the map
+                lat = latitudes / len(response_sites)
+                lon = longitudes / len(response_sites)
+
+                # We set the zoom level for the map display at 9 by default
+                zoom = 9
 
                 # The login modal is closed and the appropriate outputs are returned
-                return False, {"login": "yes"}, form_feedback, {"center": [lat, lon], "zoom": zoom}, {}
+                return [
+                    False,
+                    {"login": "yes"},
+                    form_feedback,
+                    {"center": [lat, lon], "zoom": zoom},
+                    {},
+                    client.headers,
+                    response_devices.json(),
+                    site_devices,
+                    response_sites,
+                    sites_markers_div_children,
+                    {"username": username, "password": password},
+                ]
 
             except Exception:
                 # This if statement is verified if credentials are invalid
                 form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
                 # The login modal remains open; other outputs are updated with arbitrary values
-                return True, {"login": "no"}, form_feedback, {"center": [10, 10], "zoom": 3}, {"display": "none"}
+                return [
+                    True,
+                    {"login": "no"},
+                    form_feedback,
+                    {"center": [10, 10], "zoom": 3},
+                    {"display": "none"},
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
+                    dash.no_update,
+                ]
 
 
 @app.callback(Output("login_background", "children"), Output("main_navbar", "style"), Input("login_modal", "is_open"))
@@ -739,9 +816,14 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
         Output("alert_overview_style_zoom", "children"),
     ],
     Input({"type": "alert_selection_btn", "index": ALL}, "n_clicks"),
-    [State("store_live_alerts_data", "data"), State("images_url_live_alerts", "data")],
+    [
+        State("store_live_alerts_data", "data"),
+        State("images_url_live_alerts", "data"),
+        State("user_headers", "data"),
+        State("user_credentials", "data"),
+    ],
 )
-def zoom_on_alert(n_clicks, live_alerts, frame_urls):
+def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credentials):
     """
     --- Zooming on the alert marker and displaying the alert overview ---
 
@@ -754,7 +836,7 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
     """
     ctx = dash.callback_context
 
-    if not ctx.triggered or all(elt is None for elt in n_clicks):
+    if not ctx.triggered or all(elt is None for elt in n_clicks) or user_headers is None:
         raise PreventUpdate
 
     else:
@@ -767,9 +849,9 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls):
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
-        response = requests.get(url, headers=api_client.headers)
+        response = requests.get(url, headers=user_headers)
         if response.status_code == 401:
-            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
             response = requests.get(url, headers=api_client.headers)
         acknowledged = response.json()["is_acknowledged"]
 
@@ -998,8 +1080,9 @@ def close_confirmation_modal(n_clicks):
         Output({"type": "acknowledge_alert_space", "index": MATCH}, "children"),
     ],
     Input({"type": "acknowledgement_confirmation_button", "index": MATCH}, "n_clicks"),
+    [State("user_headers", "data"), State("user_credentials", "data")],
 )
-def confirm_alert_acknowledgement(n_clicks):
+def confirm_alert_acknowledgement(n_clicks, user_headers, user_credentials):
     """
     --- Confirming alert acknowledgement ---
 
@@ -1014,7 +1097,7 @@ def confirm_alert_acknowledgement(n_clicks):
     - it updates the content of the alert acknowledgement space to erase the acknowledgement button and replace it with
     a text saying that the alert / event has already been acknowledged.
     """
-    if n_clicks is None or n_clicks == 0:
+    if n_clicks is None or n_clicks == 0 or user_headers is None:
         raise PreventUpdate
 
     else:
@@ -1026,10 +1109,12 @@ def confirm_alert_acknowledgement(n_clicks):
         event_id = event_id.strip('"')
 
         # The event is actually acknowledged thanks to the acknowledge_event method of the API client
-        response = api_client.acknowledge_event(event_id=int(event_id))
+        user_token = user_headers["Authorization"].split(" ")[1]
+        api_client.token = user_token
+        api_client.acknowledge_event(event_id=int(event_id))
 
         if response.status_code == 401:
-            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
             api_client.acknowledge_event(event_id=int(event_id))
 
         return ["close", html.P("Alerte acquittée.")]
@@ -1312,14 +1397,25 @@ def modify_alert_slider_length(individual_alert_frame_storage):
         Output("images_to_display_on_big_screen", "data"),
     ],
     Input("interval-component-alert-screen", "n_intervals"),
-    [State("devices_data_storage", "data"), State("site_devices_data_storage", "data"), State("night_time", "data")],
+    [
+        State("devices_data_storage", "data"),
+        State("site_devices_data_storage", "data"),
+        State("night_time", "data"),
+        State("user_headers", "data"),
+        State("user_credentials", "data"),
+    ],
 )
-def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data):
+def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers, user_credentials):
 
+    if user_headers is None:
+        raise PreventUpdate
+
+    user_token = user_headers["Authorization"].split(" ")[1]
+    api_client.token = user_token
     response = api_client.get_ongoing_alerts()
     # Check token expiration
     if response.status_code == 401:
-        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
         response = api_client.get_ongoing_alerts()
     response = response.json()
     # Only for demo purposes, this should be deleted for dev and later in production
@@ -1342,7 +1438,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         # We start by making an API call to fetch all events
         response = api_client.get_unacknowledged_events()
         if response.status_code == 401:
-            api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
             response = api_client.get_unacknowledged_events()
         live_events = pd.DataFrame(response.json())
 
@@ -1406,7 +1502,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
                 try:
                     response = api_client.get_media_url(row["media_id"])
                     if response.status_code == 401:
-                        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
                         response = api_client.get_media_url(row["media_id"])
                     img_url = response.json()["url"]
 
@@ -1489,35 +1585,55 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
 @app.callback(
     Output("dashboard_table", "children"),
     Input("interval-component-dashboard-screen", "n_intervals"),
+    [State("user_headers", "data"), State("user_credentials", "data")],
 )
-def update_dashboard_table(n_intervals):
+def update_dashboard_table(n_intervals, user_headers, user_credentials):
     """
     This builds and refreshes the dashboard table to monitor devices status every minute
     Had to fetch devices data again for freshness purposes
     """
-    response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+    if user_headers is None:
+        raise PreventUpdate
+
+    response = requests.get("https://api.pyronear.org/devices/", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
-        api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
+        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
         response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
 
     # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
     # last_ping and datetime.now()
     all_devices = pd.DataFrame(response.json())
 
-    sdis_devices = (
-        all_devices[all_devices["id"].isin(range(2, 18))]
-        .sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]]
-        .copy()
-    )
+    # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
+    # the DataFrame is empty and we must instead use the "/devices/my-devices" route
+    if all_devices.empty:
+        response = requests.get("https://api.pyronear.org/devices/my-devices", headers=user_headers)
+        # Check token expiration
+        if response.status_code == 401:
+            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
+            response = requests.get("https://api.pyronear.org/devices/my-devices", headers=api_client.headers)
 
-    sdis_devices["last_ping_hours_dif"] = sdis_devices["last_ping"].apply(
-        lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
-    )
+        all_devices = pd.DataFrame(response.json())
 
-    sdis_devices["last_ping"] = (
-        pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
-    )
+    # Condition to ensure that the callback does not break if, for whatever, the user is associated with no devices
+    if not all_devices.empty:
+        sdis_devices = all_devices.sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]].copy()
+
+        # For some Reolink devices, it seems that the last ping is missing
+        # We add this line to prevent these cases from breaking the logic below
+        sdis_devices = sdis_devices.dropna(subset=["last_ping"]).copy()
+
+        sdis_devices["last_ping_hours_dif"] = sdis_devices["last_ping"].apply(
+            lambda x: (pd.to_datetime(x) - pd.to_datetime(datetime.utcnow().isoformat())).total_seconds() // 3600
+        )
+
+        sdis_devices["last_ping"] = (
+            pd.to_datetime(sdis_devices["last_ping"]).dt.tz_localize("UTC").dt.tz_convert("Europe/Paris")
+        )
+
+    else:
+        sdis_devices = all_devices.copy()
 
     return build_device_table(sdis_devices_data=sdis_devices)
 
