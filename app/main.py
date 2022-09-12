@@ -1605,6 +1605,18 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     # last_ping and datetime.now()
     all_devices = pd.DataFrame(response.json())
 
+    # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
+    # the DataFrame is empty and we must instead use the "/devices/my-devices" route
+    if all_devices.empty:
+        response = requests.get("https://api.pyronear.org/devices/my-devices", headers=user_headers)
+        # Check token expiration
+        if response.status_code == 401:
+            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
+            response = requests.get("https://api.pyronear.org/devices/my-devices", headers=api_client.headers)
+
+        all_devices = pd.DataFrame(response.json())
+
+    # Condition to ensure that the callback does not break if, for whatever, the user is associated with no devices
     if not all_devices.empty:
         sdis_devices = all_devices.sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]].copy()
 
