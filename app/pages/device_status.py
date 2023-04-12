@@ -15,7 +15,6 @@ import pandas as pd
 
 
 def build_device_table(sdis_devices_data):
-
     sdis_devices = pd.DataFrame(sdis_devices_data)
 
     sdis_devices["id"] = sdis_devices.index
@@ -66,7 +65,6 @@ def build_device_table(sdis_devices_data):
 # App layout
 # The following block gathers elements defined above and returns them via the DashboardScreen function
 def DeviceStatus():
-
     pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
     # Navbar Title

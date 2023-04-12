@@ -36,7 +36,6 @@ map_style = {"width": "100%", "height": "90vh", "margin": "auto", "display": "bl
 
 
 def is_hour_between(sunrise, sunset, alert_time):
-
     alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
     alert_time = alert_time.time()
 
@@ -138,7 +137,6 @@ def build_legend_box(map_type=None):
     text_div_style = {"display": "inline-block", "height": "22px", "margin-left": "7px"}
 
     if map_type == "alerts":
-
         # Site de surveillance
         legend_body = [
             html.Div(
@@ -192,6 +190,7 @@ def build_legend_box(map_type=None):
 # ----------------------------------------------------------------------------------------------------------------------
 # Past fires
 # The following block is used to fetch the positions of past fires and build the related map attribute.
+
 
 # Fetching the positions of past fires in a given department
 def build_historic_markers(dpt_code=None):
