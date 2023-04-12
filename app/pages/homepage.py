@@ -116,6 +116,7 @@ def build_historic_fires_radio_button():
 # User selection area
 # The following block gathers previously defined functions to construct the generic user selection area.
 
+
 # This function returns the user selection area in the left side bar
 def build_user_selection_area():
     """

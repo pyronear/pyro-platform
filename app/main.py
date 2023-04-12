@@ -494,7 +494,6 @@ def update_live_alerts_data(
                 # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
                 # selection area, etc)
                 if condition:
-
                     # Merging yaw (azimuth) field from devices_data
                     all_devices = pd.DataFrame(devices_data)
 
@@ -521,7 +520,6 @@ def update_live_alerts_data(
                 # If the condition is not verified, we have no new "alert" / event to display on the platform but only
                 # new detection frames for an existing alert; this means that we do not have to update all components
                 else:
-
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
                     return [
@@ -628,7 +626,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
     #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
 
     else:
-
         # We instantiate the form feedback output
         form_feedback = [dcc.Markdown("---")]
 
@@ -889,7 +886,6 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, log
 
         # If it is the login that has triggered the change in the center and zoom attributes of the map
         if input_id == "login_zoom_and_center":
-
             if login_zoom_and_center is None:
                 raise PreventUpdate
 
@@ -897,7 +893,6 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, log
 
         # If it is a click on an alert selection button that has triggered the change
         elif input_id == "alert_zoom_and_center":
-
             if alert_zoom_and_center is None:
                 raise PreventUpdate
 
@@ -1359,7 +1354,6 @@ def update_individual_frame_components(images_url_live_alerts):
     individual_alert_frame_placeholder_children = []
 
     for event_id, frame_url_list in images_url_live_alerts.items():
-
         images_to_display = frame_url_list[-15:]
 
         individual_alert_frame_placeholder_children.append(
@@ -1406,7 +1400,6 @@ def modify_alert_slider_length(individual_alert_frame_storage):
     ],
 )
 def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers, user_credentials):
-
     if user_headers is None:
         raise PreventUpdate
 
@@ -1522,7 +1515,6 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
     State("last_displayed_event_id", "data"),
 )
 def update_alert_frame_due_to_new_event(images_to_display, last_event_id):
-
     if "frame_URLs" in images_to_display.keys() and images_to_display["frame_URLs"] == "no_images":
         raise PreventUpdate
 
@@ -1570,11 +1562,9 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
     input_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if input_id == "alert_frame_update_new_event":
-
         return alert_frame_update_new_event, 0
 
     elif input_id == "alert_frame_update_interval":
-
         return alert_frame_update_interval, dash.no_updates
 
 
