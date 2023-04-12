@@ -91,11 +91,11 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
 
 # Site devices
 response = api_client.get_sites()
@@ -663,7 +663,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
                 # Based on the user's credentials, we request the set of relevant devices
-                response_devices = requests.get("https://api.pyronear.org/devices/", headers=client.headers)
+                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers)
 
                 # We also update the site_devices dictionary, restricting it to the user's scope
                 response_sites = client.get_sites().json()
@@ -1595,11 +1595,11 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     if user_headers is None:
         raise PreventUpdate
 
-    response = requests.get("https://api.pyronear.org/devices/", headers=user_headers)
+    response = requests.get(f"{cfg.API_URL}/devices/", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+        response = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers)
 
     # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
     # last_ping and datetime.now()
@@ -1608,11 +1608,11 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
     # the DataFrame is empty and we must instead use the "/devices/my-devices" route
     if all_devices.empty:
-        response = requests.get("https://api.pyronear.org/devices/my-devices", headers=user_headers)
+        response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
         # Check token expiration
         if response.status_code == 401:
             api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get("https://api.pyronear.org/devices/my-devices", headers=api_client.headers)
+            response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=api_client.headers)
 
         all_devices = pd.DataFrame(response.json())
 
