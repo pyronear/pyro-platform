@@ -1,7 +1,7 @@
 version: '3.7'
 
 services:
-  web:
+  frontend:
     build: .
     command: python main.py --host 0.0.0.0
     volumes:
