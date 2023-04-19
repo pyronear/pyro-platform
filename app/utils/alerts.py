@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Pyronear.
+# Copyright (C) 2020-2023, Pyronear.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
@@ -70,7 +70,6 @@ def build_departments_geojson():
 
 
 def retrieve_site_from_device_id(device_id, site_devices_data):
-
     for key, value in site_devices_data.items():
         if device_id in value:
             site_name = key.replace("_", " ").title()
@@ -298,7 +297,6 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
     individual_alert_frame_placeholder_children = []
     for event_id, frame_url_list in images_url_live_alerts.items():
-
         individual_alert_frame_placeholder_children.append(
             html.Div(
                 id={"type": "individual_alert_frame_storage", "index": str(event_id)},
@@ -311,7 +309,6 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
-
     number_of_images = len(urls)
 
     return dbc.Modal(
@@ -485,7 +482,6 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
     alert_modals_children = []
 
     for _, row in all_events.iterrows():
-
         alert_id = str(row["event_id"])
         alert_lat = round(row["lat"], 4)
         alert_lon = round(row["lon"], 4)
@@ -549,9 +545,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
 
 def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
-
     if not acknowledged:
-
         acknowledge_alert_space_children = [
             dcc.Markdown("---"),
             html.Div(
@@ -565,7 +559,6 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
         ]
 
     else:
-
         acknowledge_alert_space_children = [html.P("Alerte acquittée.")]
 
     df = pd.read_json(live_alerts)

@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Pyronear.
+# Copyright (C) 2020-2023, Pyronear.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
@@ -91,11 +91,11 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
 
 # Site devices
 response = api_client.get_sites()
@@ -494,7 +494,6 @@ def update_live_alerts_data(
                 # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
                 # selection area, etc)
                 if condition:
-
                     # Merging yaw (azimuth) field from devices_data
                     all_devices = pd.DataFrame(devices_data)
 
@@ -521,7 +520,6 @@ def update_live_alerts_data(
                 # If the condition is not verified, we have no new "alert" / event to display on the platform but only
                 # new detection frames for an existing alert; this means that we do not have to update all components
                 else:
-
                     # We would like to only update the list of alert frames being displayed and not all the components
                     # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
                     return [
@@ -628,7 +626,6 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
     #     return False, {'login': 'yes'}, None, {'center': current_center, 'zoom': current_zoom}, {}
 
     else:
-
         # We instantiate the form feedback output
         form_feedback = [dcc.Markdown("---")]
 
@@ -663,7 +660,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
                 # Based on the user's credentials, we request the set of relevant devices
-                response_devices = requests.get("https://api.pyronear.org/devices/", headers=client.headers)
+                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers)
 
                 # We also update the site_devices dictionary, restricting it to the user's scope
                 response_sites = client.get_sites().json()
@@ -889,7 +886,6 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, log
 
         # If it is the login that has triggered the change in the center and zoom attributes of the map
         if input_id == "login_zoom_and_center":
-
             if login_zoom_and_center is None:
                 raise PreventUpdate
 
@@ -897,7 +893,6 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, log
 
         # If it is a click on an alert selection button that has triggered the change
         elif input_id == "alert_zoom_and_center":
-
             if alert_zoom_and_center is None:
                 raise PreventUpdate
 
@@ -1359,7 +1354,6 @@ def update_individual_frame_components(images_url_live_alerts):
     individual_alert_frame_placeholder_children = []
 
     for event_id, frame_url_list in images_url_live_alerts.items():
-
         images_to_display = frame_url_list[-15:]
 
         individual_alert_frame_placeholder_children.append(
@@ -1406,7 +1400,6 @@ def modify_alert_slider_length(individual_alert_frame_storage):
     ],
 )
 def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers, user_credentials):
-
     if user_headers is None:
         raise PreventUpdate
 
@@ -1522,7 +1515,6 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
     State("last_displayed_event_id", "data"),
 )
 def update_alert_frame_due_to_new_event(images_to_display, last_event_id):
-
     if "frame_URLs" in images_to_display.keys() and images_to_display["frame_URLs"] == "no_images":
         raise PreventUpdate
 
@@ -1570,11 +1562,9 @@ def update_alert_frame_main(alert_frame_update_new_event, alert_frame_update_int
     input_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if input_id == "alert_frame_update_new_event":
-
         return alert_frame_update_new_event, 0
 
     elif input_id == "alert_frame_update_interval":
-
         return alert_frame_update_interval, dash.no_updates
 
 
@@ -1595,11 +1585,11 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     if user_headers is None:
         raise PreventUpdate
 
-    response = requests.get("https://api.pyronear.org/devices/", headers=user_headers)
+    response = requests.get(f"{cfg.API_URL}/devices/", headers=user_headers)
     # Check token expiration
     if response.status_code == 401:
         api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = requests.get("https://api.pyronear.org/devices/", headers=api_client.headers)
+        response = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers)
 
     # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
     # last_ping and datetime.now()
@@ -1608,11 +1598,11 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
     # the DataFrame is empty and we must instead use the "/devices/my-devices" route
     if all_devices.empty:
-        response = requests.get("https://api.pyronear.org/devices/my-devices", headers=user_headers)
+        response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
         # Check token expiration
         if response.status_code == 401:
             api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get("https://api.pyronear.org/devices/my-devices", headers=api_client.headers)
+            response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=api_client.headers)
 
         all_devices = pd.DataFrame(response.json())
 
