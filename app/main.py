@@ -817,9 +817,8 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credenti
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
-        print(url)
+
         response = requests.get(url, headers=user_headers)
-        print(response)
         if response.status_code == 401:
             api_client.refresh_token(user_credentials["username"], user_credentials["password"])
             response = requests.get(url, headers=api_client.headers)
