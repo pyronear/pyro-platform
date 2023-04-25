@@ -23,7 +23,7 @@ def build_device_table(sdis_devices_data):
         sort_action="native",
         columns=[
             {"name": "Device Id", "id": "login", "type": "text"},
-            {"name": "Azimuth", "id": "yaw", "type": "numeric"},
+            {"name": "Azimuth", "id": "azimuth", "type": "numeric"},
             {"name": "Latitude", "id": "lat", "type": "numeric"},
             {"name": "Longitude", "id": "lon", "type": "numeric"},
             {"name": "Last Ping", "id": "last_ping", "type": "datetime"},
