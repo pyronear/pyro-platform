@@ -485,12 +485,13 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
         alert_id = str(row["event_id"])
         alert_lat = round(row["lat"], 4)
         alert_lon = round(row["lon"], 4)
-        alert_azimuth = round(row["yaw"], 1)
+        alert_azimuth = round(row["azimuth"], 1)
         alert_ts = datetime.fromisoformat(str(row["created_at"]))
         alert_date = alert_ts.date()
         alert_time = (alert_ts + timedelta(hours=2)).time()
 
         device_id = row["device_id"]
+
         try:
             site_name = retrieve_site_from_device_id(device_id, site_devices_data)
         except Exception:
@@ -518,7 +519,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
         alert_list.append(alert_selection_button)
 
         polygon = build_vision_polygon(
-            event_id=alert_id, site_lat=row["lat"], site_lon=row["lon"], yaw=row["yaw"], opening_angle=60, dist_km=2
+            event_id=alert_id, site_lat=row["lat"], site_lon=row["lon"], yaw=row["azimuth"], opening_angle=60, dist_km=2
         )
 
         vision_polygons_children.append(polygon)
@@ -568,7 +569,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
 
     lat = df[df["event_id"] == event_id]["lat"].iloc[0]
     lon = df[df["event_id"] == event_id]["lon"].iloc[0]
-    alert_azimuth = df[df["event_id"] == event_id]["yaw"].iloc[0]
+    alert_azimuth = df[df["event_id"] == event_id]["azimuth"].iloc[0]
 
     div = html.Div(
         id={"type": "alert_overview", "index": event_id},
