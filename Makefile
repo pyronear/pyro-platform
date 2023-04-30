@@ -12,7 +12,7 @@ style:
 
 # Build the docker
 build:
-	docker build . -t pyroplatform:python3.7.9-slim
+	docker build . -t pyronear/pyro-platform:python3.8-slim
 
 # Run the docker
 run:
