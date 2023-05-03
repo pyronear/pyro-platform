@@ -475,6 +475,10 @@ def update_live_alerts_data(
                 else:
                     condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum()
 
+                # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
+                # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
+                # selection area, etc)
+
                 if condition:
 
                     live_alerts = live_alerts.to_json(orient="records")

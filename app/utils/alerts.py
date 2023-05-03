@@ -153,7 +153,7 @@ def build_sites_markers(sites_with_live_alerts, camera_positions=camera_position
     return markers
 
 
-def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_km):
+def build_vision_polygon(event_id, site_lat, site_lon, azimuth, opening_angle, dist_km):
     """
     This function allows to build the vision angle of a camera, ie. the zone covered by the detection device.
 
@@ -180,13 +180,13 @@ def build_vision_polygon(event_id, site_lat, site_lon, yaw, opening_angle, dist_
     points2 = []
 
     for i in reversed(range(1, opening_angle + 1)):
-        yaw1 = (yaw - i / 2) % 360
-        yaw2 = (yaw + i / 2) % 360
+        azimuth1 = (azimuth - i / 2) % 360
+        azimuth2 = (azimuth + i / 2) % 360
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), yaw1)
+        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth1)
         points1.append([point.latitude, point.longitude])
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), yaw2)
+        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
         points2.append([point.latitude, point.longitude])
 
     points = [center] + points1 + list(reversed(points2))
@@ -519,7 +519,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
         alert_list.append(alert_selection_button)
 
         polygon = build_vision_polygon(
-            event_id=alert_id, site_lat=row["lat"], site_lon=row["lon"], yaw=row["azimuth"], opening_angle=60, dist_km=2
+            event_id=alert_id, site_lat=row["lat"], site_lon=row["lon"], azimuth=row["azimuth"], opening_angle=60,
+            dist_km=2
         )
 
         vision_polygons_children.append(polygon)
