@@ -163,7 +163,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, azimuth, opening_angle, d
 
     - site_lon, the longitude of the detection device;
 
-    - yaw, the orientation of the device expressed in degrees;
+    - azimuth, the orientation of the device expressed in degrees;
 
     - opening_angle, the width of the zone covered by the device expressed in degrees;
 
