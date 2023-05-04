@@ -519,8 +519,12 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
         alert_list.append(alert_selection_button)
 
         polygon = build_vision_polygon(
-            event_id=alert_id, site_lat=row["lat"], site_lon=row["lon"], azimuth=row["azimuth"], opening_angle=60,
-            dist_km=2
+            event_id=alert_id,
+            site_lat=row["lat"],
+            site_lon=row["lon"],
+            azimuth=row["azimuth"],
+            opening_angle=60,
+            dist_km=2,
         )
 
         vision_polygons_children.append(polygon)
