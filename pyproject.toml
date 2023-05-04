@@ -18,7 +18,7 @@ dash-leaflet = "^0.1.4"
 dash-extensions = ">=0.0.51"
 Flask-Caching = ">=1.3.3"
 pandas = ">=0.24.2,<2.0.0"
-pyroclient = "==0.1.2"
+pyroclient = { git = "https://github.com/pyronear/pyro-api.git", subdirectory = "client" }
 python-dotenv = ">=0.15.0,<1.0.0"
 geopy = "^2.1.0"
 requests = "^2.25.0"
