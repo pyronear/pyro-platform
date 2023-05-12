@@ -531,7 +531,7 @@ test = ["coverage[toml] (>=4.5.4)", "pytest (>=5.3.2)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/pyronear/pyro-api.git"
+url = "https://github.com/pyronear/pyro-api.git#main"
 reference = "HEAD"
 resolved_reference = "66ce333fceb59ca1b36a5760d53ca25c738c1708"
 subdirectory = "client"
@@ -713,7 +713,7 @@ quality = ["flake8", "isort", "mypy", "black"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "747669c58f5d40360c4fe439ae177b83c30b2d1402005e4d92d34099f3be7e1b"
+content-hash = "a3b52bbefc81e19196148e1af462501ae1c548e89ccefbd50d447d02cb88d584"
 
 [metadata.files]
 black = [
