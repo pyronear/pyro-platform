@@ -10,10 +10,6 @@ jobs:
   docker-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Install git
-        run: |
-          sudo apt update
-          sudo apt install -y git
       - uses: actions/checkout@v2
       - name: Build & run docker
         env:
