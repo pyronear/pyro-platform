@@ -143,3 +143,6 @@ app/documentation
 
 # Login correspondences
 app/data/login_correspondences.csv
+
+# Poetry
+requirements.txt
