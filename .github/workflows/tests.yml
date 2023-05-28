@@ -7,40 +7,6 @@ on:
     branches: main
 
 jobs:
-  dash-run:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python: [3.8]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Cache python modules
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pkg-deps-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run demo
-        env:
-          API_URL: ${{ secrets.API_URL }}
-          API_LOGIN: ${{ secrets.API_LOGIN }}
-          API_PWD: ${{ secrets.API_PWD }}
-        run: |
-          screen -dm python app/main.py
-          sleep 20
-          curl http://localhost:8050/
-
   headers:
     runs-on: ${{ matrix.os }}
     strategy:
