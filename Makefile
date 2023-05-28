@@ -12,10 +12,12 @@ style:
 
 # Build the docker
 build:
+	poetry export -f requirements.txt --without-hashes --output requirements.txt
 	docker build . -t pyroplatform:python3.7.9-slim
 
 # Run the docker
 run:
+	poetry export -f requirements.txt --without-hashes --output requirements.txt
 	docker-compose up -d --build
 
 # Run the docker
@@ -25,4 +27,3 @@ stop:
 # Pin the dependencies
 lock:
 	poetry lock -vvv
-	poetry export -f requirements.txt --without-hashes --output requirements.txt
