@@ -400,9 +400,6 @@ def update_live_alerts_data(
             # This will serve as the source of truth to know what frame URLs have already been fetched or not
             new_loaded_frames = list(live_alerts["id"].unique())
 
-            # We convert the live_alerts DataFrame into a JSON that can be stored in a dcc.Store component
-            live_alerts = live_alerts.to_json(orient="records")
-
             # Reminder: in this case, this is the first time that we load alert data
 
             # So we update all outputs:
@@ -412,7 +409,8 @@ def update_live_alerts_data(
             # - the HTML div that stores the list of sites where an alert is live
 
             return [
-                live_alerts,
+                # We convert the live_alerts DataFrame into a JSON that can be stored in a dcc.Store component
+                live_alerts.to_json(orient="records"),
                 dict_images_url_live_alerts,
                 {"loaded_frames": new_loaded_frames},
                 5 * 1000,
@@ -488,7 +486,7 @@ def update_live_alerts_data(
                 if ongoing_live_alerts.empty:
                     condition = True
                 else:
-                    condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum()
+                    condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum() > 0
 
                 # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
                 # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
@@ -506,11 +504,9 @@ def update_live_alerts_data(
 
                     live_alerts.rename(columns={"id_x": "id", "id_y": "d_id"}, inplace=True)
 
-                    live_alerts = live_alerts.to_json(orient="records")
-
                     # We update all outputs
                     return [
-                        live_alerts,
+                        live_alerts.to_json(orient="records"),
                         dict_images_url_live_alerts,
                         {"loaded_frames": new_loaded_frames},
                         5 * 1000,
