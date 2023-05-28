@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2023, Pyronear.
+# Copyright (C) 2021-2023, Pyronear.
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
@@ -23,7 +23,7 @@ def build_device_table(sdis_devices_data):
         sort_action="native",
         columns=[
             {"name": "Device Id", "id": "login", "type": "text"},
-            {"name": "Azimuth", "id": "yaw", "type": "numeric"},
+            {"name": "Azimuth", "id": "azimuth", "type": "numeric"},
             {"name": "Latitude", "id": "lat", "type": "numeric"},
             {"name": "Longitude", "id": "lon", "type": "numeric"},
             {"name": "Last Ping", "id": "last_ping", "type": "datetime"},

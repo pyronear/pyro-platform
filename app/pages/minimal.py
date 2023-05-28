@@ -62,7 +62,7 @@ def build_alert_detected_screen(img_url, last_alert, site_devices_data):
         site_name = ""
 
     # Get azimuth from last_alert
-    azimuth = round(last_alert["yaw"], 1)
+    azimuth = round(last_alert["azimuth"], 1)
 
     # Background image
     background_image = html.Img(

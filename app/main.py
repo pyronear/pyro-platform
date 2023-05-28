@@ -381,21 +381,6 @@ def update_live_alerts_data(
                 except Exception:
                     pass
 
-            # Merging yaw (azimuth) field from devices_data
-            all_devices = pd.DataFrame(devices_data)
-
-            # We restrict the DataFrame to useful information
-            devices_yaw = all_devices[["id", "yaw"]].copy()
-
-            # We merge it with the live_alerts DataFrame
-            live_alerts = pd.merge(live_alerts, devices_yaw, how="left", left_on=["device_id"], right_on=["id"])
-
-            # We drop the azimuth associated with the alert as we will focus on the yaw of the device
-            live_alerts = live_alerts.drop(["azimuth"], axis=1)
-
-            # We rename columns to avoid any ambibguity (id_y is the id of the device)
-            live_alerts.rename(columns={"id_x": "id", "id_y": "d_id"}, inplace=True)
-
             # We store the IDs of newly loaded alerts in a dedicated list
             # This will serve as the source of truth to know what frame URLs have already been fetched or not
             new_loaded_frames = list(live_alerts["id"].unique())
@@ -491,18 +476,8 @@ def update_live_alerts_data(
                 # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
                 # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
                 # selection area, etc)
+
                 if condition:
-                    # Merging yaw (azimuth) field from devices_data
-                    all_devices = pd.DataFrame(devices_data)
-
-                    # We follow the same process as above to replace the azimuth of the alert with the yaw of the device
-                    devices_yaw = all_devices[["id", "yaw"]].copy()
-
-                    live_alerts = pd.merge(live_alerts, devices_yaw, how="left", left_on=["device_id"], right_on=["id"])
-
-                    live_alerts = live_alerts.drop(["azimuth"], axis=1)
-
-                    live_alerts.rename(columns={"id_x": "id", "id_y": "d_id"}, inplace=True)
 
                     # We update all outputs
                     return [
@@ -842,6 +817,7 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credenti
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
         url = cfg.API_URL + f"/events/{event_id}/"
+
         response = requests.get(url, headers=user_headers)
         if response.status_code == 401:
             api_client.refresh_token(user_credentials["username"], user_credentials["password"])
@@ -1462,20 +1438,6 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
             return ([{}], style_to_display, images_to_display)
 
         else:
-            # Merging yaw (azimuth) field from devices_data
-            all_devices = pd.DataFrame(devices_data)
-
-            # We restrict the DataFrame to useful information
-            devices_yaw = all_devices[["id", "yaw"]].copy()
-
-            # We merge it with the live_alerts DataFrame
-            live_alerts = pd.merge(live_alerts, devices_yaw, how="left", left_on=["device_id"], right_on=["id"])
-
-            # We drop the azimuth associated with the alert as we will focus on the yaw of the device
-            live_alerts = live_alerts.drop(["azimuth"], axis=1)
-
-            # We rename columns to avoid any ambibguity (id_y is the id of the device)
-            live_alerts.rename(columns={"id_x": "id", "id_y": "d_id"}, inplace=True)
 
             last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
             last_event_id = str(last_alert["event_id"])
@@ -1604,7 +1566,7 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
 
     # Condition to ensure that the callback does not break if, for whatever, the user is associated with no devices
     if not all_devices.empty:
-        sdis_devices = all_devices.sort_values(by="login")[["yaw", "lat", "lon", "login", "last_ping"]].copy()
+        sdis_devices = all_devices.sort_values(by="login")[["azimuth", "lat", "lon", "login", "last_ping"]].copy()
 
         # For some Reolink devices, it seems that the last ping is missing
         # We add this line to prevent these cases from breaking the logic below
