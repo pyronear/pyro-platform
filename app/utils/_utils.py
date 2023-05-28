@@ -208,7 +208,7 @@ def build_historic_markers(dpt_code=None):
         return None
 
     # We read the csv file that locates the old fires
-    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("assets", "data", "historic_fires.csv"), ",")
+    old_fire_positions = pd.read_csv(Path(__file__).parent.joinpath("assets", "data", "historic_fires.csv"), sep=",")
 
     # The line below allows us to filter for the department of interest
     old_fire_positions = old_fire_positions[old_fire_positions["Département"] == int(dpt_code)].copy()

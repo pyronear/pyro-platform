@@ -2,7 +2,7 @@ name: Publish Docker image
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -10,6 +10,14 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      - uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.3.0"
+      - name: Resolve dependencies
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Push to Docker Hub
         uses: docker/build-push-action@v1
         with:

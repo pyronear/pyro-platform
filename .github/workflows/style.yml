@@ -2,9 +2,9 @@ name: style
 
 on:
   push:
-    branches: master
+    branches: main
   pull_request:
-    branches: master
+    branches: main
 
 jobs:
   flake8:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -55,10 +55,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
+      - uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.3.0"
+      - name: Resolve dependencies
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Cache python modules
         uses: actions/cache@v2
         with:
@@ -83,7 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -92,3 +97,22 @@ jobs:
           pip install "black==22.3.0"
           black --version
           black --check --diff .
+
+  bandit:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [3.8]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Run bandit
+        run: |
+          pip install bandit[toml]
+          bandit --version
+          bandit -r . -c pyproject.toml

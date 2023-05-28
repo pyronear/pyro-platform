@@ -4,61 +4,57 @@
 The building blocks of our wildfire detection & monitoring API.
 
 
-## Getting started
+## Quick Tour
+
+### Running/stopping the service
+
+You can run the app container using this command:
+
+```shell
+make run
+```
+
+You can now navigate to `http://localhost:8050/` to interact with the app.
+
+In order to stop the service, run:
+```shell
+make stop
+```
+
+## Installation
 
 ### Prerequisites
 
-- Python 3.8 (or more recent)
-- [pip](https://pip.pypa.io/en/stable/)
+- [Docker](https://docs.docker.com/engine/install/)
+- [Docker compose](https://docs.docker.com/compose/)
+- [Poetry](https://python-poetry.org/)
+- [Make](https://www.gnu.org/software/make/) (optional)
 
-### Installation
+The project was designed so that everything runs with Docker orchestration (standalone virtual environment), so you won't need to install any additional libraries.
 
-You can clone and install the project dependencies as follows:
+## Configuration
 
-```bash
-git clone https://github.com/pyronear/pyro-platform.git
-pip install -r pyro-platform/requirements.txt
+In order to run the project, you will need to specific some information, which can be done using a `.env` file.
+This file will have to hold the following information:
+- `API_URL`: URL to the endpoint of [Pyronear Alert API](https://github.com/pyronear/pyro-api)
+- `API_LOGIN`: your login for the API
+- `API_PWD`: your password for the API
+
+Optionally, the following information can be added:
+- `SENTRY_DSN`: the URL of the [Sentry](https://sentry.io/) project, which monitors back-end errors and report them back.
+- `SENTRY_SERVER_NAME`: the server tag to apply to events.
+- `DEBUG`: whether the app is in debug or production mode
+
+So your `.env` file should look like something similar to:
+```
+API_URL='https://alert.mydomain.com/api'
+API_LOGIN='forest_saver'
+API_PWD='ILoveForest!'
+SENTRY_DSN='https://replace.with.you.sentry.dsn/'
+SENTRY_SERVER_NAME=my_storage_bucket_name
 ```
 
-
-## Usage
-
-Beforehand, you will need to set a few environment variables either manually or by writing an `.env` file in the root directory of this project, like in the example below:
-
-```
-API_URL=http://my-api.myhost.com
-API_LOGIN=my_secret_login
-API_PWD=my_very_secret_password
-
-```
-Those values will allow your web server to connect to our [API](https://github.com/pyronear/pyro-api), which is mandatory for your local server to be fully operational.
-
-#### Plain dash server
-
-You can start by installing the requirements of the project:
-
-```bash
-pip install -r requirements.txt
-```
-
-You can then run the web server using the following commands:
-
-```bash
-python app/main.py
-```
-
-Then your Dash app will be available at http://localhost:8050/.
-
-#### Dockerized dash server
-
-If you wish to deploy this project on a server hosted remotely, you might want to be using [Docker](https://www.docker.com/) containers. You can perform the same using this command:
-
-```bash
-docker-compose up -d --build
-```
-
-Like previously, you can navigate then to http://localhost:8050/ to interact with your Dash app.
-
+The file should be placed at the root folder of your local copy of the project.
 
 
 ## License

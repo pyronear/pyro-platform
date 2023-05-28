@@ -1,13 +1,13 @@
-name: tests
+name: build
 
 on:
   push:
-    branches: master
+    branches: main
   pull_request:
-    branches: master
+    branches: main
 
 jobs:
-  dash-run:
+  dash:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -17,10 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
+      - uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.3.0"
+      - name: Resolve dependencies
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Cache python modules
         uses: actions/cache@v2
         with:
@@ -40,21 +45,23 @@ jobs:
           screen -dm python app/main.py
           sleep 20
           curl http://localhost:8050/
-
-  headers:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+  docker:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
         with:
-          persist-credentials: false
-      - name: Check the headers
-        uses: frgfm/validate-python-headers@main
+          python-version: "3.8"
+      - uses: abatilo/actions-poetry@v2
         with:
-          license: 'Apache-2.0'
-          owner: 'Pyronear'
-          starting-year: 2020
-          folders: 'app,.github'
-          ignores: '__init__.py'
+          poetry-version: "1.3.0"
+      - name: Resolve dependencies
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
+      - name: Build & run docker
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          API_LOGIN: ${{ secrets.API_LOGIN }}
+          API_PWD: ${{ secrets.API_PWD }}
+        run: docker-compose up -d --build
+      - name: Check docker sanity
+        run: sleep 20 && docker-compose logs && curl http://localhost:8050/

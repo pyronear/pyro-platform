@@ -19,7 +19,7 @@ color: #F8FAFF;
     background-color: #fcecc1;
     width:100%;
   }
-  
+
 .btn-alerts {
 color: #000000;
 background-color: #fcecc1;
@@ -61,7 +61,7 @@ border-color: #ecbd4f;
   border-color: #f7e7bd;
   border-radius: 2;
   }
-  
+
   .btn-header-hide-alerts:hover,
   .btn-header-hide-alerts:active,
   .btn-header-hide-alerts:focus,
@@ -84,7 +84,7 @@ border-color: #ecbd4f;
       opacity: 1;
     }
   }
-  
+
   @-webkit-keyframes blink {
     0% {
       opacity: 1;
@@ -96,7 +96,7 @@ border-color: #ecbd4f;
       opacity: 1;
     }
   }
-  
+
   /* IE */
   @-ms-keyframes blink {
     0% {
@@ -109,7 +109,7 @@ border-color: #ecbd4f;
       opacity: 1;
     }
   }
-  
+
   /* Opera and prob css3 final iteration */
   @keyframes blink {
     0% {
@@ -122,7 +122,7 @@ border-color: #ecbd4f;
       opacity: 1;
     }
   }
-  
+
   .blink-image {
     -moz-animation: blink normal 1s infinite ease-in-out; /* Firefox */
     -webkit-animation: blink normal 1s infinite ease-in-out; /* Webkit */
