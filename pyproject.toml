@@ -21,7 +21,7 @@ pandas = ">=0.24.2,<2.0.0"
 pyroclient = "==0.1.2"
 python-dotenv = ">=0.15.0,<1.0.0"
 geopy = "^2.1.0"
-requests = "^2.25.0"
+requests = "^2.31.0"
 sentry-sdk = { version = "^1.5.12", extras = ["flask"] }
 gunicorn = ">=20.0.4"
 # Indirect deps
