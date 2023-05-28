@@ -1,4 +1,4 @@
-name: docker
+name: build
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: main
 
 jobs:
-  docker-check:
+  docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
