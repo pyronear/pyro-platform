@@ -299,27 +299,33 @@ def update_live_alerts_data(
         response = api_client.get_unacknowledged_events()
     live_events = pd.DataFrame(response.json())
 
-    # We then filter all alerts with unacknowledged events ids to obtain live alerts
-    live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
+   # We then filter all alerts with unacknowledged events ids to obtain live alerts
+    if len(live_events)>0:
+        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
-    # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
-    sunrise = night_time_data["results"]["sunrise"][:-6]
-    sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
-    sunrise = sunrise.time()
+        # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night time
+        sunrise = night_time_data["results"]["sunrise"][:-6]
+        sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
+        sunrise = sunrise.time()
 
-    sunset = night_time_data["results"]["sunset"][:-6]
-    sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
-    sunset = sunset.time()
+        sunset = night_time_data["results"]["sunset"][:-6]
+        sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
+        sunset = sunset.time()
 
-    # Are there some live alerts during night time ? If yes let's filter them out
-    mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
-    live_alerts = live_alerts[mask].copy()
+        # Are there some live alerts during night time ? If yes let's filter them out
+        mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
+        live_alerts = live_alerts[mask].copy()
 
-    # Let's only display the last 5 fire events!
-    live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
+        # Let's only display the last 5 fire events!
+        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
-    # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-    live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
+
+        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
+
+    else:
+        live_alerts = pd.DataFrame()
+
 
     # Is there any live alert to display?
     if live_alerts.empty:
@@ -328,12 +334,6 @@ def update_live_alerts_data(
 
     else:
         # If yes, there is a bit of work to do!
-
-        # Let's only display the last 5 fire events!
-        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
-
-        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts = live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
@@ -1408,26 +1408,30 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         live_events = pd.DataFrame(response.json())
 
         # We then filter all alerts with unacknowledged events ids to obtain live alerts
-        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
+        if len(live_events)>0:
+            live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
-        # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
-        sunrise = night_time_data["results"]["sunrise"][:-6]
-        sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
-        sunrise = sunrise.time()
+            # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC) to cover night
+            sunrise = night_time_data["results"]["sunrise"][:-6]
+            sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
+            sunrise = sunrise.time()
 
-        sunset = night_time_data["results"]["sunset"][:-6]
-        sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
-        sunset = sunset.time()
+            sunset = night_time_data["results"]["sunset"][:-6]
+            sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
+            sunset = sunset.time()
 
-        # Are there some live alerts during night time ? If yes let's filter them out
-        mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
-        live_alerts = live_alerts[mask].copy()
+            # Are there some live alerts during night time ? If yes let's filter them out
+            mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
+            live_alerts = live_alerts[mask].copy()
 
-        # Let's only display the last 5 fire events!
-        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
+            # Let's only display the last 5 fire events!
+            live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
-        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
+            # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+            live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
+        
+        else:
+            live_alerts = pd.DataFrame()
 
         # Is there any live alert to display?
         if live_alerts.empty:
