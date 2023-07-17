@@ -123,17 +123,7 @@ app.layout = html.Div(
         # Session storage component to avoid re-opening the login modal at each refresh
         # [NOT SUCCESSFUL YET]
         dcc.Store(id="login_storage", storage_type="session", data={"login": "no"}),
-        # Session storage component which fetches sunrise and sunset times to filter night alerts
-        dcc.Store(
-            id="night_time",
-            storage_type="session",
-            data=requests.get(
-                "https://api.sunrise-sunset.org/json?lat=44.62112179704533 "
-                "&lng=4.273138903528911&formatted=0&date=today"
-            ).json(),
-        ),
-        # Interval that refreshes the night_time storage and API fetch every 24h
-        dcc.Interval(id="refresh_night_time", interval=24 * 3600 * 1000),
+
         # Storage components which contain data relative to sites and site devices
         dcc.Store(id="sites_data", storage_type="session", data=response.json()),
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=site_devices),
@@ -217,16 +207,6 @@ def change_layer_style(n_clicks=None):
     return choose_layer_style(n_clicks)
 
 
-@app.callback(
-    Output("night_time", "data"),
-    Input("refresh_night_time", "n_intervals"),
-)
-def refresh_night_time(n_intervals):
-    return requests.get(
-        "https://api.sunrise-sunset.org/json?lat=44.62112179704533 " "&lng=4.273138903528911&formatted=0&date=today"
-    ).json()
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks determining what alert data and alert frame URLs are store
 
@@ -246,7 +226,6 @@ def refresh_night_time(n_intervals):
         State("devices_data_storage", "data"),
         State("loaded_frames", "data"),
         State("site_devices_data_storage", "data"),
-        State("night_time", "data"),
         State("user_headers", "data"),
         State("user_credentials", "data"),
     ],
@@ -258,7 +237,6 @@ def update_live_alerts_data(
     devices_data,
     already_loaded_frames,
     site_devices_data,
-    night_time_data,
     user_headers,
     user_credentials,
 ):
@@ -302,20 +280,6 @@ def update_live_alerts_data(
     # We then filter all alerts with unacknowledged events ids to obtain live alerts
     if len(live_events) > 0:
         live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-        # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC)
-        # to cover night time
-        sunrise = night_time_data["results"]["sunrise"][:-6]
-        sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
-        sunrise = sunrise.time()
-
-        sunset = night_time_data["results"]["sunset"][:-6]
-        sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
-        sunset = sunset.time()
-
-        # Are there some live alerts during night time ? If yes let's filter them out
-        mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
-        live_alerts = live_alerts[mask].copy()
 
         # Let's only display the last 5 fire events!
         live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
@@ -1365,12 +1329,11 @@ def modify_alert_slider_length(individual_alert_frame_storage):
     [
         State("devices_data_storage", "data"),
         State("site_devices_data_storage", "data"),
-        State("night_time", "data"),
         State("user_headers", "data"),
         State("user_credentials", "data"),
     ],
 )
-def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time_data, user_headers, user_credentials):
+def update_alert_screen(n_intervals, devices_data, site_devices_data, user_headers, user_credentials):
     if user_headers is None:
         raise PreventUpdate
 
@@ -1409,20 +1372,6 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, night_time
         # We then filter all alerts with unacknowledged events ids to obtain live alerts
         if len(live_events) > 0:
             live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-            # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC)
-            # to cover night
-            sunrise = night_time_data["results"]["sunrise"][:-6]
-            sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
-            sunrise = sunrise.time()
-
-            sunset = night_time_data["results"]["sunset"][:-6]
-            sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
-            sunset = sunset.time()
-
-            # Are there some live alerts during night time ? If yes let's filter them out
-            mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
-            live_alerts = live_alerts[mask].copy()
 
             # Let's only display the last 5 fire events!
             live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
