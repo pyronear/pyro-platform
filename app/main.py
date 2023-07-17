@@ -29,7 +29,7 @@ It is built around 5 main sections:
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List
 
 import dash
@@ -56,7 +56,7 @@ from pages.minimal import (
     build_no_alert_detected_screen,
 )
 from services import api_client
-from utils._utils import choose_layer_style, is_hour_between
+from utils._utils import choose_layer_style
 from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
@@ -123,7 +123,6 @@ app.layout = html.Div(
         # Session storage component to avoid re-opening the login modal at each refresh
         # [NOT SUCCESSFUL YET]
         dcc.Store(id="login_storage", storage_type="session", data={"login": "no"}),
-
         # Storage components which contain data relative to sites and site devices
         dcc.Store(id="sites_data", storage_type="session", data=response.json()),
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=site_devices),
