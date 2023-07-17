@@ -303,20 +303,6 @@ def update_live_alerts_data(
     if len(live_events) > 0:
         live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
 
-        # We then fetch sunrise and sunset times and add a safety margin of 30 min (converting from UTC)
-        # to cover night time
-        sunrise = night_time_data["results"]["sunrise"][:-6]
-        sunrise = datetime.fromisoformat(str(sunrise)) + timedelta(hours=2.5)
-        sunrise = sunrise.time()
-
-        sunset = night_time_data["results"]["sunset"][:-6]
-        sunset = datetime.fromisoformat(str(sunset)) + timedelta(hours=1.5)
-        sunset = sunset.time()
-
-        # Are there some live alerts during night time ? If yes let's filter them out
-        mask = live_alerts["created_at"].map(lambda x: is_hour_between(sunrise, sunset, x))
-        live_alerts = live_alerts[mask].copy()
-
         # Let's only display the last 5 fire events!
         live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
 
