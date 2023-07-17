@@ -35,17 +35,6 @@ import pandas as pd
 map_style = {"width": "100%", "height": "90vh", "margin": "auto", "display": "block"}
 
 
-def is_hour_between(sunrise, sunset, alert_time):
-    alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
-    alert_time = alert_time.time()
-
-    is_between = False
-    is_between |= sunrise <= alert_time <= sunset
-    is_between |= sunset <= sunrise and (sunrise <= alert_time or alert_time <= sunset)
-
-    return is_between
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Map layer
 # The following block is used to determine what layer we use for the map and enable the user to change it.

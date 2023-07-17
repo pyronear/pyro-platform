@@ -29,7 +29,7 @@ It is built around 5 main sections:
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List
 
 import dash
@@ -56,7 +56,7 @@ from pages.minimal import (
     build_no_alert_detected_screen,
 )
 from services import api_client
-from utils._utils import choose_layer_style, is_hour_between
+from utils._utils import choose_layer_style
 from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
