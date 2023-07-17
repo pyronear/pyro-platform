@@ -123,7 +123,6 @@ app.layout = html.Div(
         # Session storage component to avoid re-opening the login modal at each refresh
         # [NOT SUCCESSFUL YET]
         dcc.Store(id="login_storage", storage_type="session", data={"login": "no"}),
-
         # Storage components which contain data relative to sites and site devices
         dcc.Store(id="sites_data", storage_type="session", data=response.json()),
         dcc.Store(id="site_devices_data_storage", storage_type="session", data=site_devices),
