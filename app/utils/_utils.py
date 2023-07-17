@@ -17,7 +17,7 @@ Following a first section dedicated to imports, the content section is made of 5
 NB: some sections and/or functions still have to be completed, especially API calls.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
