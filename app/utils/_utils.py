@@ -17,7 +17,7 @@ Following a first section dedicated to imports, the content section is made of 5
 NB: some sections and/or functions still have to be completed, especially API calls.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
@@ -33,17 +33,6 @@ import pandas as pd
 # The following block is used for the definition of small variables and/or functions.
 
 map_style = {"width": "100%", "height": "90vh", "margin": "auto", "display": "block"}
-
-
-def is_hour_between(sunrise, sunset, alert_time):
-    alert_time = datetime.fromisoformat(str(alert_time)) + timedelta(hours=2)
-    alert_time = alert_time.time()
-
-    is_between = False
-    is_between |= sunrise <= alert_time <= sunset
-    is_between |= sunset <= sunrise and (sunrise <= alert_time or alert_time <= sunset)
-
-    return is_between
 
 
 # ----------------------------------------------------------------------------------------------------------------------
