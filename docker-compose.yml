@@ -21,9 +21,11 @@ services:
     networks:
       - web
 
-  frontend-2:
+  frontend:
     build: .
     command: python main.py --host 0.0.0.0 --port 8050
+    ports:
+      - 8050:8050
     expose:
       - 8050
     volumes:
@@ -38,7 +40,7 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.platform.rule=Host(`platform.pyronear.org`)"
+      - "traefik.http.routers.platform.rule=Host(`platform.localhost`)"
       - "traefik.http.routers.platform.entrypoints=websecure"
 
 networks:

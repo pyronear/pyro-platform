@@ -18,10 +18,15 @@ build:
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
 	docker build . -t pyronear/pyro-platform:python3.7.9-slim
 
-# Run the docker
+# Run the docker for production
 run:
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
-	docker-compose up -d --build
+	docker-compose -f docker-compose.yml up -d --build
+
+# Run the docker for dev purposes
+run_dev:
+	poetry export -f requirements.txt --without-hashes --output requirements.txt
+	docker-compose -f docker-compose-dev.yml up -d --build
 
 # Run the docker
 stop:
