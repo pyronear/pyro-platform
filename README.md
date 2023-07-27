@@ -8,7 +8,13 @@ The building blocks of our wildfire detection & monitoring API.
 
 ### Running/stopping the service
 
-You can run the app container using this command:
+You can run the app container using this command for dev purposes:
+
+```shell
+make run_dev
+```
+
+or for production:
 
 ```shell
 make run
@@ -55,6 +61,20 @@ SENTRY_SERVER_NAME=my_storage_bucket_name
 ```
 
 The file should be placed at the root folder of your local copy of the project.
+
+Also please note that you should use docker-compose-dev.yml file for dev as we do not need reverse proxy:
+
+```shell
+docker-compose -f docker-compose-dev.yml up
+```
+
+For production we use docker-compose.yml in which there is the [Traefik Reverse Proxy](https://traefik.io/traefik/).
+
+Traefik interacts with the Dash frontend app via an external network called web, this needs do be created as follow:
+
+```shell
+docker network create web
+```
 
 
 ## License
