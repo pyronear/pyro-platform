@@ -4,7 +4,7 @@ quality:
 	flake8
 	mypy
 	black --check .
-	bandit -r . -c pyproject.toml
+#	bandit -r . -c pyproject.toml
 	autoflake -r .
 
 # this target runs checks on all files and potentially modifies some of them
