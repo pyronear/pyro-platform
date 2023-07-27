@@ -40,7 +40,7 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.platform.rule=Host(`platform.localhost`)"
+      - "traefik.http.routers.platform.rule=Host(`platform.pyronear.org`)"
       - "traefik.http.routers.platform.entrypoints=websecure"
 
 networks:
