@@ -18,16 +18,12 @@ NB: some sections and/or functions still have to be completed, especially API ca
 """
 
 from datetime import datetime
-from functools import wraps
 from pathlib import Path
-from typing import Callable, Dict
 
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd
-
-from app.services import api_client
 
 # ----------------------------------------------------------------------------------------------------------------------
 # CONTENT
@@ -244,34 +240,3 @@ def build_historic_markers(dpt_code=None):
 
     # We gather all markers stored in the fire_markers list in a dl.LayerGroup object, which is returned
     return dl.LayerGroup(children=fire_markers, id="historic_fires_markers")
-
-
-def call_api(func: Callable, user_credentials: Dict[str, str]) -> Callable:
-    """Decorator to call API method and renew the token if needed. Usage:
-
-     result = call_api(my_func, user_credentials)(1, 2, verify=False)
-
-    Instead of:
-
-    response = my_func(1, verify=False)
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-    response = my_func(1, verify=False)
-    result = response.json()
-
-    Args:
-        func: function that calls API method
-
-    Returns: decorated function, to be called with positional and keyword arguments
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        response = func(*args, **kwargs)
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = func(*args, **kwargs)
-        assert response.status_code // 100 == 2, response.text
-        return response.json()
-
-    return wrapper

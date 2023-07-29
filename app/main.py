@@ -55,8 +55,8 @@ from pages.minimal import (
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-from services import api_client
-from utils._utils import call_api, choose_layer_style
+from services import api_client, call_api
+from utils._utils import choose_layer_style
 from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
