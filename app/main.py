@@ -56,7 +56,7 @@ from pages.minimal import (
     build_no_alert_detected_screen,
 )
 from services import api_client
-from utils._utils import choose_layer_style
+from utils._utils import call_api, choose_layer_style
 from utils.alerts import (
     build_alert_overview,
     build_alerts_elements,
@@ -247,47 +247,19 @@ def update_live_alerts_data(
 
     if user_headers is None:
         raise PreventUpdate
-
-    # Fetching live alerts where is_acknowledged is False
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
-    response = api_client.get_ongoing_alerts()
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_ongoing_alerts()
-    response = response.json()
-    # Only for demo purposes, this should be deleted for dev and later in production
-    # response = {}
 
-    # If there is no alert, we prevent the callback from updating anything
-    if len(response) == 0:
+    # Fetch the last 5 unacknowledged events and associated alerts
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-5:]
+
+    # If there is no event, we prevent the callback from updating anything
+    if len(live_events) == 0:
         raise PreventUpdate
 
-    # We store all alerts in a DataFrame and we want to select "live alerts",
-    # Ie. alerts that correspond to a not-yet-acknowledged event
-    all_alerts = pd.DataFrame(response)
-
-    # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
-    # We start by making an API call to fetch all unacknowledged events
-    response = api_client.get_unacknowledged_events()
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_unacknowledged_events()
-    live_events = pd.DataFrame(response.json())
-
-    # We then filter all alerts with unacknowledged events ids to obtain live alerts
-    if len(live_events) > 0:
-        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-        # Let's only display the last 5 fire events!
-        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
-
-        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
-
-    else:
-        live_alerts = pd.DataFrame()
+    get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
+    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
+    live_alerts = pd.concat(_.values).reset_index()
 
     # Is there any live alert to display?
     if live_alerts.empty:
@@ -296,6 +268,9 @@ def update_live_alerts_data(
 
     else:
         # If yes, there is a bit of work to do!
+
+        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
+        live_alerts = live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
@@ -725,9 +700,10 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
-
     elif "alertes" in map_style_button_label.lower():
         map_style = "risks"
+    else:
+        raise ValueError(f"Unknown map style {map_style_button_label}")
 
     if n_clicks is None:
         n_clicks = 0
@@ -1202,9 +1178,10 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     # Deducing from the map style button label, the argument that we should pass to the choose_map_style function
     if current_map_style == "alerts":
         arg = 1
-
     elif current_map_style == "risks":
         arg = 0
+    else:
+        raise ValueError(f"Unknown map style {current_map_style}")
 
     ctx = dash.callback_context
 
@@ -1268,9 +1245,10 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
-
     elif "alertes" in map_style_button_label.lower():
         map_style = "risks"
+    else:
+        raise ValueError(f"Unknown map style {map_style_button_label}")
 
     if map_style == "alerts":
         output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
