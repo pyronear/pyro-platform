@@ -250,8 +250,8 @@ def update_live_alerts_data(
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
 
-    # Fetch the last 5 unacknowledged events and associated alerts
-    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-5:]
+    # Fetch unacknowledged events and associated alerts (up to 15 per events_
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
 
     # If there is no event, we prevent the callback from updating anything
     if len(live_events) == 0:
