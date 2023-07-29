@@ -259,7 +259,7 @@ def update_live_alerts_data(
 
     get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
     _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
-    live_alerts = pd.concat(_.values).reset_index()
+    live_alerts = pd.concat(_.values).groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
     if live_alerts.empty:
@@ -268,9 +268,6 @@ def update_live_alerts_data(
 
     else:
         # If yes, there is a bit of work to do!
-
-        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts = live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
         # We load the data contained by the store_live_alerts_data dcc.Store component
         temp = json.loads(ongoing_live_alerts)
@@ -1316,85 +1313,21 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, user_heade
 
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
-    response = api_client.get_ongoing_alerts()
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_ongoing_alerts()
-    response = response.json()
-    # Only for demo purposes, this should be deleted for dev and later in production
-    # response = {}
 
-    # If there is no alert, we build the no alert screen
-    if len(response) == 0:
-        style_to_display = build_no_alert_detected_screen()
+    # Fetch the last unacknowledged events and the last 3 associated alerts and images
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    if live_events.empty:
+        return [{}], build_no_alert_detected_screen(), {"frame_URLs": "no_images"}
 
-        images_to_display = {"frame_URLs": "no_images"}
+    event_id = int(live_events.loc[live_events.index[-1], "id"])
+    live_alerts = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)(event_id))
+    last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
 
-        return ([{}], style_to_display, images_to_display)
+    get_img_url = lambda x: call_api(api_client.get_media_url, user_credentials)(x)["url"]
+    img_urls = live_alerts.tail(3)["media_id"].apply(get_img_url).to_list()
 
-    else:
-        # We store all alerts in a DataFrame and we want to select "live alerts",
-        # Ie. alerts that correspond to a not-yet-acknowledged event
-        all_alerts = pd.DataFrame(response)
-
-        # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
-        # We start by making an API call to fetch all events
-        response = api_client.get_unacknowledged_events()
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = api_client.get_unacknowledged_events()
-        live_events = pd.DataFrame(response.json())
-
-        # We then filter all alerts with unacknowledged events ids to obtain live alerts
-        if len(live_events) > 0:
-            live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-            # Let's only display the last 5 fire events!
-            live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
-
-            # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-            live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
-
-        else:
-            live_alerts = pd.DataFrame()
-
-        # Is there any live alert to display?
-        if live_alerts.empty:
-            style_to_display = build_no_alert_detected_screen()
-
-            images_to_display = {"frame_URLs": "no_images"}
-
-            return ([{}], style_to_display, images_to_display)
-
-        else:
-
-            last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
-            last_event_id = str(last_alert["event_id"])
-
-            focus_on_event = live_alerts[live_alerts["event_id"] == int(last_event_id)].copy()
-            focus_on_event = focus_on_event.sort_values(by="id").tail(3).copy()
-
-            img_urls = []
-
-            for _, row in focus_on_event.iterrows():
-                img_url = ""
-
-                try:
-                    response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 401:
-                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                        response = api_client.get_media_url(row["media_id"])
-                    img_url = response.json()["url"]
-
-                except Exception:
-                    pass
-
-                img_urls.append(img_url)
-
-            layout_div, style_to_display = build_alert_detected_screen(img_urls, last_alert, site_devices_data)
-
-            return layout_div, style_to_display, {last_event_id: img_urls}
+    layout_div, style_to_display = build_alert_detected_screen(img_urls, last_alert, site_devices_data)
+    return layout_div, style_to_display, {event_id: img_urls}
 
 
 @app.callback(
