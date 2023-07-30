@@ -55,7 +55,7 @@ from pages.minimal import (
     build_alert_detected_screen,
     build_no_alert_detected_screen,
 )
-from services import api_client
+from services import api_client, call_api
 from utils._utils import choose_layer_style
 from utils.alerts import (
     build_alert_overview,
@@ -247,47 +247,19 @@ def update_live_alerts_data(
 
     if user_headers is None:
         raise PreventUpdate
-
-    # Fetching live alerts where is_acknowledged is False
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
-    response = api_client.get_ongoing_alerts()
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_ongoing_alerts()
-    response = response.json()
-    # Only for demo purposes, this should be deleted for dev and later in production
-    # response = {}
 
-    # If there is no alert, we prevent the callback from updating anything
-    if len(response) == 0:
+    # Fetch last 10 unacknowledged events and associated alerts (up to 15 per event)
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-10:]
+
+    # If there is no event, we prevent the callback from updating anything
+    if len(live_events) == 0:
         raise PreventUpdate
 
-    # We store all alerts in a DataFrame and we want to select "live alerts",
-    # Ie. alerts that correspond to a not-yet-acknowledged event
-    all_alerts = pd.DataFrame(response)
-
-    # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
-    # We start by making an API call to fetch all unacknowledged events
-    response = api_client.get_unacknowledged_events()
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_unacknowledged_events()
-    live_events = pd.DataFrame(response.json())
-
-    # We then filter all alerts with unacknowledged events ids to obtain live alerts
-    if len(live_events) > 0:
-        live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-        # Let's only display the last 5 fire events!
-        live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
-
-        # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-        live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
-
-    else:
-        live_alerts = pd.DataFrame()
+    get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
+    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
+    live_alerts = pd.concat(_.values).groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
     if live_alerts.empty:
@@ -316,12 +288,7 @@ def update_live_alerts_data(
             for _, row in live_alerts.iterrows():
                 try:
                     # For each live alert, we fetch the URL of the associated frame
-                    response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 401:
-                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                        response = api_client.get_media_url(row["media_id"])
-                    img_url = response.json()["url"]
-
+                    img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
                 except Exception:
                     # This is just a security in case we cannot retrieve the URL of the detection frame
                     img_url = ""
@@ -402,12 +369,7 @@ def update_live_alerts_data(
                 for _, row in new_alerts.iterrows():
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
-                        response = api_client.get_media_url(row["media_id"])
-                        if response.status_code == 401:
-                            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                            response = api_client.get_media_url(row["media_id"])
-                        img_url = response.json()["url"]
-
+                        img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
                     except Exception:
                         # This is just a security in case we cannot retrieve the URL of the detection frame
                         img_url = ""
@@ -725,9 +687,10 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
-
     elif "alertes" in map_style_button_label.lower():
         map_style = "risks"
+    else:
+        raise ValueError(f"Unknown map style {map_style_button_label}")
 
     if n_clicks is None:
         n_clicks = 0
@@ -778,13 +741,9 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credenti
 
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
-        url = cfg.API_URL + f"/events/{event_id}/"
-
-        response = requests.get(url, headers=user_headers)
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get(url, headers=api_client.headers)
-        acknowledged = response.json()["is_acknowledged"]
+        acknowledged = call_api(requests.get, user_credentials)(
+            cfg.API_URL + f"/events/{event_id}/", headers=user_headers
+        )["is_acknowledged"]
 
         # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
         lat, lon, div = build_alert_overview(
@@ -1040,12 +999,7 @@ def confirm_alert_acknowledgement(n_clicks, user_headers, user_credentials):
         # The event is actually acknowledged thanks to the acknowledge_event method of the API client
         user_token = user_headers["Authorization"].split(" ")[1]
         api_client.token = user_token
-        api_client.acknowledge_event(event_id=int(event_id))
-
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            api_client.acknowledge_event(event_id=int(event_id))
-
+        call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id))
         return ["close", html.P("Alerte acquittée.")]
 
 
@@ -1202,9 +1156,10 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     # Deducing from the map style button label, the argument that we should pass to the choose_map_style function
     if current_map_style == "alerts":
         arg = 1
-
     elif current_map_style == "risks":
         arg = 0
+    else:
+        raise ValueError(f"Unknown map style {current_map_style}")
 
     ctx = dash.callback_context
 
@@ -1268,9 +1223,10 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
-
     elif "alertes" in map_style_button_label.lower():
         map_style = "risks"
+    else:
+        raise ValueError(f"Unknown map style {map_style_button_label}")
 
     if map_style == "alerts":
         output = build_alerts_elements(images_url_live_alerts, live_alerts, map_style)
@@ -1338,85 +1294,21 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, user_heade
 
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
-    response = api_client.get_ongoing_alerts()
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = api_client.get_ongoing_alerts()
-    response = response.json()
-    # Only for demo purposes, this should be deleted for dev and later in production
-    # response = {}
 
-    # If there is no alert, we build the no alert screen
-    if len(response) == 0:
-        style_to_display = build_no_alert_detected_screen()
+    # Fetch the last unacknowledged events and the last 3 associated alerts and images
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    if live_events.empty:
+        return [{}], build_no_alert_detected_screen(), {"frame_URLs": "no_images"}
 
-        images_to_display = {"frame_URLs": "no_images"}
+    event_id = int(live_events.loc[live_events.index[-1], "id"])
+    live_alerts = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)(event_id))
+    last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
 
-        return ([{}], style_to_display, images_to_display)
+    get_img_url = lambda x: call_api(api_client.get_media_url, user_credentials)(x)["url"]
+    img_urls = live_alerts.tail(3)["media_id"].apply(get_img_url).to_list()
 
-    else:
-        # We store all alerts in a DataFrame and we want to select "live alerts",
-        # Ie. alerts that correspond to a not-yet-acknowledged event
-        all_alerts = pd.DataFrame(response)
-
-        # We now want to build the boolean indexing mask that indicates whether or not the event is unacknowledged
-        # We start by making an API call to fetch all events
-        response = api_client.get_unacknowledged_events()
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = api_client.get_unacknowledged_events()
-        live_events = pd.DataFrame(response.json())
-
-        # We then filter all alerts with unacknowledged events ids to obtain live alerts
-        if len(live_events) > 0:
-            live_alerts = all_alerts[all_alerts.event_id.isin(live_events.id.unique())]
-
-            # Let's only display the last 5 fire events!
-            live_alerts = live_alerts[live_alerts.event_id.isin(live_alerts.event_id.unique()[-5:])]
-
-            # We then only keep the 15 firsts medias (frames) per event so that for readablilty
-            live_alerts.groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
-
-        else:
-            live_alerts = pd.DataFrame()
-
-        # Is there any live alert to display?
-        if live_alerts.empty:
-            style_to_display = build_no_alert_detected_screen()
-
-            images_to_display = {"frame_URLs": "no_images"}
-
-            return ([{}], style_to_display, images_to_display)
-
-        else:
-
-            last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
-            last_event_id = str(last_alert["event_id"])
-
-            focus_on_event = live_alerts[live_alerts["event_id"] == int(last_event_id)].copy()
-            focus_on_event = focus_on_event.sort_values(by="id").tail(3).copy()
-
-            img_urls = []
-
-            for _, row in focus_on_event.iterrows():
-                img_url = ""
-
-                try:
-                    response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 401:
-                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                        response = api_client.get_media_url(row["media_id"])
-                    img_url = response.json()["url"]
-
-                except Exception:
-                    pass
-
-                img_urls.append(img_url)
-
-            layout_div, style_to_display = build_alert_detected_screen(img_urls, last_alert, site_devices_data)
-
-            return layout_div, style_to_display, {last_event_id: img_urls}
+    layout_div, style_to_display = build_alert_detected_screen(img_urls, last_alert, site_devices_data)
+    return layout_div, style_to_display, {event_id: img_urls}
 
 
 @app.callback(
@@ -1495,26 +1387,18 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     if user_headers is None:
         raise PreventUpdate
 
-    response = requests.get(f"{cfg.API_URL}/devices/", headers=user_headers)
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers)
-
-    # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
+    # We filter devices_data to only display devices belonging to the sdis and then make the comparison between
     # last_ping and datetime.now()
-    all_devices = pd.DataFrame(response.json())
+    all_devices = pd.DataFrame(
+        call_api(requests.get, user_credentials)(f"{cfg.API_URL}/devices/devices", headers=user_headers)
+    )
 
     # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
     # the DataFrame is empty and we must instead use the "/devices/my-devices" route
     if all_devices.empty:
-        response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
-        # Check token expiration
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=api_client.headers)
-
-        all_devices = pd.DataFrame(response.json())
+        all_devices = pd.DataFrame(
+            call_api(requests.get, user_credentials)(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
+        )
 
     # Condition to ensure that the callback does not break if, for whatever, the user is associated with no devices
     if not all_devices.empty:
