@@ -250,8 +250,8 @@ def update_live_alerts_data(
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
 
-    # Fetch unacknowledged events and associated alerts (up to 15 per events_
-    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    # Fetch last 10 unacknowledged events and associated alerts (up to 15 per event)
+    live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-10:]
 
     # If there is no event, we prevent the callback from updating anything
     if len(live_events) == 0:
@@ -288,12 +288,7 @@ def update_live_alerts_data(
             for _, row in live_alerts.iterrows():
                 try:
                     # For each live alert, we fetch the URL of the associated frame
-                    response = api_client.get_media_url(row["media_id"])
-                    if response.status_code == 401:
-                        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                        response = api_client.get_media_url(row["media_id"])
-                    img_url = response.json()["url"]
-
+                    img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
                 except Exception:
                     # This is just a security in case we cannot retrieve the URL of the detection frame
                     img_url = ""
@@ -374,12 +369,7 @@ def update_live_alerts_data(
                 for _, row in new_alerts.iterrows():
                     try:
                         # For each new live alert, we fetch the URL of the associated frame
-                        response = api_client.get_media_url(row["media_id"])
-                        if response.status_code == 401:
-                            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-                            response = api_client.get_media_url(row["media_id"])
-                        img_url = response.json()["url"]
-
+                        img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
                     except Exception:
                         # This is just a security in case we cannot retrieve the URL of the detection frame
                         img_url = ""
@@ -751,13 +741,9 @@ def zoom_on_alert(n_clicks, live_alerts, frame_urls, user_headers, user_credenti
 
         # We make an API call to check whether the event has already been acknowledged or not
         # Depending on the response, an acknowledgement button will be displayed or not in the alert overview
-        url = cfg.API_URL + f"/events/{event_id}/"
-
-        response = requests.get(url, headers=user_headers)
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get(url, headers=api_client.headers)
-        acknowledged = response.json()["is_acknowledged"]
+        acknowledged = call_api(requests.get, user_credentials)(
+            cfg.API_URL + f"/events/{event_id}/", headers=user_headers
+        )["is_acknowledged"]
 
         # We fetch the latitude and longitude of the device that has raised the alert and we build the alert overview
         lat, lon, div = build_alert_overview(
@@ -1013,12 +999,7 @@ def confirm_alert_acknowledgement(n_clicks, user_headers, user_credentials):
         # The event is actually acknowledged thanks to the acknowledge_event method of the API client
         user_token = user_headers["Authorization"].split(" ")[1]
         api_client.token = user_token
-        api_client.acknowledge_event(event_id=int(event_id))
-
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            api_client.acknowledge_event(event_id=int(event_id))
-
+        call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id))
         return ["close", html.P("Alerte acquittée.")]
 
 
@@ -1406,26 +1387,18 @@ def update_dashboard_table(n_intervals, user_headers, user_credentials):
     if user_headers is None:
         raise PreventUpdate
 
-    response = requests.get(f"{cfg.API_URL}/devices/", headers=user_headers)
-    # Check token expiration
-    if response.status_code == 401:
-        api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-        response = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers)
-
-    # We filters devices_data to only display devices belonging to the sdis and then make the comparison between
+    # We filter devices_data to only display devices belonging to the sdis and then make the comparison between
     # last_ping and datetime.now()
-    all_devices = pd.DataFrame(response.json())
+    all_devices = pd.DataFrame(
+        call_api(requests.get, user_credentials)(f"{cfg.API_URL}/devices/devices", headers=user_headers)
+    )
 
     # The "/devices" route only works with admin credentials; if the user has logged in with non-admin credentials,
     # the DataFrame is empty and we must instead use the "/devices/my-devices" route
     if all_devices.empty:
-        response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
-        # Check token expiration
-        if response.status_code == 401:
-            api_client.refresh_token(user_credentials["username"], user_credentials["password"])
-            response = requests.get(f"{cfg.API_URL}/devices/my-devices", headers=api_client.headers)
-
-        all_devices = pd.DataFrame(response.json())
+        all_devices = pd.DataFrame(
+            call_api(requests.get, user_credentials)(f"{cfg.API_URL}/devices/my-devices", headers=user_headers)
+        )
 
     # Condition to ensure that the callback does not break if, for whatever, the user is associated with no devices
     if not all_devices.empty:
