@@ -305,7 +305,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
             )
         )
 
-    return [alert_button, alert_button, alerts_markers_layer, navbar_color, navbar_title]
+    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
