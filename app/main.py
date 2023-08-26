@@ -252,7 +252,7 @@ def update_live_alerts_data(
 
     # Fetch last 10 unacknowledged events and associated alerts (up to 15 per event)
     live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-10:]
-    live_events = live_events[::-1] # Display the last alert first
+    live_events = live_events[::-1]  # Display the last alert first
 
     # If there is no event, we prevent the callback from updating anything
     if len(live_events) == 0:
