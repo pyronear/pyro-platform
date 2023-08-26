@@ -506,7 +506,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
                         html.Span("Lat : {} / Lon : {}".format(alert_lat, alert_lon), style={"display": "block"}),
                         html.Span(f"Tour : {site_name}", style={"display": "block"}),
                         html.Span(
-                            "{} / {}:{}".format(alert_date, alert_time.hour, alert_time.minute),
+                            "{} / {}:{}".format(alert_date, f"{alert_time.hour:02}", f"{alert_time.minute:02}"),
                             style={"display": "block"},
                         ),
                     ],
