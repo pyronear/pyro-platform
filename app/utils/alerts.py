@@ -305,7 +305,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
             )
         )
 
-    return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
+    return [alert_button, alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
@@ -523,8 +523,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
             site_lat=row["lat"],
             site_lon=row["lon"],
             azimuth=row["azimuth"],
-            opening_angle=60,
-            dist_km=2,
+            opening_angle=89,
+            dist_km=15,
         )
 
         vision_polygons_children.append(polygon)
