@@ -523,7 +523,7 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
             site_lat=row["lat"],
             site_lon=row["lon"],
             azimuth=row["azimuth"],
-            opening_angle=89,
+            opening_angle=87,
             dist_km=15,
         )
 
