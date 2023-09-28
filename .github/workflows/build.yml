@@ -43,7 +43,7 @@ jobs:
           API_PWD: ${{ secrets.API_PWD }}
         run: |
           screen -dm python app/main.py
-          sleep 40
+          sleep 200
           curl http://localhost:8050/
   docker:
     runs-on: ubuntu-latest
@@ -64,4 +64,4 @@ jobs:
           API_PWD: ${{ secrets.API_PWD }}
         run: docker-compose -f docker-compose-dev.yml up -d --build
       - name: Check docker sanity
-        run: sleep 40 && docker-compose logs && curl http://localhost:8050/
+        run: sleep 200 && docker-compose logs && curl http://localhost:8050/
