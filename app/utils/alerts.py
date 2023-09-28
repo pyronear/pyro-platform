@@ -523,8 +523,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
             site_lat=row["lat"],
             site_lon=row["lon"],
             azimuth=row["azimuth"],
-            opening_angle=60,
-            dist_km=2,
+            opening_angle=87,
+            dist_km=15,
         )
 
         vision_polygons_children.append(polygon)
