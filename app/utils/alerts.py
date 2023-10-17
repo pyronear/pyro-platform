@@ -288,9 +288,13 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id="alerts_markers")
 
     # Building the alerts notification btn
-    nb_alerts = len(all_events)  # Number of unique events
+    today = pd.Timestamp.now().normalize()
+    today_alerts_df = all_events[all_events["created_at"] >= today]
+
+    # The rest of the code remains the same...
+    nb_today_alerts = len(today_alerts_df)  # Number of unique events from today
     alert_button = html.Div(
-        dbc.Button("Nouvelles alertes | {}".format(nb_alerts), className="btn-header-alerts"),
+        dbc.Button("Nouvelles alertes | {}".format(nb_today_alerts), className="btn-header-alerts"),
         id=f"alert_button_{map_style}",
         style={"position": "absolute", "top": "10px", "right": "30px", "z-index": "1000"},
     )
@@ -473,6 +477,9 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
     else:
         all_alerts = pd.read_json(live_alerts)
+        # Filtering for today's alerts
+        today = pd.Timestamp.now().normalize()
+        all_alerts = all_alerts[all_alerts["created_at"].dt.normalize() == today]
 
     all_events = all_alerts.drop_duplicates(["id", "event_id"]).groupby("event_id").head(1)  # Get unique events
 
@@ -568,12 +575,21 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
         acknowledge_alert_space_children = [html.P("Alerte acquittée.")]
 
     df = pd.read_json(live_alerts)
+    # Filtering for today's alerts
+    today = pd.Timestamp.now().normalize()
+    df = df[df["created_at"].dt.normalize() == today]
     df = df.drop_duplicates(["id", "event_id"]).groupby("event_id").head(1)  # Get unique events
 
     df["event_id"] = df["event_id"].astype(str)
 
-    lat = df[df["event_id"] == event_id]["lat"].iloc[0]
-    lon = df[df["event_id"] == event_id]["lon"].iloc[0]
+    filtered_df = df[df["event_id"] == event_id]
+    if not filtered_df.empty:
+        lat = filtered_df["lat"].iloc[0]
+        lon = filtered_df["lon"].iloc[0]
+    else:
+        lat = None  # or any default value
+        lon = None  # or any default value
+
     alert_azimuth = df[df["event_id"] == event_id]["azimuth"].iloc[0]
 
     div = html.Div(

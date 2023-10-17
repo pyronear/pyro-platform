@@ -403,7 +403,6 @@ def update_live_alerts_data(
                 # selection area, etc)
 
                 if condition:
-
                     # We update all outputs
                     return [
                         live_alerts.to_json(orient="records"),
