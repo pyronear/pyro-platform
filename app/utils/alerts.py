@@ -289,7 +289,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
     # Building the alerts notification btn
     today = pd.Timestamp.now().normalize()
-    today_alerts_df = all_events[all_events["created_at"] >= today]
+    today_alerts_df = all_events[all_events["created_at"].dt.normalize() == today]
 
     # The rest of the code remains the same...
     nb_today_alerts = len(today_alerts_df)  # Number of unique events from today
