@@ -558,21 +558,30 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
 
 def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
-    if not acknowledged:
-        acknowledge_alert_space_children = [
-            dcc.Markdown("---"),
+    acknowledge_alert_space_children = [
+        dcc.Markdown("---"),
+        html.Div(
+            dbc.Button(
+                id={"type": "acknowledge_alert_button", "index": event_id},
+                children="Acquitter l'alerte",
+                className="btn-layers",
+                size="sm",
+            )
+        ),
+    ]
+
+    acknowledge_all_alert_space_children = html.Div(
+        [
             html.Div(
                 dbc.Button(
-                    id={"type": "acknowledge_alert_button", "index": event_id},
-                    children="Acquitter l'alerte",
+                    id={"type": "acknowledge_all_alert_button", "index": event_id},
+                    children="Acquitter toutes les alertes",
                     className="btn-layers",
                     size="sm",
                 )
-            ),
+            )
         ]
-
-    else:
-        acknowledge_alert_space_children = [html.P("Alerte acquittée.")]
+    )
 
     df = pd.read_json(live_alerts)
     # Filtering for today's alerts
@@ -608,6 +617,10 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                     html.Div(
                         id={"type": "acknowledge_alert_space", "index": event_id},
                         children=acknowledge_alert_space_children,
+                    ),
+                    html.Div(
+                        id={"type": "acknowledge_all_alert_space", "index": event_id},
+                        children=acknowledge_all_alert_space_children,
                     ),
                     html.Div(
                         dbc.Button(
