@@ -428,9 +428,9 @@ def update_live_alerts_data(
                     else:
                         condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum() > 0
 
-                    # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
-                    # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
-                    # selection area, etc)
+                    # If this condition is verified, this means that there is a new "alert" (in fact an event) to
+                    # display on the platform and we therefore need to update all components (the live_alert_header_btn,
+                    #  the user selection area, etc)
 
                     if condition:
                         # We update all outputs
@@ -442,11 +442,13 @@ def update_live_alerts_data(
                             sites_with_live_alerts,
                         ]
 
-                    # If the condition is not verified, we have no new "alert" / event to display on the platform but only
-                    # new detection frames for an existing alert; this means that we do not have to update all components
+                    # If the condition is not verified, we have no new "alert" / event to display on the platform but
+                    # only new detection frames for an existing alert; this means that we do not have to update all
+                    # components
                     else:
-                        # We would like to only update the list of alert frames being displayed and not all the components
-                        # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
+                        # We would like to only update the list of alert frames being displayed and not all the
+                        # components. To keep track of the frame URLs that have been loaded, we also update the
+                        # list of loaded alert IDs
                         return [
                             dash.no_update,
                             dict_images_url_live_alerts,
