@@ -258,7 +258,7 @@ def update_live_alerts_data(
         raise PreventUpdate
 
     get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
+    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
     live_alerts = pd.concat(_.values).groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
