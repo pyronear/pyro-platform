@@ -63,6 +63,7 @@ from utils.alerts import (
     build_individual_alert_components,
     build_sites_markers,
     display_alert_selection_area,
+    past_ndays_live_events,
     retrieve_site_from_device_id,
 )
 
@@ -252,6 +253,10 @@ def update_live_alerts_data(
 
     # Fetch last 10 unacknowledged events and associated alerts (up to 15 per event)
     live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())[-10:]
+
+    # keep only events from today
+    live_events = past_ndays_live_events(live_events, n_days=1)
+
     live_events = live_events[::-1]  # Display the last alert first
 
     # If there is no event, we prevent the callback from updating anything
@@ -1297,6 +1302,8 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, user_heade
 
     # Fetch the last unacknowledged events and the last 3 associated alerts and images
     live_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    # keep only events from today
+    live_events = past_ndays_live_events(live_events, n_days=1)
     if live_events.empty:
         return [{}], build_no_alert_detected_screen(), {"frame_URLs": "no_images"}
 
