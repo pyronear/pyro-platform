@@ -1,22 +1,19 @@
 # this target runs checks on all files
 quality:
-	isort . -c
-	flake8
+	ruff check .
 	mypy
 	black --check .
-#	bandit -r . -c pyproject.toml
-	autoflake -r .
+	bandit -r . -c pyproject.toml
 
 # this target runs checks on all files and potentially modifies some of them
 style:
-	isort .
 	black .
-	autoflake --in-place -r .
+	ruff --fix .
 
 # Build the docker
 build:
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
-	docker build . -t pyronear/pyro-platform:python3.7.9-slim
+	docker build . -t pyronear/pyro-platform:python3.8-slim
 
 # Run the docker for production
 run:
