@@ -686,3 +686,32 @@ def build_alerts_map():
     )
 
     return map_object
+
+
+def past_ndays_live_events(live_events, n_days=1):
+    """
+    Filters the given live events to retain only those within the past n days.
+
+    Args:
+        live_events (pd.Dataframe): DataFrame containing live events data. It must have a "created_at" column
+                                    indicating the datetime of the event.
+        n_days (int, optional): Specifies the number of days into the past to retain events. Defaults to 1.
+
+    Returns:
+        pd.DataFrame: A filtered DataFrame containing only events from the past n_days.
+    """
+
+    # Ensure the column is in datetime format
+    live_events["created_at"] = pd.to_datetime(live_events["created_at"])
+
+    # Define the start and end dates for the filter
+    end_date = pd.Timestamp.now().normalize()
+    start_date = end_date - pd.Timedelta(days=n_days)
+
+    # Filter events from the past 3 days
+    live_events = live_events[
+        (live_events["created_at"].dt.normalize() >= start_date)
+        & (live_events["created_at"].dt.normalize() <= end_date)
+    ]
+
+    return live_events
