@@ -602,6 +602,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
     alert_azimuth = df[df["event_id"] == event_id]["azimuth"].iloc[0]
 
     store_component = dcc.Store(id={"type": "last_acknowledge_button_store", "index": event_id})
+    trigger_component = dcc.Store(id={"type": "trigger_component", "index": event_id})
 
     div = html.Div(
         id={"type": "alert_overview", "index": event_id},
@@ -670,6 +671,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                         style={"display": "none"},
                     ),
                     store_component,
+                    trigger_component,
                 ]
             )
         ],

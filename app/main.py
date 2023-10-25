@@ -1000,42 +1000,59 @@ def close_confirmation_modal(n_clicks):
 @app.callback(
     [
         Output({"type": "manage_confirmation_modal_confirmation_button", "index": MATCH}, "children"),
-        Output({"type": "acknowledge_alert_space", "index": MATCH}, "children"),
+        Output({"type": "trigger_component", "index": MATCH}, "data")
     ],
     Input({"type": "acknowledgement_confirmation_button", "index": MATCH}, "n_clicks"),
-    [State("user_headers", "data"), State("user_credentials", "data")],
+    [
+        State("images_url_live_alerts", "data"),
+        State("user_headers", "data"),
+        State("user_credentials", "data"),
+        State({"type": "last_acknowledge_button_store", "index": MATCH}, "data"),
+    ],
 )
-def confirm_alert_acknowledgement(n_clicks, user_headers, user_credentials):
+def confirm_alert_acknowledgement(
+    n_clicks, images_url_live_alerts, user_headers, user_credentials, last_acknowledge_button_store
+):
     """
-    --- Confirming alert acknowledgement ---
+    Confirm the acknowledgment of an alert or multiple alerts.
 
-    Once the user has clicked on an alert acknowledgement button, the corresponding confirmation modal is opened.
+    This callback is triggered when the user confirms the acknowledgment of an alert. Depending on which button 
+    activated the acknowledgment request, either a single alert or all alerts are acknowledged using the API client. 
+    After acknowledgment, two elements get updated:
+    1. The acknowledgment confirmation modal is closed.
+    2. The acknowledgment button is replaced with a message indicating that the alert/event has been acknowledged.
 
-    This callback is triggered by the user's click on the confirmation button (the one that displays "Oui").
+    Parameters:
+        n_clicks (int): Number of times the confirmation button has been clicked.
+        images_url_live_alerts (dict): URLs of images associated with live alerts.
+        user_headers (dict): User-specific headers for authorization.
+        user_credentials (dict): Credentials for API interactions.
+        last_acknowledge_button_store (dict): Info about the last clicked acknowledgment button.
 
-    It then does two things:
-
-    - it indirectly closes the acknowledgement confirmation modal through an HTML Div placeholder;
-
-    - it updates the content of the alert acknowledgement space to erase the acknowledgement button and replace it with
-    a text saying that the alert / event has already been acknowledged.
+    Returns:
+        list: A list with two elements:
+            1. A string "close" to close the acknowledgment confirmation modal.
+            2. A dict indicating the acknowledgment status of the alert/event.
     """
     if n_clicks is None or n_clicks == 0 or user_headers is None:
         raise PreventUpdate
 
     else:
-        ctx = dash.callback_context
-
-        # We retrieve the ID of the event
-        text = ctx.triggered[0]["prop_id"].split(":")[1]
-        event_id = text[: text.find(",")]
-        event_id = event_id.strip('"')
-
-        # The event is actually acknowledged thanks to the acknowledge_event method of the API client
+        event_id = last_acknowledge_button_store["index"]
+        button_type = last_acknowledge_button_store["type"]
         user_token = user_headers["Authorization"].split(" ")[1]
         api_client.token = user_token
-        call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id))
-        return ["close", html.P("Alerte acquittée.")]
+
+        if button_type == "acknowledge_alert_button":
+            # acknowledge current event
+            call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id))
+
+        else:
+            # acknowledge all events
+            for event_id, _ in images_url_live_alerts.items():
+                call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id))
+
+        return ["close", {"type": "trigger_component", "index": event_id}]
 
 
 @app.callback(
