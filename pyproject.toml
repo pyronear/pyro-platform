@@ -83,6 +83,7 @@ known-first-party = ["config", "pages", "components", "utils", "services"]
 
 [tool.mypy]
 python_version = "3.8"
+mypy_path = "app/"
 files = "app/"
 show_error_codes = true
 pretty = true
@@ -94,7 +95,17 @@ implicit_reexport = false
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = []
+module = [
+    "dash.*",
+    "dash_table.*",
+    "dash_leaflet.*",
+    "dash_bootstrap_components.*",
+    "dash_html_components.*",
+    "dash_core_components.*",
+    "geopy.*",
+    "pyroclient.*",
+    "flask_caching.*",
+]
 ignore_missing_imports = true
 
 [tool.black]
