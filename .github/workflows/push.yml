@@ -15,9 +15,9 @@ jobs:
         with:
           poetry-version: "1.6.1"
       - name: Resolve dependencies
-        run: poetry export -f requirements.txt --without-hashes --output src/app/requirements.txt
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Build docker
-        run: docker build src/. -t pyronear/pyro-platform:latest
+        run: docker build . -t pyronear/pyro-platform:latest
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
