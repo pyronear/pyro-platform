@@ -218,7 +218,7 @@ def change_layer_style(n_clicks=None):
         Output("main_api_fetch_interval", "interval"),
         Output("sites_with_live_alerts", "children"),
     ],
-    Input("main_api_fetch_interval", "n_intervals"),
+    [Input({"type": "trigger_component", "index": ALL}, "data"), Input("main_api_fetch_interval", "n_intervals")],
     [
         State("store_live_alerts_data", "data"),
         State("images_url_live_alerts", "data"),
@@ -230,6 +230,7 @@ def change_layer_style(n_clicks=None):
     ],
 )
 def update_live_alerts_data(
+    intermediate_storage_data,
     n_intervals,
     ongoing_live_alerts,
     ongoing_frame_urls,
@@ -1000,7 +1001,7 @@ def close_confirmation_modal(n_clicks):
 @app.callback(
     [
         Output({"type": "manage_confirmation_modal_confirmation_button", "index": MATCH}, "children"),
-        Output({"type": "trigger_component", "index": MATCH}, "data")
+        Output({"type": "trigger_component", "index": MATCH}, "data"),
     ],
     Input({"type": "acknowledgement_confirmation_button", "index": MATCH}, "n_clicks"),
     [
@@ -1016,8 +1017,8 @@ def confirm_alert_acknowledgement(
     """
     Confirm the acknowledgment of an alert or multiple alerts.
 
-    This callback is triggered when the user confirms the acknowledgment of an alert. Depending on which button 
-    activated the acknowledgment request, either a single alert or all alerts are acknowledged using the API client. 
+    This callback is triggered when the user confirms the acknowledgment of an alert. Depending on which button
+    activated the acknowledgment request, either a single alert or all alerts are acknowledged using the API client.
     After acknowledgment, two elements get updated:
     1. The acknowledgment confirmation modal is closed.
     2. The acknowledgment button is replaced with a message indicating that the alert/event has been acknowledged.
