@@ -37,5 +37,5 @@ jobs:
           key: ${{ secrets.SSH_DEPLOY_DEV }}
           script: |
             docker pull pyronear/pyro-platform:latest
-            cd devops && docker compose down && docker compose up -d
+            cd pyro-platform-prod && docker compose down && docker compose up -d
             docker inspect -f '{{ .Created }}' $(docker compose images -q frontend)
