@@ -924,6 +924,29 @@ def acknowledge_alert(*args):
 
 
 @app.callback(
+    Output({"type": "manage_confirmation_modal_acknowlegdment_button", "index": MATCH}, "children"),
+    [Input({"type": "last_acknowledge_button_store", "index": MATCH}, "data")],
+)
+def open_confirmation_modal(data_from_store):
+    """
+    Open the alert acknowledgment confirmation modal.
+
+    This callback checks the stored data about the button click and triggers the opening of the
+    acknowledgment confirmation modal if valid data is found.
+
+    Parameters:
+    - data_from_store (dict): Data about the last clicked acknowledge button, stored from the previous callback.
+
+    Returns:
+    - str: A string value "open" indicating the confirmation modal should be opened. If no valid data is found,
+           a PreventUpdate exception is raised.
+    """
+    if not data_from_store:
+        raise PreventUpdate
+    return "open"
+
+
+@app.callback(
     Output({"type": "acknowledgement_confirmation_modal", "index": MATCH}, "is_open"),
     [
         Input({"type": "manage_confirmation_modal_acknowlegdment_button", "index": MATCH}, "children"),
