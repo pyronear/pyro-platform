@@ -258,7 +258,7 @@ def update_live_alerts_data(
         raise PreventUpdate
 
     get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
+    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
     live_alerts = pd.concat(_.values).groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
@@ -1294,7 +1294,7 @@ def update_alert_screen(n_intervals, devices_data, site_devices_data, user_heade
     if live_events.empty:
         return [{}], build_no_alert_detected_screen(), {"frame_URLs": "no_images"}
 
-    event_id = int(live_events.loc[live_events.index[-1], "id"])  # type: ignore[call-overload, index]
+    event_id = int(live_events.loc[live_events.index[-1], "id"])
     live_alerts = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)(event_id))
     last_alert = live_alerts.loc[live_alerts["id"].idxmax()]
 
