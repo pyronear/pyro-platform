@@ -91,11 +91,11 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
+response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
+    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
 
 # Site devices
 response = api_client.get_sites()
@@ -554,7 +554,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
                 # Based on the user's credentials, we request the set of relevant devices
-                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers)
+                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers, timeout=5)
 
                 # We also update the site_devices dictionary, restricting it to the user's scope
                 response_sites = client.get_sites().json()

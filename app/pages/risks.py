@@ -34,11 +34,11 @@ from utils._utils import build_filters_object, build_legend_box, map_style
 # NB: for now, scores are acquired from a static json file on GitHub; the API call is still to be implemented.
 
 # We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
-departments = requests.get(cfg.GEOJSON_FILE).json()
+departments = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
 # We fetch the department risk score json and store it in the risk_json variable
 # When everything is validated, we'll request the data directly from the API
-risk_json = requests.get(cfg.PYRORISK_FALLBACK).json()
+risk_json = requests.get(cfg.PYRORISK_FALLBACK, timeout=10).json()
 
 # We add to each department in the geojson a new property called "score" that corresponds to the risk level
 for department in departments["features"]:

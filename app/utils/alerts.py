@@ -42,7 +42,7 @@ from ._utils import build_filters_object, build_legend_box, map_style
 # The following block is used to display the borders of the departments on the map and to add interactivity.
 
 # We read the GeoJSON file from the Pyro-Risk release (URL in config.py) and store it in the departments variable
-DEPARTMENTS = requests.get(cfg.GEOJSON_FILE).json()
+DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
 
 def build_departments_geojson():
