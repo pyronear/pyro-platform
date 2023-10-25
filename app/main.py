@@ -893,22 +893,34 @@ def close_alert_overview_main(
 
 
 @app.callback(
-    Output({"type": "manage_confirmation_modal_acknowlegdment_button", "index": MATCH}, "children"),
-    Input({"type": "acknowledge_alert_button", "index": MATCH}, "n_clicks"),
+    Output({"type": "last_acknowledge_button_store", "index": MATCH}, "data"),
+    [
+        Input({"type": "acknowledge_alert_button", "index": MATCH}, "n_clicks"),
+        Input({"type": "acknowledge_all_alert_button", "index": MATCH}, "n_clicks"),
+    ],
 )
-def acknowledge_alert(n_clicks):
+def acknowledge_alert(*args):
     """
-    --- Open acknowledgement confirmation modal ---
+    Store information about which alert button was clicked.
 
-    This callback, triggered by the user's click on any alert acknowledgement button, opens the corresponding alert
-    acknowledgement confirmation modal. It does so indirectly, by updating the "children" attribute of the dedicated
-    HTML Div placeholder.
+    This callback captures the user's interaction with either the individual alert acknowledgment
+    button or the "acknowledge all" button. The ID of the clicked button (which includes its type and
+    associated event ID) is stored for later use, e.g., for opening the confirmation modal.
+
+    Parameters:
+    - *args: Variable-length argument list containing n_clicks data from the input buttons.
+
+    Returns:
+    - dict: ID of the button that triggered the callback. If no button was clicked, a PreventUpdate
+            exception is raised to prevent the callback from executing its return statement.
     """
-    if n_clicks is None or n_clicks == 0:
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
         raise PreventUpdate
 
-    else:
-        return "open"
+    triggered_component = json.loads(ctx.triggered[0]["prop_id"].split(".")[0])
+    return triggered_component
 
 
 @app.callback(
