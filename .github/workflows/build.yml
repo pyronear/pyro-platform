@@ -62,6 +62,8 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
-        run: docker-compose up -d --build
+        run: |
+          docker network create web
+          docker-compose up -d --build
       - name: Check docker sanity
         run: sleep 200 && docker-compose logs && curl http://platform.localhost:8050/
