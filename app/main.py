@@ -350,60 +350,29 @@ def update_live_alerts_data(
 
             # If the condition is not verified,
             else:
-                # Then, there are new alerts to display on the platform
+                # Then, then either alerts have been acknowledged and should be removed, or new alerts have been added.
 
-                # To identify them, we use the list of already loaded alert IDs, stored in a dedicated dcc.Store
-                new_alerts = live_alerts[~live_alerts["id"].isin(already_loaded_frames["loaded_frames"])].copy()
+                if len(live_alerts) < len(ongoing_live_alerts):  # alerts have been acknowledged
+                    dict_images_url_live_alerts = ongoing_frame_urls.copy()
+                    for id in ongoing_frame_urls.keys():
+                        if not int(id) in list(live_events["id"]):
+                            del dict_images_url_live_alerts[id]
 
-                # We want to update this list since new alerts have been fetched from the database
-                new_loaded_frames = list(live_alerts["id"].unique())
+                    new_loaded_frames = list(live_alerts["id"].unique())
 
-                # Besides, we want to update the dictionary that contains alert frame URLs
-                # We start from a copy of the existing one (which we got from the dedicated dcc.Store component)
-                dict_images_url_live_alerts = ongoing_frame_urls.copy()
-
-                # This void list will store the names of the sites for which a live alert is being displayed,
-                # Enabling us later on to hide the corresponding site marker and only display the alert one
-                sites_with_live_alerts = []
-
-                # We iterate over new live alerts
-                for _, row in new_alerts.iterrows():
-                    try:
-                        # For each new live alert, we fetch the URL of the associated frame
-                        img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
-                    except Exception:
-                        # This is just a security in case we cannot retrieve the URL of the detection frame
-                        img_url = ""
-
-                    # We update the detection frame URL dictionary with the same method as above
-                    if str(row["event_id"]) not in dict_images_url_live_alerts.keys():
-                        dict_images_url_live_alerts[str(row["event_id"])] = [img_url]
-
-                    else:
-                        dict_images_url_live_alerts[str(row["event_id"])].append(img_url)
-
-                    try:
-                        # We use the device ID to retrieve the name of the corresponding site
-                        sites_with_live_alerts.append(
-                            retrieve_site_from_device_id(
-                                device_id=row["device_id"], site_devices_data=site_devices_data
+                    # We iterate over new live alerts
+                    sites_with_live_alerts = []
+                    for _, row in live_alerts.iterrows():
+                        try:
+                            # We use the device ID to retrieve the name of the corresponding site
+                            sites_with_live_alerts.append(
+                                retrieve_site_from_device_id(
+                                    device_id=row["device_id"], site_devices_data=site_devices_data
+                                )
                             )
-                        )
-                    except Exception:
-                        pass
+                        except Exception:
+                            pass
 
-                # Is there any new event among these new alerts?
-                if ongoing_live_alerts.empty:
-                    condition = True
-                else:
-                    condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum() > 0
-
-                # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
-                # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
-                # selection area, etc)
-
-                if condition:
-                    # We update all outputs
                     return [
                         live_alerts.to_json(orient="records"),
                         dict_images_url_live_alerts,
@@ -412,18 +381,79 @@ def update_live_alerts_data(
                         sites_with_live_alerts,
                     ]
 
-                # If the condition is not verified, we have no new "alert" / event to display on the platform but only
-                # new detection frames for an existing alert; this means that we do not have to update all components
-                else:
-                    # We would like to only update the list of alert frames being displayed and not all the components
-                    # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
-                    return [
-                        dash.no_update,
-                        dict_images_url_live_alerts,
-                        {"loaded_frames": new_loaded_frames},
-                        5 * 1000,
-                        sites_with_live_alerts,
-                    ]
+                else:  # new alerts have been added
+                    # To identify them, we use the list of already loaded alert IDs, stored in a dedicated dcc.Store
+                    new_alerts = live_alerts[~live_alerts["id"].isin(already_loaded_frames["loaded_frames"])].copy()
+
+                    # We want to update this list since new alerts have been fetched from the database
+                    new_loaded_frames = list(live_alerts["id"].unique())
+
+                    # Besides, we want to update the dictionary that contains alert frame URLs
+                    # We start from a copy of the existing one (which we got from the dedicated dcc.Store component)
+                    dict_images_url_live_alerts = ongoing_frame_urls.copy()
+
+                    # This void list will store the names of the sites for which a live alert is being displayed,
+                    # Enabling us later on to hide the corresponding site marker and only display the alert one
+                    sites_with_live_alerts = []
+
+                    # We iterate over new live alerts
+                    for _, row in new_alerts.iterrows():
+                        try:
+                            # For each new live alert, we fetch the URL of the associated frame
+                            img_url = call_api(api_client.get_media_url, user_credentials)(row["media_id"])["url"]
+                        except Exception:
+                            # This is just a security in case we cannot retrieve the URL of the detection frame
+                            img_url = ""
+
+                        # We update the detection frame URL dictionary with the same method as above
+                        if str(row["event_id"]) not in dict_images_url_live_alerts.keys():
+                            dict_images_url_live_alerts[str(row["event_id"])] = [img_url]
+
+                        else:
+                            dict_images_url_live_alerts[str(row["event_id"])].append(img_url)
+
+                        try:
+                            # We use the device ID to retrieve the name of the corresponding site
+                            sites_with_live_alerts.append(
+                                retrieve_site_from_device_id(
+                                    device_id=row["device_id"], site_devices_data=site_devices_data
+                                )
+                            )
+                        except Exception:
+                            pass
+
+                    # Is there any new event among these new alerts?
+                    if ongoing_live_alerts.empty:
+                        condition = True
+                    else:
+                        condition = (~new_alerts["event_id"].isin(ongoing_live_alerts["event_id"].unique())).sum() > 0
+
+                    # If this condition is verified, this means that there is a new "alert" (in fact an event) to display
+                    # on the platform and we therefore need to update all components (the live_alert_header_btn, the user
+                    # selection area, etc)
+
+                    if condition:
+                        # We update all outputs
+                        return [
+                            live_alerts.to_json(orient="records"),
+                            dict_images_url_live_alerts,
+                            {"loaded_frames": new_loaded_frames},
+                            5 * 1000,
+                            sites_with_live_alerts,
+                        ]
+
+                    # If the condition is not verified, we have no new "alert" / event to display on the platform but only
+                    # new detection frames for an existing alert; this means that we do not have to update all components
+                    else:
+                        # We would like to only update the list of alert frames being displayed and not all the components
+                        # To keep track of the frame URLs that have been loaded, we also update the list of loaded alert IDs
+                        return [
+                            dash.no_update,
+                            dict_images_url_live_alerts,
+                            {"loaded_frames": new_loaded_frames},
+                            5 * 1000,
+                            sites_with_live_alerts,
+                        ]
 
 
 @app.callback(
