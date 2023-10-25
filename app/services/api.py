@@ -34,6 +34,7 @@ def call_api(func: Callable, user_credentials: Dict[str, str]) -> Callable:
 
     Args:
         func: function that calls API method
+        user_credentials: a dictionary with two keys, the username and password for authentication
 
     Returns: decorated function, to be called with positional and keyword arguments
     """

@@ -69,7 +69,6 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
     - a dl.GeoJSON object that allows to displays the departments' boundaries and respective risk score categories;
     - a colorbar object that distinguishes, as shades of yellow and red, 8 categories of risk score from 0 to 1.
     """
-
     # First step is to prepare the choropleth map by building the color scale corresponding to score risks
     # To define 8 risk levels between 0 and 1, we need to choose 9 floats that will serve as borders
     classes = [idx / 8 for idx in range(9)]
@@ -86,16 +85,16 @@ def build_risks_geojson_and_colorbar(opacity_level=0.75):
 
     # We define the style of department delimitations on the map
     # (opacity and color of borders, opacity of color backgrounds...)
-    scale_style = dict(weight=2, opacity=0.9, color="white", dashArray="3", fillOpacity=opacity_level)
+    scale_style = {"weight": 2, "opacity": 0.9, "color": "white", "dashArray": "3", "fillOpacity": opacity_level}
 
     # We finally instantiate the dl.GeoJSON object that will be attributed to the "Niveaux de Risque" map
     geojson = dl.GeoJSON(
         data=departments,
         id="geojson_risks",
         zoomToBoundsOnClick=True,
-        hoverStyle=dict(weight=3, color="#666", dashArray=""),
-        hideout=dict(colorscale=colorscale, classes=classes, style=scale_style, color_prop="score"),
-        options=dict(style=dlx.choropleth.style),
+        hoverStyle={"weight": 3, "color": "#666", "dashArray": ""},
+        hideout={"colorscale": colorscale, "classes": classes, "style": scale_style, "color_prop": "score"},
+        options={"style": dlx.choropleth.style},
     )
 
     return geojson, colorbar
@@ -107,7 +106,6 @@ def build_opacity_slider():
     that allows the user to choose the most appropriate color opacity level when displaying
     the risk score associated with the various departments.
     """
-
     slider_title = dcc.Markdown("Choisissez le niveau d'opacité des aplats de couleurs :")
 
     slider = dcc.Slider(
@@ -119,7 +117,7 @@ def build_opacity_slider():
         value=0.75,
     )
 
-    slider_div = html.Div(style=dict(width=330), children=[slider_title, slider])
+    slider_div = html.Div(style={"width": 330}, children=[slider_title, slider])
 
     return html.Center(slider_div)
 
@@ -134,7 +132,6 @@ def build_risks_map():
     This function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Risk Score" view.
     """
-
     geojson, colorbar = build_risks_geojson_and_colorbar()
 
     map_object = dl.Map(

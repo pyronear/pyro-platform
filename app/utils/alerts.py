@@ -50,13 +50,12 @@ def build_departments_geojson():
     This function reads the departments.geojson file in the /data folder thanks to the json module
     and returns an interactive dl.GeoJSON object containing its information, to be displayed on the map.
     """
-
     # We plug departments in a Dash Leaflet GeoJSON object that will be added to the map
     geojson = dl.GeoJSON(
         data=DEPARTMENTS,
         id="geojson_departments",
         zoomToBoundsOnClick=False,
-        hoverStyle=dict(weight=3, color="#666", dashArray=""),
+        hoverStyle={"weight": 3, "color": "#666", "dashArray": ""},
     )
 
     # We simply return the GeoJSON object for now
@@ -110,7 +109,6 @@ def build_sites_markers(sites_with_live_alerts, camera_positions=camera_position
     designed to bind the display of site markers to a click on the corresponding department, are
     commented for now but could prove useful later on.
     """
-
     # Building alerts_markers objects and wraps them in a dl.LayerGroup object
     icon = {
         "iconUrl": "../assets/images/pyro_site_icon.png",
@@ -172,7 +170,6 @@ def build_vision_polygon(event_id, site_lat, site_lon, azimuth, opening_angle, d
     The function then builds and returns the zone covered by the detection device as a Dash Leaflet Polygon, which can
     be represented on the map.
     """
-
     # The center corresponds the point from which the vision angle "starts"
     center = [site_lat, site_lon]
 
@@ -189,7 +186,7 @@ def build_vision_polygon(event_id, site_lat, site_lon, azimuth, opening_angle, d
         point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
         points2.append([point.latitude, point.longitude])
 
-    points = [center] + points1 + list(reversed(points2))
+    points = [center, *points1, *list(reversed(points2))]
 
     polygon = dl.Polygon(
         id={"type": "vision_polygon", "index": str(event_id)}, color="#ff7800", opacity=0.5, positions=points
@@ -234,7 +231,6 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     But if the style of map in place is 'risks', we don't want to display neither the alert markers.
     So in this case, the third output of the function is a void string.
     """
-
     # Changing the navabar color and title
     navbar_color = "#f34848"
     navbar_title = "Départs de feux détectés"
@@ -464,7 +460,6 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
     - the live alerts data filling the alert_list;
     - the URL addresses of alert frames, gathered by event_id in the alert_frame_urls dictionary.
     """
-
     # Creating the alert_list based on live_alerts
     live_alerts_check = json.loads(live_alerts)
 
