@@ -20,6 +20,7 @@ Most functions defined below are called in the main.py file, in the alerts callb
 import ast
 import json
 from datetime import datetime, timedelta
+from typing import List
 
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
@@ -306,7 +307,7 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
 
 
 def process_bbox(input_str, image_width=700, width_height_ratio=0.5625):
-    new_boxes = []
+    new_boxes: List[List[int]] = []
 
     # Check if input_str is not None and is a valid string
     if not isinstance(input_str, str) or not input_str:
