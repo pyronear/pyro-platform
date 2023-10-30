@@ -284,13 +284,9 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     alerts_markers_layer = dl.LayerGroup(children=alerts_markers, id="alerts_markers")
 
     # Building the alerts notification btn
-    today = pd.Timestamp.now().normalize()
-    today_alerts_df = all_events[all_events["created_at"].dt.normalize() == today]
-
-    # The rest of the code remains the same...
-    nb_today_alerts = len(today_alerts_df)  # Number of unique events from today
+    nb_alerts = len(all_events)  # Number of unique events
     alert_button = html.Div(
-        dbc.Button("Nouvelles alertes | {}".format(nb_today_alerts), className="btn-header-alerts"),
+        dbc.Button("Nouvelles alertes | {}".format(nb_alerts), className="btn-header-alerts"),
         id=f"alert_button_{map_style}",
         style={"position": "absolute", "top": "10px", "right": "30px", "z-index": "1000"},
     )
@@ -472,9 +468,6 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
     else:
         all_alerts = pd.read_json(live_alerts)
-        # Filtering for today's alerts
-        today = pd.Timestamp.now().normalize()
-        all_alerts = all_alerts[all_alerts["created_at"].dt.normalize() == today]
 
     all_events = all_alerts.drop_duplicates(["id", "event_id"]).groupby("event_id").head(1)  # Get unique events
 
@@ -570,9 +563,6 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
         acknowledge_alert_space_children = [html.P("Alerte acquittée.")]
 
     df = pd.read_json(live_alerts)
-    # Filtering for today's alerts
-    today = pd.Timestamp.now().normalize()
-    df = df[df["created_at"].dt.normalize() == today]
     df = df.drop_duplicates(["id", "event_id"]).groupby("event_id").head(1)  # Get unique events
 
     df["event_id"] = df["event_id"].astype(str)
@@ -691,3 +681,32 @@ def build_alerts_map():
     )
 
     return map_object
+
+
+def past_ndays_live_events(live_events, n_days=1):
+    """
+    Filters the given live events to retain only those within the past n days.
+
+    Args:
+        live_events (pd.Dataframe): DataFrame containing live events data. It must have a "created_at" column
+                                    indicating the datetime of the event.
+        n_days (int, optional): Specifies the number of days into the past to retain events. Defaults to 1.
+
+    Returns:
+        pd.DataFrame: A filtered DataFrame containing only events from the past n_days.
+    """
+
+    # Ensure the column is in datetime format
+    live_events["created_at"] = pd.to_datetime(live_events["created_at"])
+
+    # Define the start and end dates for the filter
+    end_date = pd.Timestamp.now().normalize()
+    start_date = end_date - pd.Timedelta(days=n_days)
+
+    # Filter events from the past 3 days
+    live_events = live_events[
+        (live_events["created_at"].dt.normalize() >= start_date)
+        & (live_events["created_at"].dt.normalize() <= end_date)
+    ]
+
+    return live_events
