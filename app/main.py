@@ -359,7 +359,7 @@ def update_live_alerts_data(
                 if len(live_alerts) < len(ongoing_live_alerts):  # alerts have been acknowledged
                     dict_images_url_live_alerts = ongoing_frame_urls.copy()
                     for event_id in ongoing_frame_urls.keys():
-                        if not int(event_id) in list(live_events["id"]):
+                        if int(event_id) not in list(live_events["id"]):
                             del dict_images_url_live_alerts[event_id]
 
                     new_loaded_frames = list(live_alerts["id"].unique())
