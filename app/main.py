@@ -1087,22 +1087,42 @@ def display_alert_modal(n_clicks):
 
 
 @app.callback(
-    Output({"type": "alert_frame", "index": MATCH}, "src"),
-    Input({"type": "alert_slider", "index": MATCH}, "value"),
-    State({"type": "individual_alert_frame_storage", "index": MATCH}, "children"),
+    [
+        Output({"type": "alert_frame", "index": MATCH}, "src"),
+        Output({"type": "alert_bbox_container", "index": MATCH}, "children"),
+    ],
+    [
+        Input({"type": "alert_slider", "index": MATCH}, "value"),
+        Input({"type": "bbox_toggle_checklist", "index": MATCH}, "value"),
+    ],
+    [
+        State({"type": "individual_alert_frame_storage", "index": MATCH}, "children"),
+        State("images_boxes_live_alerts", "data"),
+    ],
 )
-def select_alert_frame_to_display(slider_value, urls):
-    """
-    --- Choosing the alert frame to be displayed in an alert modal ---
-
-    When the user has opened an alert modal, he or she can choose the alert frame to view thanks to the slider. This
-    callback is triggered by a change in value of the slider and return the URL address of the frame to be displayed.
-    Like there is one alert modal per event, there is one alert slider per event, which allows to use MATCH here.
-    """
+def select_alert_frame_to_display(slider_value, bbox_toggle_value, urls, bboxes_dict):
     if slider_value is None:
         raise PreventUpdate
 
-    return urls[slider_value - 1]  # Slider value starts at 1 and not 0
+    event_id = dash.callback_context.inputs_list[0]["id"]["index"]
+    bboxes = bboxes_dict.get(event_id, [])[slider_value - 1]
+
+    bbox_children = []
+    if "ON" in bbox_toggle_value:  # If ON is in the value list of checklist, show the bounding box
+        for bbox in bboxes:
+            x_center, y_center, width, height = bbox
+            bbox_style = {
+                "position": "absolute",
+                "left": f"{x_center - width / 2}px",
+                "top": f"{y_center - height / 2}px",
+                "width": f"{width}px",
+                "height": f"{height}px",
+                "border": "2px solid red",
+                "z-index": 2,
+            }
+            bbox_children.append(html.Div(style=bbox_style))
+
+    return urls[slider_value - 1], bbox_children
 
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -373,20 +373,10 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                         style={"backgroundColor": "#5BBD8C", "fontColor": "#2C796E"},
                                     ),
                                     html.Br(),
-                                    html.Div(
-                                        id={"type": "alert_relevance_space", "index": str(event_id)},
-                                        children=[
-                                            html.P("L'alerte est-elle pertinente ?", style={"text-indent": "15px"}),
-                                            dbc.RadioItems(
-                                                id={"type": "alert_relevance_radio_button", "index": str(event_id)},
-                                                options=[
-                                                    {"label": "Oui", "value": True},
-                                                    {"label": "Non", "value": False},
-                                                ],
-                                                value=None,
-                                                labelStyle={"display": "inline-block"},
-                                            ),
-                                        ],
+                                    dcc.Checklist(
+                                        options=[{"label": "  Afficher la predicition", "value": "ON"}],
+                                        value=["ON"],  # default to showing the bounding box
+                                        id={"type": "bbox_toggle_checklist", "index": str(event_id)},
                                     ),
                                     html.Br(),
                                     html.Div(
@@ -411,8 +401,18 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                             ),
                             dbc.Col(
                                 [
-                                    html.Img(
-                                        id={"type": "alert_frame", "index": str(event_id)}, src=urls[0], width="700px"
+                                    html.Div(
+                                        style={"position": "relative"},
+                                        children=[
+                                            html.Img(
+                                                id={"type": "alert_frame", "index": str(event_id)},
+                                                src=urls[0],
+                                                width="700px",
+                                            ),
+                                            html.Div(
+                                                id={"type": "alert_bbox_container", "index": str(event_id)}, children=[]
+                                            ),
+                                        ],
                                     ),
                                     dcc.Markdown("---"),
                                     dcc.Slider(
