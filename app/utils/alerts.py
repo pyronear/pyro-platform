@@ -17,6 +17,7 @@ Most functions defined below are called in the main.py file, in the alerts callb
 """
 
 
+import ast
 import json
 from datetime import datetime, timedelta
 
@@ -302,6 +303,31 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         )
 
     return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
+
+
+def process_bbox(input_str, image_width=700, width_height_ratio=0.5625):
+    new_boxes = []
+
+    # Check if input_str is not None and is a valid string
+    if not isinstance(input_str, str) or not input_str:
+        return new_boxes
+
+    try:
+        boxes = ast.literal_eval(input_str)
+    except (ValueError, SyntaxError):
+        print("error parsing")
+        # Return an empty list if there's a parsing error
+        return new_boxes
+
+    for x0, y0, x1, y1, _ in boxes:
+        width = (x1 - x0) * image_width
+        height = (y1 - y0) * image_width * width_height_ratio
+        x_center = x0 * image_width + width / 2
+        y_center = y0 * image_width * width_height_ratio + height / 2
+
+        new_boxes.append([int(x_center), int(y_center), int(width), int(height)])
+
+    return new_boxes
 
 
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):

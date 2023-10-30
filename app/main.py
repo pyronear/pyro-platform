@@ -64,6 +64,7 @@ from utils.alerts import (
     build_sites_markers,
     display_alert_selection_area,
     past_ndays_live_events,
+    process_bbox,
     retrieve_site_from_device_id,
 )
 
@@ -117,6 +118,7 @@ app.layout = html.Div(
             id="store_live_alerts_data", storage_type="session", data=json.dumps({"status": "never_loaded_alerts_data"})
         ),
         dcc.Store(id="images_url_live_alerts", storage_type="session", data={}),
+        dcc.Store(id="images_boxes_live_alerts", storage_type="session", data={}),
         dcc.Store(id="last_displayed_event_id", storage_type="session"),
         dcc.Store(id="images_to_display_on_big_screen", data={"frame_URLs": "no_images"}, storage_type="session"),
         html.Div(id="alert_frame_update_new_event", style={"display": "none"}),
@@ -215,6 +217,7 @@ def change_layer_style(n_clicks=None):
     [
         Output("store_live_alerts_data", "data"),
         Output("images_url_live_alerts", "data"),
+        Output("images_boxes_live_alerts", "data"),
         Output("loaded_frames", "data"),
         Output("main_api_fetch_interval", "interval"),
         Output("sites_with_live_alerts", "children"),
@@ -223,6 +226,7 @@ def change_layer_style(n_clicks=None):
     [
         State("store_live_alerts_data", "data"),
         State("images_url_live_alerts", "data"),
+        State("images_boxes_live_alerts", "data"),
         State("devices_data_storage", "data"),
         State("loaded_frames", "data"),
         State("site_devices_data_storage", "data"),
@@ -235,6 +239,7 @@ def update_live_alerts_data(
     n_intervals,
     ongoing_live_alerts,
     ongoing_frame_urls,
+    ongoing_frame_boxes,
     devices_data,
     already_loaded_frames,
     site_devices_data,
@@ -285,6 +290,7 @@ def update_live_alerts_data(
 
             # Fetching live_alerts frames urls and instantiating a dict of live_alerts urls having event_id keys
             dict_images_url_live_alerts: Dict[str, List[str]] = {}
+            dict_images_box_live_alerts: Dict[str, List[str]] = {}
 
             # This void list will store the names of the sites for which a live alert is being displayed,
             # Enabling us later on to hide the corresponding site marker and only display the alert one
@@ -299,14 +305,20 @@ def update_live_alerts_data(
                     # This is just a security in case we cannot retrieve the URL of the detection frame
                     img_url = ""
 
+                # Process bounding boxes
+                localization = row["localization"]
+                localization = process_bbox(localization)
+
                 # We now want to fill-in the dictionary that will contain the URLs of the detection frames
                 if str(row["event_id"]) not in dict_images_url_live_alerts.keys():
                     # This is a new event, so we need to instantiate the key / value pair
                     dict_images_url_live_alerts[str(row["event_id"])] = [img_url]
+                    dict_images_box_live_alerts[str(row["event_id"])] = [localization]
 
                 else:
                     # We already have some URLs for this event and we simply append the latest frame to the list of URLs
                     dict_images_url_live_alerts[str(row["event_id"])].append(img_url)
+                    dict_images_box_live_alerts[str(row["event_id"])].append(localization)
 
                 try:
                     # We use the device ID to retrieve the name of the corresponding site
@@ -332,6 +344,7 @@ def update_live_alerts_data(
                 # We convert the live_alerts DataFrame into a JSON that can be stored in a dcc.Store component
                 live_alerts.to_json(orient="records"),
                 dict_images_url_live_alerts,
+                dict_images_box_live_alerts,
                 {"loaded_frames": new_loaded_frames},
                 5 * 1000,
                 sites_with_live_alerts,
@@ -359,9 +372,11 @@ def update_live_alerts_data(
 
                 if len(live_alerts) < len(ongoing_live_alerts):  # alerts have been acknowledged
                     dict_images_url_live_alerts = ongoing_frame_urls.copy()
+                    dict_images_box_live_alerts = ongoing_frame_boxes.copy()
                     for event_id in ongoing_frame_urls.keys():
                         if int(event_id) not in list(live_events["id"]):
                             del dict_images_url_live_alerts[event_id]
+                            del dict_images_box_live_alerts[event_id]
 
                     new_loaded_frames = list(live_alerts["id"].unique())
 
@@ -381,6 +396,7 @@ def update_live_alerts_data(
                     return [
                         live_alerts.to_json(orient="records"),
                         dict_images_url_live_alerts,
+                        dict_images_box_live_alerts,
                         {"loaded_frames": new_loaded_frames},
                         5 * 1000,
                         sites_with_live_alerts,
@@ -397,6 +413,9 @@ def update_live_alerts_data(
                     # We start from a copy of the existing one (which we got from the dedicated dcc.Store component)
                     dict_images_url_live_alerts = ongoing_frame_urls.copy()
 
+                    # Same for bounding boxes
+                    dict_images_box_live_alerts = ongoing_frame_boxes.copy()
+
                     # This void list will store the names of the sites for which a live alert is being displayed,
                     # Enabling us later on to hide the corresponding site marker and only display the alert one
                     sites_with_live_alerts = []
@@ -410,12 +429,20 @@ def update_live_alerts_data(
                             # This is just a security in case we cannot retrieve the URL of the detection frame
                             img_url = ""
 
+                        # Process bounding boxes
+                        localization = row["localization"]
+                        localization = process_bbox(localization)
+
                         # We update the detection frame URL dictionary with the same method as above
                         if str(row["event_id"]) not in dict_images_url_live_alerts.keys():
+                            # This is a new event, so we need to instantiate the key / value pair
                             dict_images_url_live_alerts[str(row["event_id"])] = [img_url]
+                            dict_images_box_live_alerts[str(row["event_id"])] = [localization]
 
                         else:
+                            # We already have some URLs for this event and we simply append the latest frame to the list of URLs
                             dict_images_url_live_alerts[str(row["event_id"])].append(img_url)
+                            dict_images_box_live_alerts[str(row["event_id"])].append(localization)
 
                         try:
                             # We use the device ID to retrieve the name of the corresponding site
@@ -442,6 +469,7 @@ def update_live_alerts_data(
                         return [
                             live_alerts.to_json(orient="records"),
                             dict_images_url_live_alerts,
+                            dict_images_box_live_alerts,
                             {"loaded_frames": new_loaded_frames},
                             5 * 1000,
                             sites_with_live_alerts,
@@ -457,6 +485,7 @@ def update_live_alerts_data(
                         return [
                             dash.no_update,
                             dict_images_url_live_alerts,
+                            dict_images_box_live_alerts,
                             {"loaded_frames": new_loaded_frames},
                             5 * 1000,
                             sites_with_live_alerts,
