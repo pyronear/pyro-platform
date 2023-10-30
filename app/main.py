@@ -1057,7 +1057,10 @@ def display_alert_modal(n_clicks):
 
 
 @app.callback(
-    Output({"type": "alert_frame", "index": MATCH}, "src"),
+    [
+        Output({"type": "alert_frame", "index": MATCH}, "src"),
+        Output({"type": "download_image_link", "index": MATCH}, "href"),
+    ],
     Input({"type": "alert_slider", "index": MATCH}, "value"),
     State({"type": "individual_alert_frame_storage", "index": MATCH}, "children"),
 )
@@ -1072,7 +1075,7 @@ def select_alert_frame_to_display(slider_value, urls):
     if slider_value is None:
         raise PreventUpdate
 
-    return urls[slider_value - 1]  # Slider value starts at 1 and not 0
+    return urls[slider_value - 1], urls[slider_value - 1]  # Slider value starts at 1 and not 0
 
 
 # ----------------------------------------------------------------------------------------------------------------------
