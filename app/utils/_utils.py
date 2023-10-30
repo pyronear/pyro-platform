@@ -57,7 +57,6 @@ def choose_layer_style(n_clicks):
     - the appropriate message for the button (changed at each click);
     - the background layer style to use (URL and attribution).
     """
-
     # Because we start with the topographic view, if the number of clicks is even, this means
     # that we are still using the topographic view and we may want to activate the satellite one.
     if n_clicks % 2 == 0:
@@ -191,7 +190,6 @@ def build_historic_markers(dpt_code=None):
 
     More precisely, it returns a dl.LayerGroup object that gathers all relevant past fire markers.
     """
-
     # As long as the user does not click on a department, dpt_code is None and we return no fire marker
     if not dpt_code:
         return None

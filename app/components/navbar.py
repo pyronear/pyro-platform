@@ -33,7 +33,6 @@ def Navbar(dropdown=False):
 
     The returned 'navbar' object is an instantiation of the class dbc.Navbar.
     """
-
     # Dropdown menu
     if dropdown is True:
         dropdown = dbc.DropdownMenu(

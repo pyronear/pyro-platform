@@ -91,11 +91,11 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
+response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False)
+    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
 
 # Site devices
 response = api_client.get_sites()
@@ -244,7 +244,6 @@ def update_live_alerts_data(
     client so as to identify live alerts, load the associated data and trigger their display on the platform. This doc-
     string should be completed but more details can be found in the comments below.
     """
-
     if user_headers is None:
         raise PreventUpdate
     user_token = user_headers["Authorization"].split(" ")[1]
@@ -259,7 +258,7 @@ def update_live_alerts_data(
         raise PreventUpdate
 
     get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))
+    _ = live_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
     live_alerts = pd.concat(_.values).groupby(["device_id", "event_id"]).head(15).reset_index(drop=True)
 
     # Is there any live alert to display?
@@ -555,7 +554,7 @@ def manage_login_modal(n_clicks, username, password, login_storage, current_cent
                 form_feedback.append(html.P("Vous êtes connecté, bienvenue sur la plateforme Pyronear !"))
 
                 # Based on the user's credentials, we request the set of relevant devices
-                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers)
+                response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=client.headers, timeout=5)
 
                 # We also update the site_devices dictionary, restricting it to the user's scope
                 response_sites = client.get_sites().json()
@@ -683,7 +682,6 @@ def click_new_alerts_button(n_clicks, map_style_button_label):
 
     - If we are viewing the "risks" map, a PreventUpdate is raised and clicks on the banner will have no effect.
     """
-
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
@@ -766,7 +764,6 @@ def change_map_zoom_and_center(login_zoom_and_center, alert_zoom_and_center, log
     login_zoom_and_center and alert_zoom_and_center placeholders. The latter correspond to the recentering of the map
     that takes place respectively after the user logs in and when the user clicks on one of the alert selection buttons.
     """
-
     ctx = dash.callback_context
 
     # If none of the input has triggered the callback, we raise a PreventUpdate
@@ -1035,7 +1032,6 @@ def select_alert_frame_to_display(slider_value, urls):
     callback is triggered by a change in value of the slider and return the URL address of the frame to be displayed.
     Like there is one alert modal per event, there is one alert slider per event, which allows to use MATCH here.
     """
-
     if slider_value is None:
         raise PreventUpdate
 
@@ -1152,7 +1148,6 @@ def change_map_style_main(map_style_button_input, alert_button_input, map_style_
     - the right map object;
     - the slider object if relevant.
     """
-
     # Deducing from the map style button label, the argument that we should pass to the choose_map_style function
     if current_map_style == "alerts":
         arg = 1
@@ -1219,7 +1214,6 @@ def update_live_alerts_components(live_alerts, map_style_button_label, images_ur
 
     To build these elements, it relies on the build_alerts_elements imported from alerts.
     """
-
     # Deducing the style of the map in place from the map style button label
     if "risques" in map_style_button_label.lower():
         map_style = "alerts"
@@ -1320,11 +1314,11 @@ def update_alert_frame_due_to_new_event(images_to_display, last_event_id):
     if "frame_URLs" in images_to_display.keys() and images_to_display["frame_URLs"] == "no_images":
         raise PreventUpdate
 
-    elif list(images_to_display.keys())[0] == last_event_id:
-        return list(images_to_display.values())[0][-1], dash.no_update
+    elif next(iter(images_to_display.keys())) == last_event_id:
+        return next(iter(images_to_display.values()))[-1], dash.no_update
 
     else:
-        return list(images_to_display.values())[0][-1], list(images_to_display.keys())[0]
+        return next(iter(images_to_display.values()))[-1], next(iter(images_to_display.keys()))
 
 
 # @app.callback(

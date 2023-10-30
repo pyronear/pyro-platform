@@ -67,7 +67,6 @@ def choose_map_style(n_clicks):
     - the chosen map object;
     - and the slider object (simply a void string if the alerts view was chosen).
     """
-
     # Because we start with the alerts map, if the number of clicks is even, this means that
     # we are still using the "Alerts and Infrastructure" map and we may want to switch to the "Risk Scores" one
     if n_clicks % 2 == 0:
@@ -98,7 +97,6 @@ def build_historic_fires_radio_button():
 
     It instantiates and returns the appropriate radio button (inside a html.Center wrapping).
     """
-
     historic_fires_radio_button = dcc.RadioItems(
         options=[
             {"label": "Oui", "value": 1},
@@ -209,8 +207,7 @@ def display_alerts_frames(n_clicks=None, img_url=None):
             children=[frame_title, alert_frame, separator, alert_metadata_title, alert_metadata]
         )
 
-        return html.Div(alert_frame_metadata)"""
-
+    return html.Div(alert_frame_metadata)"""
     # If no button click is triggering the display of the alert frame and metadata, function returns a void string
     return ""
 
@@ -230,7 +227,6 @@ def build_login_modal():
     dal object which prevent the user from closing the modal respectively by clicking next to it and by pressing the
     Escape key.
     """
-
     return dbc.Modal(
         [
             dbc.ModalBody(
@@ -296,7 +292,6 @@ def Homepage():
 
     It builds upon methods defined above or in alerts.py or navbar.py files to instantiate the various components.
     """
-
     # Body container
     body = dbc.Container(
         [
