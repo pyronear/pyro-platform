@@ -695,7 +695,6 @@ def past_ndays_live_events(live_events, n_days=1):
     Returns:
         pd.DataFrame: A filtered DataFrame containing only events from the past n_days.
     """
-
     # Ensure the column is in datetime format
     live_events["created_at"] = pd.to_datetime(live_events["created_at"])
 
