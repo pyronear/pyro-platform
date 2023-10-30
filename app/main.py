@@ -359,7 +359,7 @@ def update_live_alerts_data(
                 if len(live_alerts) < len(ongoing_live_alerts):  # alerts have been acknowledged
                     dict_images_url_live_alerts = ongoing_frame_urls.copy()
                     for event_id in ongoing_frame_urls.keys():
-                        if not int(event_id) in list(live_events["id"]):
+                        if int(event_id) not in list(live_events["id"]):
                             del dict_images_url_live_alerts[event_id]
 
                     new_loaded_frames = list(live_alerts["id"].unique())
@@ -1292,13 +1292,35 @@ def update_individual_frame_components(images_url_live_alerts):
     [
         Output({"type": "alert_slider", "index": MATCH}, "max"),
         Output({"type": "alert_slider", "index": MATCH}, "marks"),
+        Output({"type": "alert_slider", "index": MATCH}, "value"),
     ],
-    Input({"type": "individual_alert_frame_storage", "index": MATCH}, "children"),
+    [
+        Input({"type": "individual_alert_frame_storage", "index": MATCH}, "children"),
+        Input({"type": "alert_slider_interval", "index": MATCH}, "n_intervals"),
+        Input({"type": "gif_mode", "index": MATCH}, "value"),
+    ],
+    State({"type": "alert_slider", "index": MATCH}, "value"),
 )
-def modify_alert_slider_length(individual_alert_frame_storage):
+def modify_alert_slider_length_and_auto_move(individual_alert_frame_storage, n_intervals, gif_mode, current_value):
     number_of_images = len(individual_alert_frame_storage)
 
-    return number_of_images, {i + 1: str(i + 1) for i in range(number_of_images)}
+    # Check if animation is ON
+    if gif_mode == ["ON"]:
+        # Calculate the new value based on the interval
+        new_value = (current_value % number_of_images) + 1
+    else:
+        new_value = current_value
+
+    return number_of_images, {i + 1: str(i + 1) for i in range(number_of_images)}, new_value
+
+
+@app.callback(
+    Output({"type": "alert_slider_interval", "index": MATCH}, "interval"),
+    Input({"type": "gif_mode", "index": MATCH}, "value"),
+)
+def manage_interval(gif_mode):
+    # If animation is ON, set the interval to 2 seconds, else set to a very high value to essentially stop it.
+    return 2000 if gif_mode == ["ON"] else 1e10
 
 
 # ----------------------------------------------------------------------------------------------------------------------

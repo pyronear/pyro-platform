@@ -347,6 +347,12 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                         style={"backgroundColor": "#5BBD8C", "fontColor": "#2C796E"},
                                     ),
                                     html.Br(),
+                                    dcc.Checklist(
+                                        options=[{"label": "  Activer l'animation", "value": "ON"}],
+                                        value=["ON"],  # gif mode activated
+                                        id={"type": "gif_mode", "index": str(event_id)},
+                                    ),
+                                    html.Br(),
                                     html.Div(
                                         id={"type": "alert_relevance_space", "index": str(event_id)},
                                         children=[
@@ -396,6 +402,11 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                         step=1,
                                         marks={i + 1: str(i + 1) for i in range(number_of_images)},
                                         value=1,
+                                    ),
+                                    dcc.Interval(
+                                        id={"type": "alert_slider_interval", "index": str(event_id)},
+                                        interval=0.05 * 1000,  # in milliseconds, so 5*1000 means 5 seconds
+                                        n_intervals=0,
                                     ),
                                 ],
                                 width=16,
@@ -695,7 +706,6 @@ def past_ndays_live_events(live_events, n_days=1):
     Returns:
         pd.DataFrame: A filtered DataFrame containing only events from the past n_days.
     """
-
     # Ensure the column is in datetime format
     live_events["created_at"] = pd.to_datetime(live_events["created_at"])
 
