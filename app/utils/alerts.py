@@ -546,21 +546,17 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
 
 def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
-    if not acknowledged:
-        acknowledge_alert_space_children = [
-            dcc.Markdown("---"),
-            html.Div(
-                dbc.Button(
-                    id={"type": "acknowledge_alert_button", "index": event_id},
-                    children="Acquitter l'alerte",
-                    className="btn-layers",
-                    size="sm",
-                )
-            ),
-        ]
-
-    else:
-        acknowledge_alert_space_children = [html.P("Alerte acquittée.")]
+    acknowledge_alert_space_children = [
+        dcc.Markdown("---"),
+        html.Div(
+            dbc.Button(
+                id={"type": "acknowledge_alert_button", "index": event_id},
+                children="Acquitter l'alerte",
+                className="btn-layers",
+                size="sm",
+            )
+        ),
+    ]
 
     df = pd.read_json(live_alerts)
     df = df.drop_duplicates(["id", "event_id"]).groupby("event_id").head(1)  # Get unique events
@@ -576,6 +572,8 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
         lon = None  # or any default value
 
     alert_azimuth = df[df["event_id"] == event_id]["azimuth"].iloc[0]
+
+    trigger_component = dcc.Store(id={"type": "trigger_component", "index": event_id})
 
     div = html.Div(
         id={"type": "alert_overview", "index": event_id},
@@ -639,6 +637,7 @@ def build_alert_overview(live_alerts, frame_urls, event_id, acknowledged):
                         id={"type": "manage_confirmation_modal_confirmation_button", "index": event_id},
                         style={"display": "none"},
                     ),
+                    trigger_component,
                 ]
             )
         ],
