@@ -704,8 +704,7 @@ def past_ndays_live_events(live_events, n_days=1):
 
     # Filter events from the past n days
     live_events = live_events[
-        (live_events["created_at"].dt.normalize() > start_date)
-        & (live_events["created_at"].dt.normalize() <= end_date)
+        (live_events["created_at"].dt.normalize() > start_date) & (live_events["created_at"].dt.normalize() <= end_date)
     ]
 
     return live_events
