@@ -702,10 +702,9 @@ def past_ndays_live_events(live_events, n_days=1):
     end_date = pd.Timestamp.now().normalize()
     start_date = end_date - pd.Timedelta(days=n_days)
 
-    # Filter events from the past 3 days
+    # Filter events from the past n days
     live_events = live_events[
-        (live_events["created_at"].dt.normalize() >= start_date)
-        & (live_events["created_at"].dt.normalize() <= end_date)
+        (live_events["created_at"].dt.normalize() > start_date) & (live_events["created_at"].dt.normalize() <= end_date)
     ]
 
     return live_events
