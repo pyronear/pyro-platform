@@ -1090,6 +1090,7 @@ def display_alert_modal(n_clicks):
     [
         Output({"type": "alert_frame", "index": MATCH}, "src"),
         Output({"type": "alert_bbox_container", "index": MATCH}, "children"),
+        Output({"type": "download_image_link", "index": MATCH}, "href"),
     ],
     [
         Input({"type": "alert_slider", "index": MATCH}, "value"),
@@ -1122,7 +1123,8 @@ def select_alert_frame_to_display(slider_value, bbox_toggle_value, urls, bboxes_
             }
             bbox_children.append(html.Div(style=bbox_style))
 
-    return urls[slider_value - 1], bbox_children
+    return urls[slider_value - 1], bbox_children, urls[slider_value - 1]
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------

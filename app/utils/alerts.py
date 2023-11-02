@@ -387,6 +387,14 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                             ),
                                         ],
                                     ),
+                                    html.Br(),
+                                    html.A(
+                                        "Télécharger l'image",
+                                        id={"type": "download_image_link", "index": str(event_id)},
+                                        download="image.jpg",
+                                        href="",  # This will be set dynamically
+                                        className="btn btn-primary",  # Optional: Add some styling if needed
+                                    ),
                                 ],
                                 width=4,
                             ),
