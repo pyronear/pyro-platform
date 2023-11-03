@@ -17,8 +17,10 @@ Most functions defined below are called in the main.py file, in the alerts callb
 """
 
 
+import ast
 import json
 from datetime import datetime, timedelta
+from typing import List
 
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
@@ -304,6 +306,31 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
     return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
+def process_bbox(input_str, image_width=700, width_height_ratio=0.5625):
+    new_boxes: List[List[int]] = []
+
+    # Check if input_str is not None and is a valid string
+    if not isinstance(input_str, str) or not input_str:
+        return new_boxes
+
+    try:
+        boxes = ast.literal_eval(input_str)
+    except (ValueError, SyntaxError):
+        print("error parsing")
+        # Return an empty list if there's a parsing error
+        return new_boxes
+
+    for x0, y0, x1, y1, _ in boxes:
+        width = (x1 - x0) * image_width
+        height = (y1 - y0) * image_width * width_height_ratio
+        x_center = x0 * image_width + width / 2
+        y_center = y0 * image_width * width_height_ratio + height / 2
+
+        new_boxes.append([int(x_center), int(y_center), int(width), int(height)])
+
+    return new_boxes
+
+
 def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
     number_of_images = len(urls)
 
@@ -347,20 +374,10 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                                         style={"backgroundColor": "#5BBD8C", "fontColor": "#2C796E"},
                                     ),
                                     html.Br(),
-                                    html.Div(
-                                        id={"type": "alert_relevance_space", "index": str(event_id)},
-                                        children=[
-                                            html.P("L'alerte est-elle pertinente ?", style={"text-indent": "15px"}),
-                                            dbc.RadioItems(
-                                                id={"type": "alert_relevance_radio_button", "index": str(event_id)},
-                                                options=[
-                                                    {"label": "Oui", "value": True},
-                                                    {"label": "Non", "value": False},
-                                                ],
-                                                value=None,
-                                                labelStyle={"display": "inline-block"},
-                                            ),
-                                        ],
+                                    dcc.Checklist(
+                                        options=[{"label": "  Afficher la predicition", "value": "ON"}],
+                                        value=["ON"],  # default to showing the bounding box
+                                        id={"type": "bbox_toggle_checklist", "index": str(event_id)},
                                     ),
                                     html.Br(),
                                     html.Div(
@@ -393,8 +410,18 @@ def build_alert_modal(event_id, device_id, lat, lon, site_name, urls):
                             ),
                             dbc.Col(
                                 [
-                                    html.Img(
-                                        id={"type": "alert_frame", "index": str(event_id)}, src=urls[0], width="700px"
+                                    html.Div(
+                                        style={"position": "relative"},
+                                        children=[
+                                            html.Img(
+                                                id={"type": "alert_frame", "index": str(event_id)},
+                                                src=urls[0],
+                                                width="700px",
+                                            ),
+                                            html.Div(
+                                                id={"type": "alert_bbox_container", "index": str(event_id)}, children=[]
+                                            ),
+                                        ],
                                     ),
                                     dcc.Markdown("---"),
                                     dcc.Slider(
