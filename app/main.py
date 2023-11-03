@@ -1126,7 +1126,6 @@ def select_alert_frame_to_display(slider_value, bbox_toggle_value, urls, bboxes_
     return urls[slider_value - 1], bbox_children, urls[slider_value - 1]
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Callbacks related to the "Risk Score" page
 
