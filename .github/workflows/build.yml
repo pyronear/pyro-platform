@@ -65,5 +65,6 @@ jobs:
         run: |
           docker network create web
           docker-compose up -d --build
+          chmod 600 /acme.json
       - name: Check docker sanity
         run: sleep 200 && docker-compose logs && curl http://platform.localhost:8050/
