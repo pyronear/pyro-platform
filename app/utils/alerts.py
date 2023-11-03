@@ -293,6 +293,16 @@ def build_alerts_elements(images_url_live_alerts, live_alerts, map_style):
         style={"position": "absolute", "top": "10px", "right": "30px", "z-index": "1000"},
     )
 
+    individual_alert_frame_placeholder_children = []
+    for event_id, frame_url_list in images_url_live_alerts.items():
+        individual_alert_frame_placeholder_children.append(
+            html.Div(
+                id={"type": "individual_alert_frame_storage", "index": str(event_id)},
+                children=frame_url_list,
+                style={"display": "none"},
+            )
+        )
+
     return [alert_button, alerts_markers_layer, navbar_color, navbar_title]
 
 
