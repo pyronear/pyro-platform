@@ -12,6 +12,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - $PWD/traefik.toml:/etc/traefik/traefik.toml
+      - $PWD/dynamic_assets.toml:/etc/traefik/dynamic/assets.toml
       - $PWD/acme.json:/acme.json
     labels:
       - "traefik.http.middlewares.strip-www.redirectregex.regex=^https?://(www\\.)(.+)"
@@ -22,14 +23,10 @@ services:
       - web
 
   frontend:
-    build: .
-    command: python main.py --host 0.0.0.0 --port 8050
-    ports:
-      - 8050:8050
+    image: pyronear/pyro-platform:latest
     expose:
       - 8050
-    volumes:
-      - ./app/:/usr/src/app/
+    command: python ./main.py --host 0.0.0.0 --port 8050
     environment:
       - API_URL=${API_URL}
       - API_LOGIN=${API_LOGIN}
