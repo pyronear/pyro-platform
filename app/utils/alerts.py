@@ -19,7 +19,7 @@ Most functions defined below are called in the main.py file, in the alerts callb
 
 import ast
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import dash_bootstrap_components as dbc
@@ -27,9 +27,11 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_leaflet as dl
 import pandas as pd
+import pytz
 import requests
 from geopy import Point
 from geopy.distance import geodesic
+from timezonefinder import TimezoneFinder
 
 import config as cfg
 from services import api_client
@@ -511,14 +513,24 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
     vision_polygons_children = []
     alert_modals_children = []
 
+    tf = TimezoneFinder()
+
     for _, row in all_events.iterrows():
         alert_id = str(row["event_id"])
         alert_lat = round(row["lat"], 4)
         alert_lon = round(row["lon"], 4)
         alert_azimuth = round(row["azimuth"], 1)
-        alert_ts = datetime.fromisoformat(str(row["created_at"]))
-        alert_date = alert_ts.date()
-        alert_time = (alert_ts + timedelta(hours=2)).time()
+        # Convert created_at to a timezone-aware datetime object assuming it's in UTC
+        alert_ts_utc = datetime.fromisoformat(str(row["created_at"])).replace(tzinfo=pytz.utc)
+
+        # Find the timezone for the alert location
+        timezone_str = tf.timezone_at(lat=alert_lat, lng=alert_lon)
+        alert_timezone = pytz.timezone(timezone_str)
+
+        # Convert alert_ts_utc to the local timezone of the alert
+        alert_ts_local = alert_ts_utc.astimezone(alert_timezone)
+        alert_date = alert_ts_local.date()
+        alert_time = alert_ts_local.time()
 
         device_id = row["device_id"]
 
