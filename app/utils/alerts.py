@@ -525,6 +525,8 @@ def build_individual_alert_components(live_alerts, alert_frame_urls, site_device
 
         # Find the timezone for the alert location
         timezone_str = tf.timezone_at(lat=alert_lat, lng=alert_lon)
+        if timezone_str is None:  # If the timezone is not found, handle it appropriately
+            timezone_str = "UTC"  # Fallback to UTC or some default
         alert_timezone = pytz.timezone(timezone_str)
 
         # Convert alert_ts_utc to the local timezone of the alert
