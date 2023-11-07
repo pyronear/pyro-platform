@@ -97,7 +97,9 @@ response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.he
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)  # nosec
+    response_devices = requests.get(
+        f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5
+    )  # nosec
 
 # Site devices
 response = api_client.get_sites()
