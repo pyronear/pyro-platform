@@ -39,4 +39,4 @@ jobs:
             docker pull pyronear/pyro-platform:latest
             cd pyro-platform-prod && docker compose down && docker compose up -d
             docker inspect -f '{{ .Created }}' $(docker compose images -q frontend)
-            docker rmi -f $(docker images -f "dangling=true" -q)
+            docker image prune -a --force
