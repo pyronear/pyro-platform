@@ -93,11 +93,14 @@ app.title = "Pyronear - Monitoring platform"
 app.config.suppress_callback_exceptions = True
 server = app.server  # Gunicorn will be looking for the server attribute of this module
 
-response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
+# If in debug mode, disable SSL verification, otherwise enable it
+verify_ssl = not cfg.DEBUG
+
+response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=verify_ssl, timeout=5)
 # Check token expiration
 if response_devices.status_code == 401:
     api_client.refresh_token(cfg.API_LOGIN, cfg.API_PWD)
-    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=False, timeout=5)
+    response_devices = requests.get(f"{cfg.API_URL}/devices/", headers=api_client.headers, verify=verify_ssl, timeout=5)
 
 # Site devices
 response = api_client.get_sites()
@@ -325,8 +328,8 @@ def update_live_alerts_data(
                     sites_with_live_alerts.append(
                         retrieve_site_from_device_id(device_id=row["device_id"], site_devices_data=site_devices_data)
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"An error occurred: {e}")
 
             # We store the IDs of newly loaded alerts in a dedicated list
             # This will serve as the source of truth to know what frame URLs have already been fetched or not
@@ -390,8 +393,8 @@ def update_live_alerts_data(
                                     device_id=row["device_id"], site_devices_data=site_devices_data
                                 )
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.error(f"An error occurred: {e}")
 
                     return [
                         live_alerts.to_json(orient="records"),
@@ -451,8 +454,8 @@ def update_live_alerts_data(
                                     device_id=row["device_id"], site_devices_data=site_devices_data
                                 )
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.error(f"An error occurred: {e}")
 
                     # Is there any new event among these new alerts?
                     if ongoing_live_alerts.empty:
