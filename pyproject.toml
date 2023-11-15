@@ -24,6 +24,8 @@ geopy = "^2.1.0"
 requests = "^2.31.0"
 sentry-sdk = { version = "^1.5.12", extras = ["flask"] }
 gunicorn = ">=20.0.4"
+timezonefinder = ">=6.2.0"
+pytz = ">=2023.3.post1"
 # Indirect deps
 # cf. https://github.com/plotly/dash/issues/1992
 werkzeug = ">=0.16.0,<2.1.0"
