@@ -37,6 +37,6 @@ jobs:
           key: ${{ secrets.SSH_DEPLOY_DEV }}
           script: |
             docker pull pyronear/pyro-platform:latest
-            cd pyro-platform-prod/ && docker compose -f docker-compose-prod.yml down && docker compose -f docker-compose-prod.yml up -d
+            cd pyro-platform-dev/ && docker compose down && docker compose up -d
             docker inspect -f '{{ .Created }}' $(docker compose images -q frontend)
             docker image prune -a --force
