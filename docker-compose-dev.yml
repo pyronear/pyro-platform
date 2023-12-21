@@ -15,3 +15,4 @@ services:
       - API_PWD=${API_PWD}
       - SENTRY_DSN=${SENTRY_DSN}
       - DEBUG=${DEBUG}
+      - LOGIN=${LOGIN}
