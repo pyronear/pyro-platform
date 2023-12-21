@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+
+  reverse-proxy:
+    image: traefik:v2.4
+    container_name: traefik
+    ports:
+      - "80:8050"
+      - "8080:8080"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $PWD/traefik.toml:/etc/traefik/traefik.toml
+      - $PWD/acme.json:/acme.json
+    labels:
+      - "traefik.http.middlewares.strip-www.redirectregex.regex=^https?://(www\\.)(.+)"
+      - "traefik.http.middlewares.strip-www.redirectregex.replacement=https://$${2}"
+      - "traefik.http.middlewares.strip-www.redirectregex.permanent=true"
+    restart: always
+    networks:
+      - web
+
+  frontend:
+    build: .
+    command: python index.py --host 0.0.0.0 --port 8050
+    ports:
+      - 8050:8050
+    expose:
+      - 8050
+    volumes:
+      - ./app/:/usr/src/app/
+    environment:
+      - API_URL=${API_URL}
+      - API_LOGIN=${API_LOGIN}
+      - API_PWD=${API_PWD}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - DEBUG=${DEBUG}
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.platform.rule=Host(`platform.pyronear.org`)"
+      - "traefik.http.routers.platform.entrypoints=websecure"
+
+networks:
+  web:
+    external: true
