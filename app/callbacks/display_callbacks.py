@@ -81,6 +81,7 @@ def update_event_list(local_events, to_acknowledge, _, media_url):
     [
         Output({"type": "event-button", "index": ALL}, "style"),
         Output("event_id_on_display", "data"),
+        Output("auto-move-button", "n_clicks"),
     ],
     [
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
@@ -159,7 +160,7 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
                 },
             )  # Default style
 
-    return [styles, button_index]
+    return [styles, button_index, 1]
 
 
 # Get event_id data
