@@ -85,8 +85,8 @@ def past_ndays_api_events(api_events, n_days=1):
     api_events["created_at"] = pd.to_datetime(api_events["created_at"])
 
     # Define the start and end dates for the filter
-    end_date = pd.Timestamp.now()
-    start_date = end_date - pd.Timedelta(days=n_days)
+    end_date = pd.Timestamp.utcnow().replace(tzinfo=None).normalize()
+    start_date = end_date - pd.Timedelta(days=n_days - 1)
 
     # Filter events from the past n days
     api_events = api_events[api_events["created_at"] > start_date]
