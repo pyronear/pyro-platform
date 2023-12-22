@@ -81,8 +81,6 @@ def update_alert_list(local_events, to_acknowledge, _, media_url):
     [
         Output({"type": "event-button", "index": ALL}, "style"),
         Output("event_id_on_display", "data"),
-        Output("data_to_load", "data"),
-        Output("get_url_running", "data", allow_duplicate=True),
     ],
     [
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
@@ -111,8 +109,6 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
     Returns:
     - list: List of styles for event buttons.
     - int: ID of the event to display.
-    - int: ID of the event data to load.
-    - bool: Flag indicating whether URL fetching is running.
     """
     ctx = dash.callback_context
 
@@ -163,23 +159,7 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
                 },
             )  # Default style
 
-    if str(button_index) in media_url.keys():
-        missing_by_event_id = local_alerts[~local_alerts["event_id"].astype(str).isin(media_url.keys())]
-        if len(missing_by_event_id):
-            event_ids = missing_by_event_id["event_id"].drop_duplicates().values
-            if len(media_url.keys()) > 0:  # Not First call
-                event_id = event_ids[0]
-            else:
-                if len(event_ids) > 1:
-                    event_id = event_ids[1]  # First one already loaded in get_media_url by interval
-                else:
-                    event_id = event_ids[0]
-
-            return [styles, button_index, event_id, True]
-        else:
-            return [styles, button_index, dash.no_update, True]
-
-    return [styles, button_index, button_index, True]
+    return [styles, button_index]
 
 
 # Get event_id data

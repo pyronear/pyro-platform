@@ -7,7 +7,7 @@ import json
 
 import dash
 import pandas as pd
-from dash import callback_context, dcc, html
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from pyroclient import Client
@@ -189,34 +189,20 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
 
 
 @app.callback(
+    Output("media_url", "data"),
+    Input("store_api_alerts_data", "data"),
     [
-        Output("media_url", "data"),
-        Output("fetch_url_interval", "interval"),
-        Output("get_url_running", "data", allow_duplicate=True),
-    ],
-    [
-        Input("data_to_load", "data"),
-        Input("fetch_url_interval", "n_intervals"),
-    ],
-    [
-        State("fetch_url_interval", "interval"),
-        State("store_api_alerts_data", "data"),
         State("media_url", "data"),
         State("user_headers", "data"),
         State("user_credentials", "data"),
-        State("get_url_running", "data"),
     ],
     prevent_initial_call=True,
 )
 def get_media_url(
-    data_to_load,
-    fetch_url_interval,
-    interval,
     local_alerts,
     media_url,
     user_headers,
     user_credentials,
-    get_url_running,
 ):
     """
     Retrieves media URLs for alerts and manages the fetching process from the API.
@@ -231,98 +217,47 @@ def get_media_url(
     local alerts.
 
     Parameters:
-    - data_to_load (int): Event ID indicating the data to be loaded.
-    - fetch_url_interval (int): Interval count for periodic checks.
+
     - interval (int): Current interval for fetching URLs.
     - local_alerts (json): Currently stored alerts data in JSON format.
     - media_url (dict): Dictionary holding media URLs for alerts.
     - user_headers (dict): User authorization headers for API requests.
     - user_credentials (tuple): User credentials (username, password).
-    - get_url_running (bool): Flag indicating whether the URL fetching process is ongoing.
+
 
     Returns:
     - dict: Updated dictionary with media URLs for each alert.
-    - int: Interval time for the next URL fetch update.
-    - bool: Flag indicating whether the URL fetching process should continue or pause.
     """
     if user_headers is None:
         raise PreventUpdate
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
 
-    trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
-
-    if trigger_id == "fetch_url_interval" and (get_url_running or len(media_url.keys()) == 0):
-        raise PreventUpdate
-
-    if trigger_id == "data_to_load":
-        if data_to_load == 0:
-            raise PreventUpdate
-        else:
-            event_id = str(data_to_load)
-
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
 
     if not alerts_data_loaded:
         raise PreventUpdate
 
-    # Convert the event_id in local_alerts to string before comparison
+    current_event_ids = set(local_alerts["event_id"].astype(str))
 
-    missing_by_event_id = local_alerts[~local_alerts["event_id"].astype(str).isin(media_url.keys())]
+    # Cleanup: Remove any event_ids from media_url not present in local_alerts
+    media_url_keys = set(media_url.keys())
+    for event_id in media_url_keys - current_event_ids:
+        del media_url[event_id]
 
-    # Initialization
-    if len(missing_by_event_id):
-        if "event_id" not in locals():
-            event_id = str(missing_by_event_id["event_id"].values[0])
-        else:
-            if str(event_id) in media_url.keys():
-                event_id = str(missing_by_event_id["event_id"].values[0])
+    # Loop through each row in local_alerts
+    for _, row in local_alerts.iterrows():
+        event_id = str(row["event_id"])
+        media_id = str(row["media_id"])
+        if event_id not in media_url:
+            media_url[event_id] = {}
 
-        media_url[event_id] = {}
-        for media_id in missing_by_event_id[missing_by_event_id["event_id"].astype(str) == event_id]["media_id"]:
-            media_id = str(media_id)
-            if media_id not in media_url[event_id].keys():
-                try:
-                    media_url[event_id][media_id] = call_api(api_client.get_media_url, user_credentials)(media_id)[
-                        "url"
-                    ]
+        # Check if the URL for this event_id and media_id already exists
+        if media_id not in media_url[event_id]:
+            # Fetch the URL for this media_id
+            try:
+                media_url[event_id][media_id] = call_api(api_client.get_media_url, user_credentials)(media_id)["url"]
+            except Exception:  # General catch-all for other exceptions
+                media_url[event_id][media_id] = ""  # Handle potential exceptions
 
-                except Exception:  # General catch-all for other exceptions
-                    media_url[event_id][media_id] = ""
-
-    else:
-        if interval < 24 * 60 * 60 * 1000:
-            return (
-                dash.no_update,
-                24 * 60 * 60 * 1000,
-                False,
-            )  # Set interval to one day to effectively pause it
-
-        else:
-            current_event_ids = set(local_alerts["event_id"].astype(str))
-
-            # Cleanup: Remove any event_ids from media_url not present in local_alerts
-            media_url_keys = set(media_url.keys())
-            for event_id in media_url_keys - current_event_ids:
-                del media_url[event_id]
-
-            # Loop through each row in local_alerts
-            for _, row in local_alerts.iterrows():
-                event_id = str(row["event_id"])
-                media_id = str(row["media_id"])
-
-                # Check if the URL for this event_id and media_id already exists
-                if media_id not in media_url[event_id]:
-                    # Fetch the URL for this media_id
-                    try:
-                        media_url[event_id][media_id] = call_api(api_client.get_media_url, user_credentials)(media_id)[
-                            "url"
-                        ]
-                    except Exception:  # General catch-all for other exceptions
-                        media_url[event_id][media_id] = ""  # Handle potential exceptions
-
-    return (
-        media_url,
-        dash.no_update,
-        False,
-    )  # Set interval to one day to effectively pause it
+    return media_url
