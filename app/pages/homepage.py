@@ -12,12 +12,7 @@ from utils.display import build_alerts_map
 
 map_modal = dbc.Modal(
     [
-        dbc.ModalHeader(
-            [
-                "Carte",
-                dbc.Button("Fermer", id="map-modal-close", className="ms-auto", n_clicks=0),
-            ]
-        ),
+        dbc.ModalHeader("Carte"),
         dbc.ModalBody(
             build_alerts_map(id_suffix="-md"),
         ),
