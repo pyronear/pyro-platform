@@ -175,10 +175,8 @@ def create_event_list_from_df(api_events):
                 "backgroundColor": "#FC816B",
                 "margin": "10px 15px 10px 10px",  # Adjust the right margin as needed
                 "padding": "10px",
-                "borderRadius": "5px",
                 "width": "calc(100% - 25px)",  # Adjust the total width calculation if needed
-                "border": "1px solid #ddd",
-                "box-sizing": "border-box",  # Include padding and border in the width
+                "border": "none",
                 "textAlign": "left",
             },
         )

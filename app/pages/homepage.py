@@ -56,6 +56,7 @@ def homepage_layout():
                                             style={
                                                 "backgroundColor": "#FD5252",
                                                 "width": "100%",
+                                                "border": "none",
                                             },
                                         ),
                                         width=3,
@@ -68,6 +69,7 @@ def homepage_layout():
                                             style={
                                                 "backgroundColor": "#FEBA6A",
                                                 "width": "100%",
+                                                "border": "none",
                                             },
                                         ),
                                         width=3,
@@ -79,6 +81,7 @@ def homepage_layout():
                                                 style={
                                                     "backgroundColor": "#2C796E",
                                                     "width": "100%",
+                                                    "border": "none",
                                                 },
                                                 id="dl-image-button",
                                             ),
@@ -97,6 +100,7 @@ def homepage_layout():
                                             style={
                                                 "backgroundColor": "#054546",
                                                 "width": "100%",
+                                                "border": "none",
                                             },
                                         ),
                                         width=3,
@@ -117,6 +121,7 @@ def homepage_layout():
                                     style={
                                         "backgroundColor": "#FEBA6A",
                                         "width": "100%",
+                                        "border": "none",
                                     },
                                     id="map-button",
                                 ),

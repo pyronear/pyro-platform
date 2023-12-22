@@ -143,7 +143,7 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
                     "backgroundColor": "#2C796E",
                     "margin": "10px",
                     "padding": "10px",
-                    "borderRadius": "5px",
+                    "borderRadius": "20px",
                     "color": "white",
                     "width": "100%",
                 },
@@ -154,7 +154,7 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
                     "backgroundColor": "#FC816B",
                     "margin": "10px",
                     "padding": "10px",
-                    "borderRadius": "5px",
+                    "borderRadius": "20px",
                     "width": "100%",
                 },
             )  # Default style
