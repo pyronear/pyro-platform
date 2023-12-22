@@ -6,7 +6,7 @@
 from dash import html
 
 
-def create_alert_list():
+def create_event_list():
     """
     Creates a container for the alert list with a fixed height and scrollable content.
 
@@ -19,7 +19,7 @@ def create_alert_list():
     - dash.html.Div: A Div element containing the header and the empty container for alert buttons.
     """
     # Set a fixed height for the alert list container and enable scrolling
-    alert_list_style = {
+    event_list_style = {
         "height": "calc(100vh - 120px)",  # Adjust the height as required
         "overflowY": "scroll",  # Enable vertical scrolling
         "padding": "10px",
@@ -28,6 +28,6 @@ def create_alert_list():
     return html.Div(
         [
             html.H1("Alertes en cours", style={"textAlign": "center", "fontSize": "30px"}),
-            html.Div(id="alert-list-container", style=alert_list_style),  # Empty container
+            html.Div(id="alert-list-container", style=event_list_style),  # Empty container
         ]
     )

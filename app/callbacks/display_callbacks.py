@@ -50,9 +50,9 @@ def toggle_modal(media_url, local_alerts):
     State("media_url", "data"),
     prevent_initial_call=True,
 )
-def update_alert_list(local_events, to_acknowledge, _, media_url):
+def update_event_list(local_events, to_acknowledge, _, media_url):
     """
-    Updates the alert list based on changes in the events data or acknowledgement actions.
+    Updates the event list based on changes in the events data or acknowledgement actions.
 
     Parameters:
     - local_events (json): JSON formatted data containing current event information.

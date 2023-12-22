@@ -6,7 +6,7 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from components.alerts import create_alert_list
+from components.alerts import create_event_list
 from pages.login import build_login_modal
 from utils.display import build_alerts_map
 
@@ -31,7 +31,7 @@ def homepage_layout():
             dbc.Row(
                 [
                     # Column for the alert list
-                    dbc.Col(create_alert_list(), width=2, className="mb-4"),
+                    dbc.Col(create_event_list(), width=2, className="mb-4"),
                     # Column for the image
                     dbc.Col(
                         [
