@@ -13,7 +13,7 @@ style:
 # Build the docker
 build:
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
-	docker build . -t pyronear/pyro-platform:python3.8-slim
+	docker build . -t pyronear/pyro-platform:python3.9-slim
 
 # Run the docker for production
 run:
