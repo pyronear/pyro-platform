@@ -173,11 +173,10 @@ def create_event_list_from_df(api_events):
             n_clicks=0,
             style={
                 "backgroundColor": "#FC816B",
-                "margin": "10px 15px 10px 10px",  # Adjust the right margin as needed
+                "margin": "10px",
                 "padding": "10px",
-                "width": "calc(100% - 25px)",  # Adjust the total width calculation if needed
-                "border": "none",
-                "textAlign": "left",
+                "borderRadius": "20px",
+                "width": "100%",
             },
         )
         for _, event in filtered_events.iterrows()
