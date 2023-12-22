@@ -52,7 +52,6 @@ def build_login_modal():
                         ],
                     ),
                 ],
-                # style={"background": "#F8FAFF"},
             ),
         ],
         id="login_modal",
