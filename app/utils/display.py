@@ -11,6 +11,7 @@ from geopy import Point
 from geopy.distance import geodesic
 
 import config as cfg
+from services import api_client
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
@@ -44,6 +45,54 @@ def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
     new_opening_angle = opening_angle * width / 100 + 1  # avoid angle 0
 
     return int(new_azimuth), int(new_opening_angle)
+
+
+def build_sites_markers():
+    """
+    This function reads the site markers by making the API, that contains all the
+    information about the sites equipped with detection units.
+
+    It then returns a dl.MarkerClusterGroup object that gathers all relevant site markers.
+
+    NB: certain parts of the function, which we do not use at the moment and that were initially
+    designed to bind the display of site markers to a click on the corresponding department, are
+    commented for now but could prove useful later on.
+    """
+    # Building alerts_markers objects and wraps them in a dl.LayerGroup object
+    icon = {
+        "iconUrl": "../assets/images/pyro_site_icon.png",
+        "iconSize": [50, 50],  # Size of the icon
+        "iconAnchor": [25, 45],  # Point of the icon which will correspond to marker's location
+        "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
+    }
+
+    client_sites = api_client.get_sites().json()
+    markers = []
+
+    for site in client_sites:
+        site_id = site["id"]
+        lat = round(site["lat"], 4)
+        lon = round(site["lon"], 4)
+        site_name = site["name"].replace("_", " ").title()
+        markers.append(
+            dl.Marker(
+                id=f"site_{site_id}",  # Necessary to set an id for each marker to receive callbacks
+                position=(lat, lon),
+                icon=icon,
+                children=[
+                    dl.Tooltip(site_name),
+                    dl.Popup(
+                        [
+                            html.H2(f"Site {site_name}"),
+                            html.P(f"Coordonnées : ({lat}, {lon})"),
+                        ]
+                    ),
+                ],
+            )
+        )
+
+    # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
+    return markers
 
 
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
@@ -98,6 +147,7 @@ def build_alerts_map(id_suffix=""):
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
+            dl.MarkerClusterGroup(children=build_sites_markers(), id="sites_markers"),
         ],  # Will contain the past fire markers of the alerts map
         style=map_style,  # Reminder: map_style is imported from utils.py
         id=f"map{id_suffix}",
