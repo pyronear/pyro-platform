@@ -38,7 +38,6 @@ def get_main_layout():
                 ]
             ),
             dcc.Interval(id="main_api_fetch_interval", interval=30 * 1000),
-            dcc.Interval(id="fetch_url_interval", interval=10 * 1000),
             dcc.Store(
                 id="store_api_events_data",
                 storage_type="session",
@@ -108,8 +107,6 @@ def get_main_layout():
             dcc.Store(id="user_headers", storage_type="session", data=user_headers),
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="user_credentials", storage_type="session", data=user_credentials),
-            dcc.Store(id="data_to_load", data=0),
-            dcc.Store(id="get_url_running", data=True),
             dcc.Store(id="to_acknowledge", data=0),
         ]
     )
