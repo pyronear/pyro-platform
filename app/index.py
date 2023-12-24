@@ -11,7 +11,7 @@ from dash.dependencies import Input, Output
 from layouts.main_layout import get_main_layout
 
 import config as cfg
-from app import app as app
+from app import app
 from pages.homepage import homepage_layout
 
 # Set the app layout
