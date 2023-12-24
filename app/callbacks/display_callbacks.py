@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
+import ast
 import json
 
 import dash
@@ -417,7 +418,9 @@ def update_map(alert_data):
 
     if not alert_data.empty:
         # Convert the 'localization' column to a list (empty lists if the original value was '[]').
-        alert_data["localization"] = alert_data["localization"].apply(lambda x: eval(x) if x.strip() != "[]" else [])
+        alert_data["localization"] = alert_data["localization"].apply(
+            lambda x: ast.literal_eval(x) if x.strip() != "[]" else []
+        )
 
         # Filter out rows where 'localization' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
