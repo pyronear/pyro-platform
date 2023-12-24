@@ -141,8 +141,8 @@ def load_site_data_file(api_client, site_devices_file="site_devices.json", force
     site_devices_dict = {}
     for site in response.json():
         site_ids = api_client.get_site_devices(site["id"]).json()
-        for id in site_ids:
-            site_devices_dict[str(id)] = site["name"].replace("_", " ")
+        for site_id in site_ids:
+            site_devices_dict[str(site_id)] = site["name"].replace("_", " ")
     with site_devices_path.open("w") as fp:
         json.dump(site_devices_dict, fp)
 
