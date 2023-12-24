@@ -5,7 +5,7 @@
 
 
 import callbacks.data_callbacks
-import callbacks.display_callbacks  # noqa
+import callbacks.display_callbacks  # noqa: F401
 from dash import html
 from dash.dependencies import Input, Output
 from layouts.main_layout import get_main_layout
