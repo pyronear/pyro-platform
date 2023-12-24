@@ -42,7 +42,7 @@ jobs:
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          screen -dm python app/main.py
+          screen -dm python app/index.py
           sleep 200
           curl http://localhost:8050/
   docker:
