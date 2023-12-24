@@ -1,5 +1,3 @@
-# app/__init__.py
-
 # Copyright (C) 2020-2023, Pyronear.
 
 # This program is licensed under the Apache License 2.0.
