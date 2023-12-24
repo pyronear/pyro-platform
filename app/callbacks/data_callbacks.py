@@ -140,7 +140,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         # Filter local_alerts based on the 'created_at' condition
         ongoing_local_alerts = local_alerts[local_alerts["created_at"] > end_event].copy()
         get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-        v = ongoing_local_alerts["event_id"].drop_duplicates().apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
+        v = ongoing_local_alerts["event_id"].drop_duplicates().apply(lambda x: pd.DataFrame(get_alerts(x))
 
         if len(v) == 0:
             raise PreventUpdate
