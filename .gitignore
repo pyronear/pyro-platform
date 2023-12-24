@@ -147,3 +147,6 @@ app/data/login_correspondences.csv
 # Poetry
 requirements.txt
 poetry.lock
+
+#project files
+site_devices.json
