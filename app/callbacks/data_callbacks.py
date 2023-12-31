@@ -161,15 +161,13 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         local_alerts["processed_loc"].apply(process_bbox)
 
     if len(new_api_events):
-        alerts_data = [
-            local_alerts[local_alerts["event_id"] == int(event_id)][["azimuth", "device_id"]].values[0]
-            for event_id in new_api_events["id"]
-            if sum(local_alerts["event_id"] == int(event_id))
-        ]
+        alerts_data = new_api_events.merge(local_alerts, left_on="id", right_on="event_id").drop_duplicates(
+            subset=["id_x"]
+        )[["azimuth", "device_id"]]
 
         new_api_events["device_name"] = [
             f"{retrieve_site_from_device_id(api_client, device_id)} - {int(azimuth)}°".title()
-            for azimuth, device_id in alerts_data
+            for _, (azimuth, device_id) in alerts_data.iterrows()
         ]
 
         if event_data_loaded:
