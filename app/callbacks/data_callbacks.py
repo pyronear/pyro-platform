@@ -167,12 +167,10 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
             if sum(local_alerts["event_id"] == int(event_id))
         ]
 
-        new_device_names = [
+        new_api_events["device_name"] = [
             f"{retrieve_site_from_device_id(api_client, device_id)} - {int(azimuth)}°".title()
             for azimuth, device_id in alerts_data
         ]
-
-        new_api_events["device_name"] = new_device_names
 
         if event_data_loaded:
             local_events = pd.concat([local_events, new_api_events], join="outer")
