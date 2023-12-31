@@ -135,7 +135,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
 
         # Define the end_event timestamp as timezone-naive
-        end_event = pd.Timestamp.utcnow().replace(tzinfo=None) - pd.Timedelta(hours=1)
+        end_event = pd.Timestamp.utcnow().replace(tzinfo=None) - pd.Timedelta(minutes=30)
 
         # Filter local_alerts based on the 'created_at' condition
         ongoing_local_alerts = local_alerts[local_alerts["created_at"] > end_event].copy()
