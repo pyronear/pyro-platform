@@ -34,6 +34,9 @@ def build_departments_geojson():
 
 
 def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
+    """
+    This function compute the vision polygon parameters based on localization
+    """
     # Assuming localization is in the format [x0, y0, x1, y1, confidence]
     x0, _, width, _ = localization
     xc = (x0 + width / 2) / 100
@@ -96,6 +99,9 @@ def build_sites_markers():
 
 
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
+    """
+    Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
+    """
     if len(localization):
         azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, localization[0])
 
@@ -157,6 +163,9 @@ def build_alerts_map(id_suffix=""):
 
 
 def create_event_list_from_df(api_events):
+    """
+    This function build the list of events on the left based on event data
+    """
     api_events["created_at"] = pd.to_datetime(api_events["created_at"])
     filtered_events = api_events.sort_values("created_at").drop_duplicates("id", keep="last")[::-1]
 
