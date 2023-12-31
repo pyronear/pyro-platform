@@ -14,7 +14,7 @@ import config as cfg
 from components.navbar import Navbar
 from services import api_client
 
-print("login off", cfg.LOGIN)
+
 if cfg.LOGIN:
     client = Client(cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD)
     user_headers = client.headers
