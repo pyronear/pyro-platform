@@ -145,18 +145,18 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         if len(v) == 0:
             raise PreventUpdate
 
-        api_alerts = pd.concat(v.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_BY_EVENT).reset_index(drop=True)
+        api_alerts = pd.concat(v.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
         new_api_alerts = api_alerts[~api_alerts["id"].isin(local_alerts["id"])].copy()
         local_alerts["localization"].apply(process_bbox)
         if len(new_api_alerts) == 0:
             raise PreventUpdate
         local_alerts = pd.concat([local_alerts, new_api_alerts], join="outer")
         local_alerts = local_alerts.drop_duplicates(subset=["id"])
-        local_alerts = local_alerts.groupby(["event_id"]).head(cfg.MAX_ALERTS_BY_EVENT).reset_index(drop=True)
+        local_alerts = local_alerts.groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
     else:
         get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
         _ = api_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
-        local_alerts = pd.concat(_.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_BY_EVENT).reset_index(drop=True)
+        local_alerts = pd.concat(_.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
         local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
         local_alerts["localization"].apply(process_bbox)
 
