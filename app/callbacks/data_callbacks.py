@@ -118,7 +118,6 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     api_events = past_ndays_api_events(api_events, n_days=1)  # keep only events from today
     api_events = api_events[::-1]  # Display the last alert first
-    api_events = api_events[:2]
 
     if event_data_loaded:
         new_api_events = api_events[~api_events["id"].isin(local_events["id"])]

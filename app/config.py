@@ -24,6 +24,6 @@ SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
 SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
 
 # App config variables
-MAX_ALERTS_PER_EVENT = 1
+MAX_ALERTS_PER_EVENT = 10
 CAM_OPENING_ANGLE = 87
 CAM_RANGE_KM = 15
