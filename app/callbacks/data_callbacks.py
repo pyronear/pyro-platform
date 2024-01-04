@@ -129,7 +129,8 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
         # drop old alerts
         local_alerts = local_alerts[local_alerts["event_id"].isin(api_events["id"])]
 
-        # Find ongoing alerts:
+        # Find ongoing alerts for the events started within 30 minutes;
+        # after that, any new alert is part of a new event
         local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
 
         # Define the end_event timestamp as timezone-naive
