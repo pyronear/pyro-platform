@@ -21,11 +21,11 @@ from utils.display import build_vision_polygon, create_event_list_from_df
 # Loading initial data
 @app.callback(
     Output("modal-loading", "is_open"),
-    [Input("media_url", "data")],
+    [Input("media_url", "data"), Input("user_headers", "data")],
     State("store_api_alerts_data", "data"),
     prevent_initial_call=True,
 )
-def toggle_modal(media_url, local_alerts):
+def toggle_modal(media_url, user_headers, local_alerts):
     """
     Toggles the visibility of the loading modal waiting for the load of media_url
 
@@ -36,6 +36,8 @@ def toggle_modal(media_url, local_alerts):
     Returns:
     - bool: True to show the modal, False to hide it.
     """
+    if user_headers is None:
+        raise PreventUpdate
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
     return True if not alerts_data_loaded and len(media_url.keys()) == 0 else False
 
@@ -46,12 +48,11 @@ def toggle_modal(media_url, local_alerts):
     [
         Input("store_api_events_data", "data"),
         Input("to_acknowledge", "data"),
-        Input("login_modal", "is_open"),
     ],
     State("media_url", "data"),
     prevent_initial_call=True,
 )
-def update_event_list(local_events, to_acknowledge, _, media_url):
+def update_event_list(local_events, to_acknowledge, media_url):
     """
     Updates the event list based on changes in the events data or acknowledgement actions.
 

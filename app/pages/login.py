@@ -6,57 +6,46 @@
 import dash_bootstrap_components as dbc
 from dash import html
 
-import config as cfg
-
 # Pyronear - Horizontal Logo
 pyro_logo = "https://pyronear.org/img/logo_letters.png"
 
 
-def build_login_modal():
+def login_layout():
     """
-    This function creates and returns the login modal, which opens at the beginning of each session for user authentication.
+    This function creates and returns the login page, which opens at the beginning of each session for user authentication.
     """
-    return dbc.Modal(
+    return html.Div(
         [
-            dbc.ModalBody(
+            html.Center(
                 [
-                    html.Center(
-                        [
-                            html.Div(style={"height": "10px"}),
-                            html.Img(src=pyro_logo, width="30%"),
-                            html.Div(style={"height": "30px"}),
-                            dbc.Input(
-                                id="username_input",
-                                type="text",
-                                placeholder="UTILISATEUR",
-                                style={"width": "250px"},
-                                autoFocus=True,
-                            ),
-                            html.Div(style={"height": "15px"}),  # Spacing
-                            dbc.Input(
-                                id="password_input",
-                                type="password",
-                                placeholder="MOT DE PASSE",
-                                style={"width": "250px"},
-                            ),
-                            html.Div(style={"height": "15px"}),  # Spacing
-                            dbc.Button(
-                                "Connexion",
-                                id="send_form_button",
-                                color="primary",
-                                className="ml-3",
-                            ),
-                            html.Div(style={"height": "15px"}),  # Spacing
-                            # Feedback message area
-                            html.Div(id="form_feedback_area"),
-                        ],
+                    html.Div(style={"height": "10px"}),
+                    html.Img(src=pyro_logo, width="30%"),
+                    html.Div(style={"height": "30px"}),
+                    dbc.Input(
+                        id="username_input",
+                        type="text",
+                        placeholder="UTILISATEUR",
+                        style={"width": "250px"},
+                        autoFocus=True,
                     ),
+                    html.Div(style={"height": "15px"}),  # Spacing
+                    dbc.Input(
+                        id="password_input",
+                        type="password",
+                        placeholder="MOT DE PASSE",
+                        style={"width": "250px"},
+                    ),
+                    html.Div(style={"height": "15px"}),  # Spacing
+                    dbc.Button(
+                        "Connexion",
+                        id="send_form_button",
+                        color="primary",
+                        className="ml-3",
+                    ),
+                    html.Div(style={"height": "15px"}),  # Spacing
+                    # Feedback message area
+                    html.Div(id="form_feedback_area"),
                 ],
             ),
-        ],
-        id="login_modal",
-        backdrop="static",
-        keyboard=False,
-        is_open=not cfg.LOGIN,
-        fullscreen=True,
+        ]
     )

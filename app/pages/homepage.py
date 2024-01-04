@@ -7,27 +7,12 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from components.alerts import create_event_list
-from pages.login import build_login_modal
 from utils.display import build_alerts_map
 
-map_modal = dbc.Modal(
-    [
-        dbc.ModalHeader("Carte"),
-        dbc.ModalBody(
-            build_alerts_map(id_suffix="-md"),
-        ),
-    ],
-    id="map-modal",
-    keyboard=False,
-    fullscreen=True,
-    is_open=False,
-)
 
-
-def homepage_layout():
+def homepage_layout(user_headers, user_credentials):
     return dbc.Container(
         [
-            build_login_modal(),
             dbc.Row(
                 [
                     # Column for the alert list
@@ -130,7 +115,7 @@ def homepage_layout():
                             dbc.Row(
                                 # This row contains the map
                                 dbc.Col(
-                                    build_alerts_map(),
+                                    build_alerts_map(user_headers, user_credentials),
                                     style={
                                         "position": "relative",
                                         "width": "100%",
@@ -146,7 +131,18 @@ def homepage_layout():
                 ]
             ),
             dcc.Interval(id="auto-slider-update", interval=500, n_intervals=0),  # in milliseconds
-            map_modal,
+            dbc.Modal(
+                [
+                    dbc.ModalHeader("Carte"),
+                    dbc.ModalBody(
+                        build_alerts_map(user_headers, user_credentials, id_suffix="-md"),
+                    ),
+                ],
+                id="map-modal",
+                keyboard=False,
+                fullscreen=True,
+                is_open=False,
+            ),
         ],
         fluid=True,
     )

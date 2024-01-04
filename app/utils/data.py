@@ -11,6 +11,8 @@ from typing import List
 
 import pandas as pd
 
+from services import call_api
+
 
 def read_stored_DataFrame(data):
     """
@@ -97,34 +99,36 @@ def past_ndays_api_events(api_events, n_days=1):
 # Sites
 
 
-def retrieve_site_from_device_id(api_client, device_id):
+def retrieve_site_from_device_id(api_client, user_credentials, device_id):
     """
     Retrieves the site name associated with a given device ID by looking up in the site devices data.
 
     Args:
         api_client: API client to interact with the remote server.
+        user_credentials (tuple): User credentials (username, password).
         device_id: Device ID for which the site name is to be retrieved.
 
     Returns:
         str: The name of the site associated with the given device ID.
     """
-    site_devices_data = load_site_data_file(api_client)
+    site_devices_data = load_site_data_file(api_client, user_credentials)
     device_id = str(int(device_id))
 
     if device_id in site_devices_data.keys():
         return site_devices_data[device_id]
     else:
-        site_devices_data = load_site_data_file(api_client, force_dl=True)
+        site_devices_data = load_site_data_file(api_client, user_credentials, force_dl=True)
 
         return site_devices_data[device_id]
 
 
-def load_site_data_file(api_client, site_devices_file="site_devices.json", force_dl=False):
+def load_site_data_file(api_client, user_credentials, site_devices_file="site_devices.json", force_dl=False):
     """
     Loads site device data from a file or fetches it from the API if the file does not exist or if forced to download.
 
     Args:
         api_client: API client to interact with the remote server.
+        user_credentials (tuple): User credentials (username, password).
         site_devices_file (str): Path to the file where site device data is stored. Defaults to 'site_devices.json'.
         force_dl (bool): If True, forces downloading the data from the API. Defaults to False.
 
@@ -137,9 +141,9 @@ def load_site_data_file(api_client, site_devices_file="site_devices.json", force
         with site_devices_path.open() as json_file:
             return json.load(json_file)
 
-    response = api_client.get_sites()
+    client_sites = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)())
     site_devices_dict = {}
-    for site in response.json():
+    for _, site in client_sites.iterrows():
         site_ids = api_client.get_site_devices(site["id"]).json()
         for site_id in site_ids:
             site_devices_dict[str(site_id)] = site["name"].replace("_", " ")

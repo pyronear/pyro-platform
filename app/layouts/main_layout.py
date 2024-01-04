@@ -100,7 +100,7 @@ def get_main_layout():
                 ],
                 id="modal-loading",
                 centered=True,
-                is_open=True,
+                is_open=False,
             ),
             # Storage components saving the user's headers and credentials
             dcc.Store(id="user_headers", storage_type="session", data=user_headers),

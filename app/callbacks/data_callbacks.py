@@ -28,7 +28,6 @@ from utils.data import (
         Output("user_credentials", "data"),
         Output("user_headers", "data"),
         Output("form_feedback_area", "children"),
-        Output("login_modal", "is_open"),
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -39,7 +38,7 @@ from utils.data import (
 )
 def login_callback(n_clicks, username, password, user_headers):
     if user_headers is not None:
-        return dash.no_update, dash.no_update, dash.no_update, False
+        return dash.no_update, dash.no_update, dash.no_update
 
     if n_clicks:
         # We instantiate the form feedback output
@@ -52,7 +51,7 @@ def login_callback(n_clicks, username, password, user_headers):
             form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return dash.no_update, dash.no_update, form_feedback, dash.no_update
+            return dash.no_update, dash.no_update, form_feedback
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
@@ -62,13 +61,12 @@ def login_callback(n_clicks, username, password, user_headers):
                     {"username": username, "password": password},
                     client.headers,
                     dash.no_update,
-                    False,
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
                 form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
 
-                return dash.no_update, dash.no_update, form_feedback, dash.no_update
+                return dash.no_update, dash.no_update, form_feedback
 
     raise PreventUpdate
 
@@ -78,7 +76,7 @@ def login_callback(n_clicks, username, password, user_headers):
         Output("store_api_events_data", "data"),
         Output("store_api_alerts_data", "data"),
     ],
-    [Input("main_api_fetch_interval", "n_intervals"), Input("login_modal", "is_open")],
+    [Input("main_api_fetch_interval", "n_intervals")],
     [
         State("store_api_events_data", "data"),
         State("store_api_alerts_data", "data"),
@@ -87,7 +85,7 @@ def login_callback(n_clicks, username, password, user_headers):
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_credentials):
+def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_credentials):
     """
     Fetches and processes live event and alert data from the API at regular intervals.
 
@@ -120,6 +118,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     api_events = past_ndays_api_events(api_events, n_days=1)  # keep only events from today
     api_events = api_events[::-1]  # Display the last alert first
+    api_events = api_events[:2]
 
     if event_data_loaded:
         new_api_events = api_events[~api_events["id"].isin(local_events["id"])]
@@ -147,7 +146,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
 
         api_alerts = pd.concat(v.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
         new_api_alerts = api_alerts[~api_alerts["id"].isin(local_alerts["id"])].copy()
-        local_alerts["processed_loc"].apply(process_bbox)
+        local_alerts["processed_loc"] = local_alerts["localization"].apply(process_bbox)
         if len(new_api_alerts) == 0:
             raise PreventUpdate
         local_alerts = pd.concat([local_alerts, new_api_alerts], join="outer")
@@ -158,7 +157,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         _ = api_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
         local_alerts = pd.concat(_.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
         local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
-        local_alerts["processed_loc"].apply(process_bbox)
+        local_alerts["processed_loc"] = local_alerts["localization"].apply(process_bbox)
 
     if len(new_api_events):
         alerts_data = new_api_events.merge(local_alerts, left_on="id", right_on="event_id").drop_duplicates(
@@ -166,7 +165,7 @@ def api_watcher(n_intervals, _, local_events, local_alerts, user_headers, user_c
         )[["azimuth", "device_id"]]
 
         new_api_events["device_name"] = [
-            f"{retrieve_site_from_device_id(api_client, device_id)} - {int(azimuth)}°".title()
+            f"{retrieve_site_from_device_id(api_client, user_credentials, device_id)} - {int(azimuth)}°".title()
             for _, (azimuth, device_id) in alerts_data.iterrows()
         ]
 

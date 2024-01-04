@@ -7,22 +7,29 @@
 import callbacks.data_callbacks
 import callbacks.display_callbacks  # noqa: F401
 from dash import html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from layouts.main_layout import get_main_layout
 
 import config as cfg
 from app import app
 from pages.homepage import homepage_layout
+from pages.login import login_layout
 
 # Set the app layout
 app.layout = get_main_layout()
 
 
 # Manage Pages
-@app.callback(Output("page-content", "children"), Input("url", "pathname"))
-def display_page(pathname: str):
+@app.callback(
+    Output("page-content", "children"),
+    [Input("url", "pathname"), Input("user_headers", "data")],
+    State("user_credentials", "data"),
+)
+def display_page(pathname, user_headers, user_credentials):
+    if user_headers is None:
+        return login_layout()
     if pathname == "/" or pathname is None:
-        return homepage_layout()
+        return homepage_layout(user_headers, user_credentials)
     else:
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
 
