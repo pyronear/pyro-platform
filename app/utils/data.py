@@ -141,7 +141,7 @@ def load_site_data_file(api_client, user_credentials, site_devices_file="site_de
         with site_devices_path.open() as json_file:
             return json.load(json_file)
 
-    client_sites = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)())
+    client_sites = pd.DataFrame(call_api(api_client.get_sites, user_credentials)())
     site_devices_dict = {}
     for _, site in client_sites.iterrows():
         site_ids = api_client.get_site_devices(site["id"]).json()

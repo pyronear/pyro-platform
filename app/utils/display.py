@@ -72,7 +72,7 @@ def build_sites_markers(user_headers, user_credentials):
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
 
-    client_sites = pd.DataFrame(call_api(api_client.get_alerts_for_event, user_credentials)())
+    client_sites = pd.DataFrame(call_api(api_client.get_sites, user_credentials)())
     markers = []
 
     for _, site in client_sites.iterrows():
