@@ -1,10 +1,10 @@
-version: '3.7'
+version: '3.9'
 
 services:
 
   frontend:
     build: .
-    command: python main.py --host 0.0.0.0 --port 8050
+    command: python index.py --host 0.0.0.0 --port 8050
     ports:
       - 8050:8050
     volumes:
@@ -15,3 +15,4 @@ services:
       - API_PWD=${API_PWD}
       - SENTRY_DSN=${SENTRY_DSN}
       - DEBUG=${DEBUG}
+      - LOGIN=${LOGIN}
