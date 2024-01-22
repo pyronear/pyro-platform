@@ -107,5 +107,6 @@ def get_main_layout():
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="user_credentials", storage_type="session", data=user_credentials),
             dcc.Store(id="to_acknowledge", data=0),
+            dcc.Store(id="trigger_no_events", data=False),
         ]
     )
