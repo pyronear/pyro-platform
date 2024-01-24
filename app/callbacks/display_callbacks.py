@@ -18,23 +18,27 @@ from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_df
 
 
-# Loading initial data
 @app.callback(
     Output("modal-loading", "is_open"),
     [Input("media_url", "data"), Input("user_headers", "data"), Input("trigger_no_events", "data")],
     State("store_api_alerts_data", "data"),
     prevent_initial_call=True,
 )
-def toggle_modal(media_url, user_headers, local_alerts, trigger_no_events):
+def toggle_modal(media_url, user_headers, trigger_no_events, local_alerts):
     """
-    Toggles the visibility of the loading modal waiting for the load of media_url
+    Toggles the visibility of the loading modal based on the presence of media URLs and the state of alerts data.
+
+    This function is triggered by changes in the media URLs, user headers, or a trigger indicating no events.
+    It checks the current state of alerts data and decides whether to display the loading modal.
 
     Parameters:
     - media_url (dict): Dictionary containing media URLs for alerts.
+    - user_headers (dict): Dictionary containing user header information.
+    - trigger_no_events (bool): Trigger indicating whether there are no events to process.
     - local_alerts (json): JSON formatted data containing current alerts information.
 
     Returns:
-    - bool: True to show the modal, False to hide it.
+    - bool: True to show the modal, False to hide it. The modal is shown if alerts data is not loaded and there are no media URLs; hidden otherwise.
     """
     if trigger_no_events:
         return False
