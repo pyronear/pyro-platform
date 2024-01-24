@@ -10,9 +10,9 @@ import dash
 from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
+from main import app
 
 import config as cfg
-from app import app
 from services import api_client, call_api
 from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_df
