@@ -10,10 +10,10 @@ import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
+from main import app
 from pyroclient import Client
 
 import config as cfg
-from app import app
 from services import api_client, call_api
 from utils.data import (
     past_ndays_api_events,

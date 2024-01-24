@@ -9,9 +9,9 @@ import callbacks.display_callbacks  # noqa: F401
 from dash import html
 from dash.dependencies import Input, Output, State
 from layouts.main_layout import get_main_layout
+from main import app
 
 import config as cfg
-from app import app
 from pages.homepage import homepage_layout
 from pages.login import login_layout
 
