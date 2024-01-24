@@ -22,6 +22,7 @@ geopy = ">=2.4.0"
 
 sentry-sdk = { version = "^1.5.12", extras = ["flask"] }
 timezonefinder = ">=6.2.0"
+pytz = ">=2023.3.post1"
 
 [tool.poetry.group.quality]
 optional = true

@@ -3,12 +3,16 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
+from datetime import datetime
+
 import dash_leaflet as dl
 import pandas as pd
+import pytz
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
+from timezonefinder import TimezoneFinder
 
 import config as cfg
 from services import api_client, call_api
@@ -169,7 +173,25 @@ def create_event_list_from_df(api_events):
     """
     This function build the list of events on the left based on event data
     """
-    api_events["created_at"] = pd.to_datetime(api_events["created_at"])
+    tf = TimezoneFinder()
+    alert_ts_local = []
+    for _, row in api_events.iterrows():
+        alert_lat = round(row["lat"], 4)
+        alert_lon = round(row["lon"], 4)
+
+        # Convert created_at to a timezone-aware datetime object assuming it's in UTC
+        alert_ts_utc = datetime.fromisoformat(str(row["created_at"])).replace(tzinfo=pytz.utc)
+
+        # Find the timezone for the alert location
+        timezone_str = tf.timezone_at(lat=alert_lat, lng=alert_lon)
+        if timezone_str is None:  # If the timezone is not found, handle it appropriately
+            timezone_str = "UTC"  # Fallback to UTC or some default
+        alert_timezone = pytz.timezone(timezone_str)
+
+        # Convert alert_ts_utc to the local timezone of the alert
+        alert_ts_local.append(alert_ts_utc.astimezone(alert_timezone))
+
+    api_events["created_at"] = alert_ts_local
     filtered_events = api_events.sort_values("created_at").drop_duplicates("id", keep="last")[::-1]
 
     return [
