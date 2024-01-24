@@ -75,6 +75,7 @@ def login_callback(n_clicks, username, password, user_headers):
     [
         Output("store_api_events_data", "data"),
         Output("store_api_alerts_data", "data"),
+        Output("trigger_no_events", "data"),
     ],
     [Input("main_api_fetch_interval", "n_intervals")],
     [
@@ -117,6 +118,8 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     # Fetch events
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     api_events = past_ndays_api_events(api_events, n_days=1)  # keep only events from today
+    if api_events.empty:
+        return dash.no_update, dash.no_update, True
     api_events = api_events[::-1]  # Display the last alert first
 
     if event_data_loaded:
@@ -179,6 +182,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     return [
         json.dumps({"data": local_events.to_json(orient="split"), "data_loaded": True}),
         json.dumps({"data": local_alerts.to_json(orient="split"), "data_loaded": True}),
+        dash.no_update,
     ]
 
 
