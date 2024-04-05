@@ -71,14 +71,17 @@ def process_bbox(input_str):
     return new_boxes
 
 
-def past_ndays_api_events(api_events, n_days=1):
+import pandas as pd
+
+
+def past_ndays_api_events(api_events, n_days=0):
     """
     Filters the given live events to retain only those within the past n days.
 
     Args:
         api_events (pd.Dataframe): DataFrame containing live events data. It must have a "created_at" column
                                     indicating the datetime of the event.
-        n_days (int, optional): Specifies the number of days into the past to retain events. Defaults to 1.
+        n_days (int, optional): Specifies the number of days into the past to retain events. Defaults to 0.
 
     Returns:
         pd.DataFrame: A filtered DataFrame containing only events from the past n_days.
@@ -86,12 +89,18 @@ def past_ndays_api_events(api_events, n_days=1):
     # Ensure the column is in datetime format
     api_events["created_at"] = pd.to_datetime(api_events["created_at"])
 
-    # Define the start and end dates for the filter
-    end_date = pd.Timestamp.utcnow().replace(tzinfo=None).normalize()
-    start_date = end_date - pd.Timedelta(days=n_days - 1)
+    # Define the end date (now) for the filter
+    end_date = pd.Timestamp.now()
 
-    # Filter events from the past n days
-    api_events = api_events[api_events["created_at"] > start_date]
+    if n_days == 0:
+        # When n_days is 0, adjust start_date to the beginning of today to include today's events
+        start_date = end_date.normalize()
+    else:
+        # For n_days > 0
+        start_date = end_date - pd.Timedelta(days=n_days)
+
+    # Filter events from the past n days, including all events from today when n_days is 0
+    api_events = api_events[(api_events["created_at"] > start_date) | (api_events["created_at"] == start_date)]
 
     return api_events
 
