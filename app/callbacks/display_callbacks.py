@@ -7,6 +7,7 @@ import ast
 import json
 
 import dash
+import pandas as pd
 from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -79,7 +80,8 @@ def update_event_list(local_events, to_acknowledge, media_url):
     if not event_data_loaded:
         raise PreventUpdate
 
-    local_events = local_events[~local_events["id"].isin([to_acknowledge])]
+    if len(local_events):
+        local_events = local_events[~local_events["id"].isin([to_acknowledge])]
 
     return create_event_list_from_df(local_events)
 
@@ -122,21 +124,28 @@ def select_event_with_button(n_clicks, to_acknowledge, media_url, button_ids, lo
     ctx = dash.callback_context
 
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
+    if len(local_alerts) == 0:
+        return [[], 0, 1]
+
     if not alerts_data_loaded:
         raise PreventUpdate
 
     trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if trigger_id == "to_acknowledge":
-        if str(to_acknowledge) not in media_url.keys():
-            raise PreventUpdate
+        idx = local_alerts[~local_alerts["event_id"].isin([to_acknowledge])]["event_id"].values
+        if len(idx) == 0:
+            button_index = 0  # No more images available
         else:
-            button_index = local_alerts[~local_alerts["event_id"].isin([to_acknowledge])]["event_id"].values[0]
+            button_index = idx[0]
 
     else:
         # Extracting the index of the clicked button
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        button_index = json.loads(button_id)["index"]
+        if button_id:
+            button_index = json.loads(button_id)["index"]
+        else:
+            button_index = 0
 
         nb_clicks = ctx.triggered[0]["value"]  # check if the button was clicked or just initialized (=0)
 
@@ -195,11 +204,19 @@ def update_display_data(event_id_on_display, local_alerts):
         raise PreventUpdate
 
     if event_id_on_display == 0:
-        event_id_on_display = local_alerts["event_id"].values[0]
+        return json.dumps(
+            {
+                "data": pd.DataFrame().to_json(orient="split"),
+                "data_loaded": True,
+            }
+        )
+    else:
+        if event_id_on_display == 0:
+            event_id_on_display = local_alerts["event_id"].values[0]
 
-    alert_on_display = local_alerts[local_alerts["event_id"] == event_id_on_display]
+        alert_on_display = local_alerts[local_alerts["event_id"] == event_id_on_display]
 
-    return json.dumps({"data": alert_on_display.to_json(orient="split"), "data_loaded": True})
+        return json.dumps({"data": alert_on_display.to_json(orient="split"), "data_loaded": True})
 
 
 @app.callback(
@@ -207,11 +224,14 @@ def update_display_data(event_id_on_display, local_alerts):
         Output("image-container", "children"),  # Output for the image
         Output("bbox-container", "children"),  # Output for the bounding box
     ],
-    [Input("image-slider", "value")],
-    [State("alert_on_display", "data"), State("media_url", "data")],
+    [Input("image-slider", "value"), Input("alert_on_display", "data")],
+    [
+        State("media_url", "data"),
+        State("alert-list-container", "children"),
+    ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, alert_data, media_url):
+def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
     """
     Updates the image and bounding box display based on the slider value.
 
@@ -230,6 +250,12 @@ def update_image_and_bbox(slider_value, alert_data, media_url):
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
         raise PreventUpdate
+
+    if len(alert_list) == 0:
+        img_html = html.Img(
+            src="https://pyronear.org/img/logo_letters_orange.png", style={"width": "100%", "height": "auto"}
+        )
+        return img_html, bbox_divs
 
     images = []
 
@@ -348,10 +374,11 @@ def toggle_auto_move(n_clicks, data):
         State("image-slider", "value"),
         State("image-slider", "max"),
         State("auto-move-button", "n_clicks"),
+        State("alert-list-container", "children"),
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks):
+def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, alert_list):
     """
     Automatically moves the image slider based on a regular interval and the current auto-move state.
 
@@ -360,11 +387,12 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks):
     - current_value (int): Current value of the image slider.
     - max_value (int): Maximum value of the image slider.
     - auto_move_clicks (int): Number of clicks on the auto-move button.
+    - alert_list(list) : Ongoing alert list
 
     Returns:
     - int: Updated value for the image slider.
     """
-    if auto_move_clicks % 2 != 0:  # Auto-move is active
+    if auto_move_clicks % 2 != 0 and len(alert_list):  # Auto-move is active and there is ongoing alerts
         return (current_value + 1) % (max_value + 1)
     else:
         raise PreventUpdate
@@ -389,7 +417,7 @@ def update_download_link(slider_value, alert_data, media_url):
     - str: URL for downloading the current image.
     """
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
-    if data_loaded:
+    if data_loaded and len(alert_data):
         event_id, media_id = alert_data.iloc[slider_value][["event_id", "media_id"]]
         if str(event_id) in media_url.keys():
             return media_url[str(event_id)][str(media_id)]
@@ -453,7 +481,7 @@ def update_map(alert_data):
             [row_with_localization["lat"], row_with_localization["lon"]],
         )
 
-    raise PreventUpdate
+    return ([], dash.no_update, [], dash.no_update)
 
 
 @app.callback(

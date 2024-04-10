@@ -282,6 +282,9 @@ def get_media_url(
     if not alerts_data_loaded:
         raise PreventUpdate
 
+    if local_alerts.empty:
+        return {}
+
     current_event_ids = set(local_alerts["event_id"].astype(str))
 
     # Cleanup: Remove any event_ids from media_url not present in local_alerts
