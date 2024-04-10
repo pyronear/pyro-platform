@@ -102,7 +102,7 @@ def build_sites_markers(user_headers, user_credentials):
         )
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
-    return markers
+    return markers, client_sites
 
 
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
@@ -153,14 +153,19 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
         "height": "100%",
     }
 
+    markers, client_sites = build_sites_markers(user_headers, user_credentials)
+
     map_object = dl.Map(
-        center=[44.73, 4.27],  # Determines the point around which the map is centered
+        center=[
+            client_sites["lat"].median(),
+            client_sites["lon"].median(),
+        ],  # Determines the point around which the map is centered
         zoom=10,  # Determines the initial level of zoom around the center point
         children=[
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
-            dl.MarkerClusterGroup(children=build_sites_markers(user_headers, user_credentials), id="sites_markers"),
+            dl.MarkerClusterGroup(children=markers, id="sites_markers"),
         ],  # Will contain the past fire markers of the alerts map
         style=map_style,  # Reminder: map_style is imported from utils.py
         id=f"map{id_suffix}",
