@@ -29,7 +29,7 @@ def api_request(method_type: str, route: str, headers=Dict[str, str], payload: O
 
 
 def get_sites(user_credentials):
-    api_url = cfg.API_URL.split(".org")[0] + ".org"  # prevent last "/"
+    api_url = cfg.API_URL.rstrip("/")
     superuser_login = user_credentials["username"]
     superuser_pwd = user_credentials["password"]
 
