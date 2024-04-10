@@ -6,7 +6,6 @@
 from datetime import datetime
 
 import dash_leaflet as dl
-import pandas as pd
 import pytz
 import requests
 from dash import html
@@ -15,7 +14,8 @@ from geopy.distance import geodesic
 from timezonefinder import TimezoneFinder
 
 import config as cfg
-from services import api_client, call_api
+from services import api_client
+from utils.sites import get_sites
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
@@ -76,7 +76,7 @@ def build_sites_markers(user_headers, user_credentials):
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
 
-    client_sites = pd.DataFrame(call_api(api_client.get_sites, user_credentials)())
+    client_sites = get_sites(user_credentials)
     markers = []
 
     for _, site in client_sites.iterrows():
@@ -173,6 +173,8 @@ def create_event_list_from_df(api_events):
     """
     This function build the list of events on the left based on event data
     """
+    if api_events.empty:
+        return []
     tf = TimezoneFinder()
     alert_ts_local = []
     for _, row in api_events.iterrows():

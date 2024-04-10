@@ -11,7 +11,7 @@ from typing import List
 
 import pandas as pd
 
-from services import call_api
+from utils.sites import get_sites
 
 
 def read_stored_DataFrame(data):
@@ -69,9 +69,6 @@ def process_bbox(input_str):
         new_boxes.append([int(x0 * 100), int(y0 * 100), int(width * 100), int(height * 100)])
 
     return new_boxes
-
-
-import pandas as pd
 
 
 def past_ndays_api_events(api_events, n_days=0):
@@ -150,10 +147,10 @@ def load_site_data_file(api_client, user_credentials, site_devices_file="site_de
         with site_devices_path.open() as json_file:
             return json.load(json_file)
 
-    client_sites = pd.DataFrame(call_api(api_client.get_sites, user_credentials)())
+    client_sites = get_sites(user_credentials)
     site_devices_dict = {}
     for _, site in client_sites.iterrows():
-        site_ids = api_client.get_site_devices(site["id"]).json()
+        site_ids = set(api_client.get_site_devices(site["id"]).json())
         for site_id in site_ids:
             site_devices_dict[str(site_id)] = site["name"].replace("_", " ")
     with site_devices_path.open("w") as fp:
