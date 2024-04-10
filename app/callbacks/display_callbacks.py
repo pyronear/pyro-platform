@@ -5,6 +5,7 @@
 
 import ast
 import json
+from typing import List
 
 import dash
 import pandas as pd
@@ -246,7 +247,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
     """
     img_src = ""
     bbox_style = {}
-    bbox_divs = []  # This will contain the bounding box as an html.Div
+    bbox_divs: List[html.Div] = []  # This will contain the bounding box as an html.Div
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
         raise PreventUpdate
@@ -454,7 +455,7 @@ def update_map(alert_data):
     if not alert_data.empty:
         # Convert the 'localization' column to a list (empty lists if the original value was '[]').
         alert_data["localization"] = alert_data["localization"].apply(
-            lambda x: ast.literal_eval(x) if x.strip() != "[]" else []
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
         )
 
         # Filter out rows where 'localization' is not empty and get the last one.
