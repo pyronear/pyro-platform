@@ -134,7 +134,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
             dash.no_update,
         ]
     else:
-        api_events = past_ndays_api_events(api_events, n_days=1)  # keep only events from today
+        api_events = past_ndays_api_events(api_events, n_days=0)  # keep only events from today
         if api_events.empty:
             return dash.no_update, dash.no_update, True
         api_events = api_events[::-1]  # Display the last alert first
