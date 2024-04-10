@@ -71,9 +71,6 @@ def process_bbox(input_str):
     return new_boxes
 
 
-import pandas as pd
-
-
 def past_ndays_api_events(api_events, n_days=0):
     """
     Filters the given live events to retain only those within the past n days.
