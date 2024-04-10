@@ -117,73 +117,119 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
 
     # Fetch events
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
-    api_events = past_ndays_api_events(api_events, n_days=0)  # keep only events from today
-    if api_events.empty:
-        return dash.no_update, dash.no_update, True
-    api_events = api_events[::-1]  # Display the last alert first
-
-    if event_data_loaded:
-        new_api_events = api_events[~api_events["id"].isin(local_events["id"])]
-
-    else:
-        new_api_events = api_events
-
-    if alerts_data_loaded:
-        # drop old alerts
-        local_alerts = local_alerts[local_alerts["event_id"].isin(api_events["id"])]
-
-        # Find ongoing alerts for the events started within 30 minutes;
-        # after that, any new alert is part of a new event
-        local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
-
-        # Define the end_event timestamp as timezone-naive
-        end_event = pd.Timestamp.utcnow().replace(tzinfo=None) - pd.Timedelta(minutes=30)
-
-        # Filter local_alerts based on the 'created_at' condition
-        ongoing_local_alerts = local_alerts[local_alerts["created_at"] > end_event].copy()
-        get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-        v = ongoing_local_alerts["event_id"].drop_duplicates().apply(lambda x: pd.DataFrame(get_alerts(x)))
-
-        if len(v) == 0:
-            raise PreventUpdate
-
-        api_alerts = pd.concat(v.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
-        new_api_alerts = api_alerts[~api_alerts["id"].isin(local_alerts["id"])].copy()
-        local_alerts["processed_loc"] = local_alerts["localization"].apply(process_bbox)
-        if len(new_api_alerts) == 0:
-            raise PreventUpdate
-        local_alerts = pd.concat([local_alerts, new_api_alerts], join="outer")
-        local_alerts = local_alerts.drop_duplicates(subset=["id"])
-        local_alerts = local_alerts.groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
-    else:
-        get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
-        _ = api_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
-        local_alerts = pd.concat(_.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
-        local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
-        local_alerts["processed_loc"] = local_alerts["localization"].apply(process_bbox)
-
-    if len(new_api_events):
-        alerts_data = new_api_events.merge(local_alerts, left_on="id", right_on="event_id").drop_duplicates(
-            subset=["id_x"]
-        )[["azimuth", "device_id"]]
-
-        new_api_events["device_name"] = [
-            f"{retrieve_site_from_device_id(api_client, user_credentials, device_id)} - {int(azimuth)}°".title()
-            for _, (azimuth, device_id) in alerts_data.iterrows()
+    if len(api_events) == 0:
+        return [
+            json.dumps(
+                {
+                    "data": pd.DataFrame().to_json(orient="split"),
+                    "data_loaded": True,
+                }
+            ),
+            json.dumps(
+                {
+                    "data": pd.DataFrame().to_json(orient="split"),
+                    "data_loaded": True,
+                }
+            ),
+            dash.no_update,
         ]
+    else:
+        api_events = past_ndays_api_events(api_events, n_days=1)  # keep only events from today
+        if api_events.empty:
+            return dash.no_update, dash.no_update, True
+        api_events = api_events[::-1]  # Display the last alert first
 
-        if event_data_loaded:
-            local_events = pd.concat([local_events, new_api_events], join="outer")
-            local_events = local_events.drop_duplicates()
+        # Drop acknowledged
+        if not local_events.empty:
+            local_events = local_events[local_events["id"].isin(api_events["id"])]
+
+        if event_data_loaded and api_events.empty and local_events.empty:
+            new_api_events = api_events[~api_events["id"].isin(local_events["id"])].copy()
 
         else:
-            local_events = new_api_events
+            new_api_events = api_events.copy()
 
-    return [
-        json.dumps({"data": local_events.to_json(orient="split"), "data_loaded": True}),
-        json.dumps({"data": local_alerts.to_json(orient="split"), "data_loaded": True}),
-        dash.no_update,
-    ]
+        if alerts_data_loaded and not local_alerts.empty:
+            # drop old alerts
+
+            local_alerts = local_alerts[local_alerts["event_id"].isin(api_events["id"])]
+
+            # Find ongoing alerts for the events started within 30 minutes;
+            # after that, any new alert is part of a new event
+            local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
+
+            # Define the end_event timestamp as timezone-naive
+            end_event = pd.Timestamp.utcnow().replace(tzinfo=None) - pd.Timedelta(minutes=30)
+
+            # Get ongoing alerts
+            ongoing_local_alerts = local_alerts[local_alerts["created_at"] > end_event].copy()
+            get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
+            ongoing_alerts = pd.DataFrame()
+
+            # Iterate over each unique event_id
+            for event_id in ongoing_local_alerts["event_id"].drop_duplicates():
+                # Get the alerts for the current event_id and convert to DataFrame
+                alerts_df = pd.DataFrame(get_alerts(event_id))
+
+                # Concatenate the current alerts DataFrame to the ongoing_alerts DataFrame
+                ongoing_alerts = pd.concat([ongoing_alerts, alerts_df], ignore_index=True)
+
+            if not ongoing_alerts.empty:
+                ongoing_alerts = (
+                    ongoing_alerts.groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
+                )
+                ongoing_alerts = ongoing_alerts[~ongoing_alerts["id"].isin(local_alerts["id"])].copy()
+                ongoing_alerts["processed_loc"] = ongoing_alerts["localization"].apply(process_bbox)
+
+            # Get new alerts
+            new_alerts = pd.DataFrame()
+
+            # Iterate over each unique event_id
+            for event_id in new_api_events["id"].drop_duplicates():
+                # Get the alerts for the current event_id and convert to DataFrame
+                alerts_df = pd.DataFrame(get_alerts(event_id))
+
+                # Concatenate the current alerts DataFrame to the new_alerts DataFrame
+                new_alerts = pd.concat([new_alerts, alerts_df], ignore_index=True)
+
+            if not new_alerts.empty:
+                new_alerts = new_alerts.groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
+                new_alerts["processed_loc"] = new_alerts["localization"].apply(process_bbox)
+            new_alerts = pd.concat([new_alerts, ongoing_alerts], join="outer")
+            local_alerts = pd.concat([local_alerts, new_alerts], join="outer")
+            local_alerts = local_alerts.drop_duplicates(subset=["id"])
+
+        else:
+            get_alerts = call_api(api_client.get_alerts_for_event, user_credentials)
+            _ = api_events["id"].apply(lambda x: pd.DataFrame(get_alerts(x)))  # type: ignore[arg-type, return-value]
+            local_alerts = (
+                pd.concat(_.values).groupby(["event_id"]).head(cfg.MAX_ALERTS_PER_EVENT).reset_index(drop=True)
+            )
+            local_alerts["created_at"] = pd.to_datetime(local_alerts["created_at"])
+            local_alerts["processed_loc"] = local_alerts["localization"].apply(process_bbox)
+
+        if len(new_api_events):
+            alerts_data = new_api_events.merge(local_alerts, left_on="id", right_on="event_id").drop_duplicates(
+                subset=["id_x"]
+            )[["azimuth", "device_id"]]
+
+            new_api_events["device_name"] = [
+                f"{retrieve_site_from_device_id(api_client, user_credentials, device_id)} - {int(azimuth)}°".title()
+                for _, (azimuth, device_id) in alerts_data.iterrows()
+            ]
+
+            if event_data_loaded:
+                local_events = pd.concat([local_events, new_api_events], join="outer")
+                local_events = local_events.drop_duplicates()
+
+            else:
+                local_events = new_api_events
+
+        return [
+            json.dumps({"data": local_events.to_json(orient="split"), "data_loaded": True}),
+            json.dumps({"data": local_alerts.to_json(orient="split"), "data_loaded": True}),
+            dash.no_update,
+        ]
 
 
 @app.callback(
