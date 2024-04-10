@@ -173,6 +173,8 @@ def create_event_list_from_df(api_events):
     """
     This function build the list of events on the left based on event data
     """
+    if api_events.empty:
+        return []
     tf = TimezoneFinder()
     alert_ts_local = []
     for _, row in api_events.iterrows():
