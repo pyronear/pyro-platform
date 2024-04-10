@@ -24,7 +24,15 @@ def homepage_layout(user_headers, user_credentials):
                                 id="image-container-with-bbox",
                                 style={"position": "relative"},  # Ensure this container is relatively positioned
                                 children=[
-                                    html.Div(id="image-container"),  # This will contain the image
+                                    html.Div(
+                                        id="image-container",
+                                        children=[
+                                            html.Img(
+                                                src="https://pyronear.org/img/logo_letters_orange.png",
+                                                style={"max-width": "100%", "height": "auto"},
+                                            )
+                                        ],  # Adjust the style as needed
+                                    ),  # This will contain the image
                                     html.Div(
                                         id="bbox-container", style={"display": "block"}
                                     ),  # This will contain the bounding box
