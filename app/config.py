@@ -16,7 +16,7 @@ DEBUG: bool = os.environ.get("DEBUG", "").lower() != "false"
 API_URL: str = os.environ.get("API_URL", "")
 API_LOGIN: str = os.environ.get("API_LOGIN", "")
 API_PWD: str = os.environ.get("API_PWD", "")
-LOGIN: bool = os.environ.get("LOGIN", "").lower() != "true"
+LOGIN: bool = os.environ.get("LOGIN", "true").lower() == "true"
 PYRORISK_FALLBACK: str = "https://github.com/pyronear/pyro-risks/releases/download/v0.1.0-data/pyrorisk_20200901.json"
 GEOJSON_FILE: str = "https://github.com/pyronear/pyro-risks/releases/download/v0.1.0-data/departements.geojson"
 # Sentry
