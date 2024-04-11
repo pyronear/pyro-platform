@@ -28,7 +28,7 @@ def homepage_layout(user_headers, user_credentials):
                                         id="image-container",
                                         children=[
                                             html.Img(
-                                                src="https://pyronear.org/img/logo_letters_orange.png",
+                                                src="./assets/images/no-alert-default.png",
                                                 style={"max-width": "100%", "height": "auto"},
                                             )
                                         ],  # Adjust the style as needed
