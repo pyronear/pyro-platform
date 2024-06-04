@@ -13,6 +13,7 @@ from dash.exceptions import PreventUpdate
 from main import app
 from pyroclient import Client
 
+import logging_config
 import config as cfg
 from services import api_client, call_api
 from utils.data import (
@@ -22,6 +23,7 @@ from utils.data import (
     retrieve_site_from_device_id,
 )
 
+logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 @app.callback(
     [
@@ -114,7 +116,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     # Read local data
     local_events, event_data_loaded = read_stored_DataFrame(local_events)
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
-
+    logger.info("Start Fetching the events")
     # Fetch events
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     if len(api_events) == 0:

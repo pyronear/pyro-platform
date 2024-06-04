@@ -20,3 +20,5 @@ RUN apt update \
 
 # copy project
 COPY app/ /usr/src/app/
+
+CMD python index.py --host 0.0.0.0 --port 8050
