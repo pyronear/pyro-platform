@@ -27,6 +27,8 @@ In order to stop the service, run:
 make stop
 ```
 
+If you need to launch the pyro-api in your development environment you can use the pyro-devops project.
+
 ## Installation
 
 ### Prerequisites
