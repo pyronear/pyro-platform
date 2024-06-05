@@ -419,7 +419,9 @@ def update_download_link(slider_value, alert_data, media_url):
     """
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if data_loaded and len(alert_data):
-        event_id, media_id = alert_data.iloc[slider_value][["event_id", "media_id"]] # BUG ? IndexError: single positional indexer is out-of-bounds
+        event_id, media_id = alert_data.iloc[slider_value][
+            ["event_id", "media_id"]
+        ]  # BUG ? IndexError: single positional indexer is out-of-bounds
         if str(event_id) in media_url.keys():
             return media_url[str(event_id)][str(media_id)]
     return ""  # Return empty string if no image URL is available
@@ -534,7 +536,9 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
 # Define the callback to reset the zoom level
 @app.callback(
     Output("map", "zoom"),
-    [Input({"type": "event-button", "index": ALL}, "n_clicks"),]
+    [
+        Input({"type": "event-button", "index": ALL}, "n_clicks"),
+    ],
 )
 def reset_zoom(n_clicks):
     print("ON RESET LE ZOOM")
