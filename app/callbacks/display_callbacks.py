@@ -8,6 +8,7 @@ import json
 from typing import List
 
 import dash
+import logging_config
 import pandas as pd
 from dash import html
 from dash.dependencies import ALL, Input, Output, State
@@ -18,6 +19,8 @@ import config as cfg
 from services import api_client, call_api
 from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_df
+
+logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
 @app.callback(
@@ -419,9 +422,14 @@ def update_download_link(slider_value, alert_data, media_url):
     """
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if data_loaded and len(alert_data):
-        event_id, media_id = alert_data.iloc[slider_value][["event_id", "media_id"]]
-        if str(event_id) in media_url.keys():
-            return media_url[str(event_id)][str(media_id)]
+        try:
+            event_id, media_id = alert_data.iloc[slider_value][["event_id", "media_id"]]
+            if str(event_id) in media_url.keys():
+                return media_url[str(event_id)][str(media_id)]
+        except Exception as e:
+            logger.info(e)
+            logger.info(f"Size of the alert_data dataframe: {alert_data.size}")
+
     return ""  # Return empty string if no image URL is available
 
 
