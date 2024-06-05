@@ -421,7 +421,7 @@ def update_download_link(slider_value, alert_data, media_url):
     if data_loaded and len(alert_data):
         event_id, media_id = alert_data.iloc[slider_value][
             ["event_id", "media_id"]
-        ]  # BUG ? IndexError: single positional indexer is out-of-bounds
+        ] 
         if str(event_id) in media_url.keys():
             return media_url[str(event_id)][str(media_id)]
     return ""  # Return empty string if no image URL is available
