@@ -3,9 +3,10 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 import argparse
-import logging_config
+
 import callbacks.data_callbacks
 import callbacks.display_callbacks  # noqa: F401
+import logging_config
 from dash import html
 from dash.dependencies import Input, Output, State
 from layouts.main_layout import get_main_layout
@@ -29,8 +30,12 @@ app.layout = get_main_layout()
     State("user_credentials", "data"),
 )
 def display_page(pathname, user_headers, user_credentials):
-    logger.debug("display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
-                 pathname, user_headers, user_credentials)
+    logger.debug(
+        "display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
+        pathname,
+        user_headers,
+        user_credentials,
+    )
     if user_headers is None:
         logger.info("No user headers found, showing login layout.")
         return login_layout()
@@ -40,6 +45,7 @@ def display_page(pathname, user_headers, user_credentials):
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # RUNNING THE WEB-APP SERVER
