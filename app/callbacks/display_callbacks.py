@@ -541,7 +541,6 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
     ],
 )
 def reset_zoom(n_clicks):
-    print("ON RESET LE ZOOM")
     if n_clicks:
         return 10  # Reset zoom level to 10
     return dash.no_update
