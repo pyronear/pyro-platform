@@ -8,6 +8,7 @@ version = "0.1.2.dev0"
 description = "Monitoring platform for wildfire alerts"
 authors = ["Pyronear <contact@pyronear.org>"]
 license = "Apache-2.0"
+package-mode = false
 
 
 [tool.poetry.dependencies]
@@ -16,7 +17,7 @@ dash = ">=2.14.0"
 dash-bootstrap-components = ">=1.5.0"
 dash-leaflet = "^0.1.4"
 pandas = ">=2.1.4"
-pyroclient = { git = "https://github.com/pyronear/pyro-api.git#main", subdirectory = "client" }
+pyroclient = { git = "https://github.com/pyronear/pyro-api.git", rev = "767be30a781b52b29d68579d543e3f45ac8c4713", subdirectory = "client" }
 python-dotenv = ">=1.0.0"
 geopy = ">=2.4.0"
 
