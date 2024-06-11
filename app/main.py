@@ -3,18 +3,19 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-import logging
 
 import dash
 import dash_bootstrap_components as dbc
+import logging_config
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 import config as cfg
 
-# APP INSTANTIATION & OVERALL LAYOUT
-logger = logging.getLogger("uvicorn.error")
-# Sentry
+# Configure logging
+logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
+
+# Sentry (this will be handled by logging configuration now)
 if isinstance(cfg.SENTRY_DSN, str):
     sentry_sdk.init(
         dsn=cfg.SENTRY_DSN,

@@ -27,6 +27,25 @@ In order to stop the service, run:
 make stop
 ```
 
+If you need to launch the pyro-api in your development environment you can use the pyro-devops project.
+You can use it in two different ways : 
+=> by building the pyro-platform image and launch the full development environment with the command :
+```shell
+make run
+```
+=> by launching the development environment without the platform :
+```shell
+make run-engine
+```
+adding this line in your /etc/hosts :
+```
+127.0.0.1 www.localstack.com localstack
+```
+and launching your project locally :
+```
+python3 app/index.py
+```
+
 ## Installation
 
 ### Prerequisites

@@ -6,6 +6,7 @@
 import json
 
 import dash
+import logging_config
 import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
@@ -21,6 +22,8 @@ from utils.data import (
     read_stored_DataFrame,
     retrieve_site_from_device_id,
 )
+
+logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
 @app.callback(
@@ -114,7 +117,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     # Read local data
     local_events, event_data_loaded = read_stored_DataFrame(local_events)
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
-
+    logger.info("Start Fetching the events")
     # Fetch events
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     if len(api_events) == 0:
