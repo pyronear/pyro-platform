@@ -537,3 +537,16 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
     if n_clicks_open:
         return not is_open  # Toggle the modal
     return is_open  # Keep the current state
+
+
+# Define the callback to reset the zoom level
+@app.callback(
+    Output("map", "zoom"),
+    [
+        Input({"type": "event-button", "index": ALL}, "n_clicks"),
+    ],
+)
+def reset_zoom(n_clicks):
+    if n_clicks:
+        return 10  # Reset zoom level to 10
+    return dash.no_update
