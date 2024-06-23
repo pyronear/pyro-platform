@@ -14,3 +14,20 @@
     background: #555;
   }
   
+/* custom.css */
+.btn-uniform {
+  width: 100%;
+  border: none;
+  text-align: center;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* custom.css */
+a.no-underline {
+  text-decoration: none;
+}
+
