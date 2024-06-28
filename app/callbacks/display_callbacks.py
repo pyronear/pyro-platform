@@ -257,9 +257,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
         raise PreventUpdate
 
     if len(alert_list) == 0:
-        img_html = html.Img(
-            src="https://pyronear.org/img/logo_letters_orange.png", style={"width": "100%", "height": "auto"}
-        )
+        img_html = html.Img(src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"})
         return img_html, bbox_divs, 0
 
     # Filter images with non-empty URLs
@@ -273,9 +271,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
             boxes.append(alert["processed_loc"])
 
     if not images:
-        img_html = html.Img(
-            src="https://pyronear.org/img/logo_letters_orange.png", style={"width": "100%", "height": "auto"}
-        )
+        img_html = html.Img(src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"})
         return img_html, bbox_divs, 0
 
     # Ensure slider_value is within the range of available images
