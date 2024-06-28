@@ -258,7 +258,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
 
     if len(alert_list) == 0:
         img_html = html.Img(
-            src="https://pyronear.org/img/logo_letters_orange.png", style={"width": "100%", "height": "auto"}
+            src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"}
         )
         return img_html, bbox_divs, 0
 
@@ -274,7 +274,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
 
     if not images:
         img_html = html.Img(
-            src="https://pyronear.org/img/logo_letters_orange.png", style={"width": "100%", "height": "auto"}
+            src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"}
         )
         return img_html, bbox_divs, 0
 
