@@ -66,7 +66,7 @@ def process_bbox(input_str):
         width = x1 - x0
         height = y1 - y0
 
-        new_boxes.append([int(x0 * 100), int(y0 * 100), int(width * 100), int(height * 100)])
+        new_boxes.append([x0 * 100, y0 * 100, width * 100, height * 100])
 
     return new_boxes
 
