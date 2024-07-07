@@ -497,12 +497,13 @@ def update_map_and_alert_info(alert_data, local_events, event_id_on_display):
             localization=row_with_localization["processed_loc"],
         )
 
-        cam_name = local_events[local_events["id"] == event_id_on_display]["device_name"].values[0]
+        date_val, cam_name = local_events[local_events["id"] == event_id_on_display][
+            ["created_at", "device_name"]
+        ].values[0]
 
         camera_info = f"Camera: {cam_name}"
         location_info = f"Localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
         angle_info = f"Azimuth de detection: {detection_azimuth}°"
-        date_val = row_with_localization["created_at"].strftime("%Y-%m-%d %H:%M:%S")
         date_info = f"Date: {date_val}"
 
         return (
