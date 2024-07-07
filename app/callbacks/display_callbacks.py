@@ -470,8 +470,6 @@ def update_map_and_alert_info(alert_data, local_events, event_id_on_display):
 
     if not alert_data.empty:
 
-        print(local_events)
-
         local_events, event_data_loaded = read_stored_DataFrame(local_events)
         if not event_data_loaded:
             raise PreventUpdate
