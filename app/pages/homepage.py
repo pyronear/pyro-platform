@@ -42,7 +42,8 @@ def homepage_layout(user_headers, user_credentials):
                             html.Div(
                                 dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
                                 id="slider-container",
-                                style={"display": "none"},
+                                className="common-style-slider",
+                                style={"display": "none", "marginTop": "10px"},
                             ),
                             dbc.Row(
                                 [
@@ -94,7 +95,7 @@ def homepage_layout(user_headers, user_credentials):
                                     ),
                                 ],
                                 className="mb-4",
-                                style={"display": "flex"},
+                                style={"display": "flex", "marginTop": "10px"},
                             ),
                         ],
                         width=8,
@@ -104,7 +105,7 @@ def homepage_layout(user_headers, user_credentials):
                             dbc.Row(
                                 dbc.Button(
                                     "Agrandir la carte",
-                                    className="btn-uniform common-style",
+                                    className="common-style",
                                     style={"backgroundColor": "#FEBA6A"},
                                     id="map-button",
                                 ),
@@ -118,7 +119,6 @@ def homepage_layout(user_headers, user_credentials):
                                         "position": "relative",
                                         "width": "100%",
                                         "paddingTop": "100%",
-                                        "margin": "auto",
                                     },
                                 ),
                             ),

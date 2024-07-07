@@ -37,8 +37,15 @@ a.no-underline {
   border: 2px solid #044448;
   border-radius: 10px;  
   background-color: rgba(4, 68, 72, 0.1);
-  margin-bottom: 20px;
 }
+
+.common-style-slider {
+  border: 2px solid #044448;
+  border-radius: 10px;  
+  background-color: rgba(4, 68, 72, 0.1);
+  margin-top: 10px;
+}
+
 
 /* Specific style for highlighted text */
 .highlight-text {
