@@ -48,7 +48,7 @@ def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
     # New opening angle
     new_opening_angle = opening_angle * width / 100 + 1  # avoid angle 0
 
-    return int(new_azimuth), int(new_opening_angle)
+    return int(new_azimuth) % 360, int(new_opening_angle)
 
 
 def build_sites_markers(user_headers, user_credentials):
