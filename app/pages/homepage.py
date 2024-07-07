@@ -39,7 +39,11 @@ def homepage_layout(user_headers, user_credentials):
                                     html.Div(id="bbox-container", style={"display": "block"}),
                                 ],
                             ),
-                            dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0, className="mt-2 d-none"),
+                            html.Div(
+                                dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                id="slider-container",
+                                style={"display": "none"},
+                            ),
                             dbc.Row(
                                 [
                                     dbc.Col(
@@ -129,11 +133,10 @@ def homepage_layout(user_headers, user_credentials):
                                         html.P(id="alert-date", children="Date: "),
                                     ],
                                     className="common-style",
-                                    style={"fontSize": "15px", "fontWeight": "bold"},
+                                    style={"fontSize": "15px", "fontWeight": "bold", "display": "none"},
                                 ),
                                 className="mt-4",
                                 id="alert-panel",
-                                style={"display": "True"},
                             ),
                         ],
                         width=2,

@@ -441,6 +441,8 @@ def update_download_link(slider_value, alert_data, media_url):
         Output("alert-location", "children"),
         Output("alert-azimuth", "children"),
         Output("alert-date", "children"),
+        Output("alert-information", "style"),
+        Output("slider-container", "style"),
     ],
     Input("alert_on_display", "data"),
     [State("store_api_events_data", "data"), State("event_id_on_display", "data")],
@@ -512,9 +514,22 @@ def update_map_and_alert_info(alert_data, local_events, event_id_on_display):
             location_info,
             angle_info,
             date_info,
+            {"display": "block"},
+            {"display": "block"},
         )
 
-    return ([], dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update)
+    return (
+        [],
+        dash.no_update,
+        [],
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        {"display": "none"},
+        {"display": "none"},
+    )
 
 
 @app.callback(
