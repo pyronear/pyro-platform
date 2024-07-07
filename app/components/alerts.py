@@ -27,7 +27,6 @@ def create_event_list():
 
     return html.Div(
         [
-            html.H1("Alertes en cours", style={"textAlign": "center", "fontSize": "30px"}),
             html.Div(id="alert-list-container", style=event_list_style, children=[]),  # Empty container
         ]
     )

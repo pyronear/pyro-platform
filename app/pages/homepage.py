@@ -3,11 +3,15 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
+
 import dash_bootstrap_components as dbc
-from dash import dcc, html
+from dash import Dash, dcc, html
 
 from components.alerts import create_event_list
 from utils.display import build_alerts_map
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_headers, user_credentials):
@@ -15,30 +19,31 @@ def homepage_layout(user_headers, user_credentials):
         [
             dbc.Row(
                 [
-                    # Column for the alert list
-                    dbc.Col(create_event_list(), width=2, className="mb-4"),
-                    # Column for the image
+                    dbc.Col([create_event_list()], width=2, className="mb-4"),
                     dbc.Col(
                         [
                             html.Div(
                                 id="image-container-with-bbox",
-                                style={"position": "relative"},  # Ensure this container is relatively positioned
+                                style={"position": "relative"},
                                 children=[
                                     html.Div(
                                         id="image-container",
                                         children=[
                                             html.Img(
                                                 src="./assets/images/no-alert-default.png",
+                                                className="common-style",
                                                 style={"max-width": "100%", "height": "auto"},
                                             )
-                                        ],  # Adjust the style as needed
-                                    ),  # This will contain the image
-                                    html.Div(
-                                        id="bbox-container", style={"display": "block"}
-                                    ),  # This will contain the bounding box
+                                        ],
+                                    ),
+                                    html.Div(id="bbox-container", style={"display": "block"}),
                                 ],
                             ),
-                            dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0),
+                            html.Div(
+                                dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                id="slider-container",
+                                style={"display": "none"},
+                            ),
                             dbc.Row(
                                 [
                                     dbc.Col(
@@ -46,7 +51,7 @@ def homepage_layout(user_headers, user_credentials):
                                             "Activer / Désactiver l'animation",
                                             id="auto-move-button",
                                             n_clicks=1,
-                                            className="btn-uniform",
+                                            className="btn-uniform common-style",
                                             style={"backgroundColor": "#FD5252"},
                                         ),
                                         width=3,
@@ -56,7 +61,7 @@ def homepage_layout(user_headers, user_credentials):
                                             "Afficher / Cacher la prédiction",
                                             id="hide-bbox-button",
                                             n_clicks=0,
-                                            className="btn-uniform",
+                                            className="btn-uniform common-style",
                                             style={"backgroundColor": "#FEBA6A"},
                                         ),
                                         width=3,
@@ -65,7 +70,7 @@ def homepage_layout(user_headers, user_credentials):
                                         html.A(
                                             dbc.Button(
                                                 "Télécharger l'image",
-                                                className="btn-uniform",
+                                                className="btn-uniform common-style",
                                                 style={"backgroundColor": "#2C796E"},
                                                 id="dl-image-button",
                                             ),
@@ -82,7 +87,7 @@ def homepage_layout(user_headers, user_credentials):
                                             "Acquitter l'alerte",
                                             id="acknowledge-button",
                                             n_clicks=1,
-                                            className="btn-uniform",
+                                            className="btn-uniform common-style",
                                             style={"backgroundColor": "#054546"},
                                         ),
                                         width=3,
@@ -94,30 +99,44 @@ def homepage_layout(user_headers, user_credentials):
                         ],
                         width=8,
                     ),
-                    # Column for buttons with added margins
                     dbc.Col(
                         [
-                            # Modal issue let's add this later
                             dbc.Row(
                                 dbc.Button(
                                     "Agrandir la carte",
-                                    className="btn-uniform",
+                                    className="btn-uniform common-style",
                                     style={"backgroundColor": "#FEBA6A"},
                                     id="map-button",
                                 ),
                                 className="mb-2",
                             ),
                             dbc.Row(
-                                # This row contains the map
                                 dbc.Col(
                                     build_alerts_map(user_headers, user_credentials),
+                                    className="common-style",
                                     style={
                                         "position": "relative",
                                         "width": "100%",
-                                        "paddingTop": "100%",  # This creates the square aspect ratio
+                                        "paddingTop": "100%",
                                         "margin": "auto",
                                     },
                                 ),
+                            ),
+                            dbc.Row(
+                                html.Div(
+                                    id="alert-information",
+                                    children=[
+                                        html.H4("Alerte Information"),
+                                        html.P(id="alert-camera", children="Camera: "),
+                                        html.P(id="alert-location", children="Localisation: "),
+                                        html.P(id="alert-azimuth", children="Azimuth de detection: "),
+                                        html.P(id="alert-date", children="Date: "),
+                                    ],
+                                    className="common-style",
+                                    style={"fontSize": "15px", "fontWeight": "bold", "display": "none"},
+                                ),
+                                className="mt-4",
+                                id="alert-panel",
                             ),
                         ],
                         width=2,
@@ -125,7 +144,7 @@ def homepage_layout(user_headers, user_credentials):
                     ),
                 ]
             ),
-            dcc.Interval(id="auto-slider-update", interval=500, n_intervals=0),  # in milliseconds
+            dcc.Interval(id="auto-slider-update", interval=500, n_intervals=0),
             dbc.Modal(
                 [
                     dbc.ModalHeader("Carte"),

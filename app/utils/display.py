@@ -137,7 +137,7 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, lo
         positions=points,
     )
 
-    return polygon
+    return polygon, azimuth
 
 
 def build_alerts_map(user_headers, user_credentials, id_suffix=""):
