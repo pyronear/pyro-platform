@@ -257,7 +257,11 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
         raise PreventUpdate
 
     if len(alert_list) == 0:
-        img_html = html.Img(src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"})
+        img_html = html.Img(
+            src="./assets/images/no-alert-default.png",
+            className="common-style",
+            style={"width": "100%", "height": "auto"},
+        )
         return img_html, bbox_divs, 0
 
     # Filter images with non-empty URLs
@@ -271,7 +275,11 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
             boxes.append(alert["processed_loc"])
 
     if not images:
-        img_html = html.Img(src="./assets/images/no-alert-default.png", style={"width": "100%", "height": "auto"})
+        img_html = html.Img(
+            src="./assets/images/no-alert-default.png",
+            className="common-style",
+            style={"width": "100%", "height": "auto"},
+        )
         return img_html, bbox_divs, 0
 
     # Ensure slider_value is within the range of available images
@@ -301,7 +309,7 @@ def update_image_and_bbox(slider_value, alert_data, media_url, alert_list):
     bbox_div = html.Div(style=bbox_style)
     bbox_divs.append(bbox_div)
 
-    img_html = html.Img(src=img_src, style={"width": "100%", "height": "auto"})
+    img_html = html.Img(src=img_src, className="common-style", style={"width": "100%", "height": "auto"})
     return img_html, bbox_divs, len(images) - 1
 
 
@@ -429,13 +437,18 @@ def update_download_link(slider_value, alert_data, media_url):
         Output("map", "center"),
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
+        Output("alert-camera", "children"),
+        Output("alert-location", "children"),
+        Output("alert-azimuth", "children"),
+        Output("alert-date", "children"),
     ],
     Input("alert_on_display", "data"),
+    [State("store_api_events_data", "data"), State("event_id_on_display", "data")],
     prevent_initial_call=True,
 )
-def update_map(alert_data):
+def update_map_and_alert_info(alert_data, local_events, event_id_on_display):
     """
-    Updates the map's vision polygons and center based on the current alert data.
+    Updates the map's vision polygons, center, and alert information based on the current alert data.
 
     Parameters:
     - alert_data (json): JSON formatted data for the selected event.
@@ -443,6 +456,12 @@ def update_map(alert_data):
     Returns:
     - list: List of vision polygon elements to be displayed on the map.
     - list: New center coordinates for the map.
+    - list: List of vision polygon elements to be displayed on the modal map.
+    - list: New center coordinates for the modal map.
+    - str: Camera information for the alert.
+    - str: Location information for the alert.
+    - str: Detection angle for the alert.
+    - str: Date of the alert.
     """
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
 
@@ -450,6 +469,13 @@ def update_map(alert_data):
         raise PreventUpdate
 
     if not alert_data.empty:
+
+        print(local_events)
+
+        local_events, event_data_loaded = read_stored_DataFrame(local_events)
+        if not event_data_loaded:
+            raise PreventUpdate
+
         # Convert the 'localization' column to a list (empty lists if the original value was '[]').
         alert_data["localization"] = alert_data["localization"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
@@ -463,7 +489,7 @@ def update_map(alert_data):
             else alert_data.iloc[-1]
         )
 
-        polygon = build_vision_polygon(
+        polygon, detection_azimuth = build_vision_polygon(
             site_lat=row_with_localization["lat"],
             site_lon=row_with_localization["lon"],
             azimuth=row_with_localization["azimuth"],
@@ -472,14 +498,26 @@ def update_map(alert_data):
             localization=row_with_localization["processed_loc"],
         )
 
+        cam_name = local_events[local_events["id"] == event_id_on_display]["device_name"].values[0]
+
+        camera_info = f"Camera: {cam_name}"
+        location_info = f"Localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        angle_info = f"Azimuth de detection: {detection_azimuth}°"
+        date_val = row_with_localization["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+        date_info = f"Date: {date_val}"
+
         return (
             polygon,
             [row_with_localization["lat"], row_with_localization["lon"]],
             polygon,
             [row_with_localization["lat"], row_with_localization["lon"]],
+            camera_info,
+            location_info,
+            angle_info,
+            date_info,
         )
 
-    return ([], dash.no_update, [], dash.no_update)
+    return ([], dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update)
 
 
 @app.callback(
