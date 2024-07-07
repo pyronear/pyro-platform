@@ -17,6 +17,7 @@ from pyroclient import Client
 import config as cfg
 from services import api_client, call_api
 from utils.data import (
+    convert_time,
     past_ndays_api_events,
     process_bbox,
     read_stored_DataFrame,
@@ -120,6 +121,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     logger.info("Start Fetching the events")
     # Fetch events
     api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    api_events["created_at"] = convert_time(api_events)
     if len(api_events) == 0:
         return [
             json.dumps(
