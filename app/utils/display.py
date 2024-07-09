@@ -5,14 +5,14 @@
 
 
 import dash_leaflet as dl
+import pandas as pd
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
+from pyroclient import Client
 
 import config as cfg
-from services import api_client
-from utils.sites import get_sites
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
@@ -51,7 +51,7 @@ def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
     return int(new_azimuth) % 360, int(new_opening_angle)
 
 
-def build_sites_markers(user_headers, user_credentials):
+def build_cameras_markers(token: str):
     """
     This function reads the site markers by making the API, that contains all the
     information about the sites equipped with detection units.
@@ -70,17 +70,15 @@ def build_sites_markers(user_headers, user_credentials):
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
     }
 
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
+    cameras = pd.DataFrame(Client(token, cfg.API_URL).fetch_cameras().json())
 
-    client_sites = get_sites(user_credentials)
     markers = []
 
-    for _, site in client_sites.iterrows():
-        site_id = site["id"]
-        lat = round(site["lat"], 4)
-        lon = round(site["lon"], 4)
-        site_name = site["name"].replace("_", " ").title()
+    for _, camera in cameras.iterrows():
+        site_id = camera["id"]
+        lat = round(camera["lat"], 4)
+        lon = round(camera["lon"], 4)
+        site_name = camera["name"].replace("_", " ").title()
         markers.append(
             dl.Marker(
                 id=f"site_{site_id}",  # Necessary to set an id for each marker to receive callbacks
@@ -99,7 +97,7 @@ def build_sites_markers(user_headers, user_credentials):
         )
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
-    return markers, client_sites
+    return markers, cameras
 
 
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
@@ -137,7 +135,7 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, lo
     return polygon, azimuth
 
 
-def build_alerts_map(user_headers, user_credentials, id_suffix=""):
+def build_detections_map(client_token, id_suffix=""):
     """
     The following function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
@@ -150,12 +148,12 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
         "height": "100%",
     }
 
-    markers, client_sites = build_sites_markers(user_headers, user_credentials)
+    markers, cameras = build_cameras_markers(client_token)
 
     map_object = dl.Map(
         center=[
-            client_sites["lat"].median(),
-            client_sites["lon"].median(),
+            cameras["lat"].median(),
+            cameras["lon"].median(),
         ],  # Determines the point around which the map is centered
         zoom=10,  # Determines the initial level of zoom around the center point
         children=[
@@ -171,23 +169,24 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
     return map_object
 
 
-def create_event_list_from_df(api_events):
+def create_wildfire_list_from_df(wildfires):
     """
-    This function build the list of events on the left based on event data
+    This function build the list of wildfires on the left based on wildfire data
     """
-    if api_events.empty:
+    if wildfires.empty:
         return []
-    filtered_events = api_events.sort_values("created_at").drop_duplicates("id", keep="last")[::-1]
+
+    filtered_wildfires = wildfires.sort_values("created_at").drop_duplicates("id", keep="last")[::-1]
 
     return [
         html.Button(
-            id={"type": "event-button", "index": event["id"]},
+            id={"type": "wildfire-button", "index": wildfire["id"]},
             children=[
                 html.Div(
-                    f"{event['device_name']}",
+                    f"{wildfire['camera_name']}",
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(wildfire["created_at"].strftime("%Y-%m-%d %H:%M")),
             ],
             n_clicks=0,
             style={
@@ -198,5 +197,5 @@ def create_event_list_from_df(api_events):
                 "width": "100%",
             },
         )
-        for _, event in filtered_events.iterrows()
+        for _, wildfire in filtered_wildfires.iterrows()
     ]
