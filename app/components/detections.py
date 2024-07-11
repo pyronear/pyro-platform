@@ -11,7 +11,7 @@ def create_wildfire_list():
     Creates a container for the detection list with a fixed height and scrollable content.
 
     This function generates a Dash HTML Div element containing a header and an empty container.
-    The empty container ('detection-list-container') is meant to be populated with detection buttons
+    The empty container ('wildfire-list-container') is meant to be populated with detection buttons
     dynamically via a callback. The container has a fixed height and is scrollable, allowing
     users to browse through a potentially long list of detections.
 
@@ -28,6 +28,6 @@ def create_wildfire_list():
     return html.Div(
         [
             html.H1("Detections en cours", style={"textAlign": "center", "fontSize": "30px"}),
-            html.Div(id="detection-list-container", style=wildfire_list_style, children=[]),  # Empty container
+            html.Div(id="wildfire-list-container", style=wildfire_list_style, children=[]),  # Empty container
         ]
     )

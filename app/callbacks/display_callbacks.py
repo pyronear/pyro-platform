@@ -55,7 +55,7 @@ def toggle_modal(media_url, client_token, trigger_no_wildfires, local_detections
 
 # Createwildfire list
 @app.callback(
-    Output("detection-list-container", "children"),
+    Output("wildfire-list-container", "children"),
     [
         Input("store_wildfires_data", "data"),
         Input("to_acknowledge", "data"),
@@ -86,6 +86,7 @@ def update_wildfire_list(local_wildfires, to_acknowledge, media_url):
 
     if len(local_wildfires):
         local_wildfires = local_wildfires[~local_wildfires["id"].isin([to_acknowledge])]
+
     return create_wildfire_list_from_df(local_wildfires)
 
 
@@ -136,9 +137,6 @@ def select_wildfire_with_button(
         raise PreventUpdate
 
     trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    print("on rentre ACKNOWLEDGE")
-    print(str(trigger_id))
 
     if trigger_id == "to_acknowledge":
         idx = local_detections[~local_detections["wildfire_id"].isin([to_acknowledge])]["wildfire_id"].values
@@ -215,9 +213,6 @@ def update_display_data(wildfire_id_on_display, local_detections):
     if not data_loaded:
         raise PreventUpdate
 
-    print("wildfire_id_on_display")
-    print(wildfire_id_on_display)
-
     if wildfire_id_on_display == 0:
         return json.dumps(
             {
@@ -226,10 +221,7 @@ def update_display_data(wildfire_id_on_display, local_detections):
             }
         )
     else:
-        if wildfire_id_on_display == 0:
-            wildfire_id_on_display = local_detections["detection_id"].values[0]
-
-        detection_on_display = local_detections[local_detections["detection_id"] == wildfire_id_on_display]
+        detection_on_display = local_detections[local_detections["id"] == wildfire_id_on_display]
 
         return json.dumps({"data": detection_on_display.to_json(orient="split"), "data_loaded": True})
 
@@ -243,17 +235,17 @@ def update_display_data(wildfire_id_on_display, local_detections):
     [Input("image-slider", "value"), Input("detection_on_display", "data")],
     [
         State("media_url", "data"),
-        State("detection-list-container", "children"),
+        State("wildfire-list-container", "children"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, detection_data, media_url, detection_list):
+def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list):
     """
     Updates the image and bounding box display based on the slider value.
 
     Parameters:
     - slider_value (int): Current value of the image slider.
-    - detection_data (json): JSON formatted data for the selectedwildfire.
+    - detection_data (json): JSON formatted data for the selected wildfire.
     - media_url (dict): Dictionary containing media URLs for detections.
 
     Returns:
@@ -267,12 +259,7 @@ def update_image_and_bbox(slider_value, detection_data, media_url, detection_lis
     if not data_loaded:
         raise PreventUpdate
 
-    print("Detection list :")
-    print(detection_list)
-    print("Detection  data :")  # TODO : why do we need both ?
-    print(detection_data)
-
-    if len(detection_list) == 0:
+    if len(wildfire_list) == 0:
         img_html = html.Img(
             src="./assets/images/no-alert-default.png",
             className="common-style",
@@ -282,14 +269,15 @@ def update_image_and_bbox(slider_value, detection_data, media_url, detection_lis
 
     # Filter images with non-empty URLs
     images = []
-
-    if str(detection_data["wildfire_id"].values[0]) not in media_url.keys():
+    if str(detection_data["id"].values[0]) not in media_url.keys():
         raise PreventUpdate
 
     for _, detection in detection_data.iterrows():
-        images.append(media_url[str(detection["wildfire_id"])][str(detection["media_id"])])
+        images.append(media_url[str(detection["id"])])
     boxes = detection_data["processed_loc"].tolist()
 
+    print("slider value dans update_image_and_bbox: " + str(slider_value))
+    print("slider max value: " + str(len(images) - 1))
     if slider_value < len(images):
         img_src = images[slider_value]
         images_bbox_list = boxes[slider_value]
@@ -379,11 +367,12 @@ def toggle_auto_move(n_clicks, data):
         State("image-slider", "value"),
         State("image-slider", "max"),
         State("auto-move-button", "n_clicks"),
-        State("detection-list-container", "children"),
+        State("wildfire_id_on_display", "data"),
+        State("store_wildfires_data", "data"),
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, detection_list):
+def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wildfire_id, wildfires):
     """
     Automatically moves the image slider based on a regular interval and the current auto-move state.
 
@@ -397,11 +386,15 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, de
     Returns:
     - int: Updated value for the image slider.
     """
-    print("ON EST ICI")
-    print(current_value)
-    print(max_value)
+    wildfires_df, data_loaded = read_stored_DataFrame(wildfires)
+    if data_loaded:
+        detection_ids_list = wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"].tolist()[0]
+        print("detection_ids_list size:" + str(len(detection_ids_list)))
+        print(str(wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"]))
+    else:
+        detection_ids_list = []
 
-    if auto_move_clicks % 2 != 0 and len(detection_list):  # Auto-move is active and there is ongoing detections
+    if auto_move_clicks % 2 != 0 and len(detection_ids_list):  # Auto-move is active and there is ongoing detections
         return (current_value + 1) % (max_value + 1)
     else:
         raise PreventUpdate
@@ -410,31 +403,32 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, de
 @app.callback(
     Output("download-link", "href"),
     [Input("image-slider", "value")],
-    [State("detection_on_display", "data"), State("media_url", "data")],
+    [State("wildfire_id_on_display", "data"), State("store_wildfires_data", "data"), State("media_url", "data")],
     prevent_initial_call=True,
 )
-def update_download_link(slider_value, detection_data, media_url):
+def update_download_link(slider_value, wildfire_id, wildfires, media_url):
     """
     Updates the download link for the currently displayed image.
 
     Parameters:
     - slider_value (int): Current value of the image slider.
-    - detection_data (json): JSON formatted data for the selectedwildfire.
+    - detection_data (json): JSON formatted data for the selected wildfire.
     - media_url (dict): Dictionary containing media URLs for detections.
 
     Returns:
     - str: URL for downloading the current image.
     """
-    print("ON RENTRE DANS update_download_link")
-    detection_data, data_loaded = read_stored_DataFrame(detection_data)
-    if data_loaded and len(detection_data):
+    wildfires_df, data_loaded = read_stored_DataFrame(wildfires)
+    detection_ids_list = wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"].tolist()[0]
+    if data_loaded and len(detection_ids_list):
         try:
-            wildfire_id, media_id = detection_data.iloc[slider_value][["wildfire_id", "media_id"]]
-            if str(wildfire_id) in media_url.keys():
-                return media_url[str(wildfire_id)][str(media_id)]
+            print("Value of the slider : " + str(slider_value))
+            detection_id = detection_ids_list[slider_value]
+            if str(detection_id) in media_url.keys():
+                return media_url[str(detection_id)]
         except Exception as e:
             logger.info(e)
-            logger.info(f"Size of the detection_data dataframe: {detection_data.size}")
+            logger.info(f"Size of the detections list: {len(detection_ids_list)}")
     return ""  # Return empty string if no image URL is available
 
 
@@ -486,7 +480,7 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
         # Convert the 'localization' column to a list (empty lists if the original value was '[]').
         detection_data["localization"] = detection_data["localization"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-        )
+        )  # WHY?
 
         # Filter out rows where 'localization' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
@@ -506,7 +500,7 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
         )
 
         date_val, cam_name = local_wildfires[local_wildfires["id"] == wildfire_id_on_display][
-            ["created_at", "device_name"]
+            ["created_at", "camera_name"]
         ].values[0]
 
         camera_info = f"Camera: {cam_name}"
@@ -545,12 +539,13 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
     Output("to_acknowledge", "data"),
     [Input("acknowledge-button", "n_clicks")],
     [
+        State("store_wildfires_data", "data"),
         State("wildfire_id_on_display", "data"),
         State("client_token", "data"),
     ],
     prevent_initial_call=True,
 )
-def acknowledge_event(n_clicks, wildfire_id_on_display, client_token):
+def acknowledge_event(n_clicks, local_wildfires, wildfire_id_on_display, client_token):
     """
     Acknowledges the selected wildfire and updates the state to reflect this.
 
@@ -562,11 +557,13 @@ def acknowledge_event(n_clicks, wildfire_id_on_display, client_token):
     Returns:
     - int: The ID of thewildfire that has been acknowledged.
     """
-    print("ON RENTRE DANS acknowledge-button")
     if wildfire_id_on_display == 0 or n_clicks == 0:
         raise PreventUpdate
-
-    Client(client_token, cfg.API_URL).acknowledge_event(wildfire_id=int(wildfire_id_on_display))
+    local_wildfires, _ = read_stored_DataFrame(local_wildfires)
+    wildfire_id = int(wildfire_id_on_display)
+    detection_ids = local_wildfires[local_wildfires["id"] == wildfire_id][["detection_ids"]].values
+    for detection_id in detection_ids:
+        Client(client_token, cfg.API_URL).label_detection(detection_id=detection_id, is_wildfire=False)
 
     return wildfire_id_on_display
 

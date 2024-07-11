@@ -17,7 +17,7 @@ from pyroclient import Client
 
 import config as cfg
 from services import instantiate_token
-from utils.data import read_stored_DataFrame
+from utils.data import process_bbox, read_stored_DataFrame
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -81,7 +81,7 @@ def login_callback(n_clicks, username, password, client_token):
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, client_token):
+def data_transform(n_intervals, client_token):
     """
     Fetches and processes live wildfire and detection data from the API at regular intervals.
 
@@ -133,39 +133,62 @@ def api_watcher(n_intervals, client_token):
     api_detections = api_detections.sort_values(by="created_at")
 
     # Initialiser la liste pour les wildfires
-    wildfires = []
-    id = 1
+    id_counter = 1
     cameras = pd.DataFrame(api_client.fetch_cameras().json())
+    api_detections["lat"] = None
+    api_detections["lon"] = None
+    api_detections["wildfire_id"] = None
+    api_detections["processed_loc"] = None
+    api_detections["processed_loc"] = api_detections["localization"].apply(process_bbox)
 
-    # Initialiser le premier wildfire
-    current_wildfire = {
-        "created_at": api_detections.iloc[0]["created_at"],
-        "detection_ids": [api_detections.iloc[0]["id"]],
-        "id": id,
-        "camera_name": cameras.loc[cameras["id"] == api_detections.iloc[0]["camera_id"], "name"].values[0],
-    }
+    last_detection_time_per_camera: dict[int, str] = {}
+    wildfires_dict: dict[int, list] = {}
 
     # Parcourir les détections pour les regrouper en wildfires
-    for i in range(1, len(api_detections)):
+    for i in range(0, len(api_detections)):
+        camera_id = api_detections.at[i, "camera_id"]
+        camera = cameras.loc[cameras["id"] == camera_id]
+        camera = camera.iloc[0]  # Ensure camera is a Series
+        api_detections.at[i, "lat"] = camera["lat"]
+        api_detections.at[i, "lon"] = camera["lon"]
         detection = api_detections.iloc[i]
-        time_diff = detection["created_at"] - current_wildfire["created_at"]
 
-        if time_diff <= pd.Timedelta(minutes=30):
-            # Si la différence de temps est inférieure à 30 minutes, ajouter à l'actuel wildfire
-            current_wildfire["detection_ids"].append(detection["id"])
-        else:
-            # Sinon, terminer le current_wildfire et commencer un nouveau
-            wildfires.append(current_wildfire)
-            id = id + 1
-            current_wildfire = {
-                "id": id,
-                "camera_name": cameras.loc[cameras["id"] == detection["camera_id"], "name"].values[0],
+        if camera_id not in wildfires_dict:
+            wildfires_dict.setdefault(camera_id, [])
+            last_detection_time_per_camera.setdefault(camera_id, "")
+            # Initialize the first wildfire for this camera
+            wildfire = {
+                "id": id_counter,
+                "camera_name": camera["name"],
                 "created_at": detection["created_at"],
                 "detection_ids": [detection["id"]],
             }
+            wildfires_dict[camera_id] = [wildfire]
+            id_counter += 1
+        else:
+            time_diff = detection["created_at"] - last_detection_time_per_camera[camera_id]
 
-    # Ajouter le dernier wildfire
-    wildfires.append(current_wildfire)
+            if time_diff <= pd.Timedelta(minutes=30):
+                # Si la différence de temps est inférieure à 30 minutes, ajouter à l'actuel wildfire
+                wildfires_dict[camera_id][-1]["detection_ids"].append(detection["id"])
+                print("ON AJOUTE UNE DETECTION : " + str(wildfires_dict[camera_id][-1]["detection_ids"]))
+            else:
+                # Initialize a new wildfire for this camera
+                wildfire = {
+                    "id": id_counter,
+                    "camera_name": camera["name"],
+                    "created_at": detection["created_at"],
+                    "detection_ids": [detection["id"]],
+                }
+                wildfires_dict[camera_id].append(wildfire)
+                id_counter += 1
+        api_detections.at[i, "wildfire_id"] = wildfires_dict[camera_id][-1]["id"]
+        last_detection_time_per_camera[camera_id] = detection["created_at"]
+
+    # Convert the dictionary to a list of wildfires
+    wildfires = []
+    for wildfire_list in wildfires_dict.values():
+        wildfires.extend(wildfire_list)
 
     # Convertir la liste des wildfires en DataFrame
     wildfires_df = pd.DataFrame(wildfires)
@@ -231,10 +254,6 @@ def get_media_url(
         detection_id = str(row["id"])
 
         # Fetch the URL for this media_id
-        try:
-            media_url[detection_id] = Client(client_token, cfg.API_URL).get_detection_url(detection_id)["url"]
-            # TODO REFACTOR : should be removed since we already loaded all the Detections in an other callback !!!
-        except Exception:  # General catch-all for other exceptions
-            media_url[detection_id] = ""  # Handle potential exceptions
-
+        response = Client(client_token, cfg.API_URL).get_detection_url(detection_id)
+        media_url[detection_id] = response.json()["url"]
     return media_url
