@@ -190,14 +190,15 @@ def select_wildfire_with_button(
     return [styles, button_index, 1]
 
 
-# Getwildfire_id data
+# Get wildfire_id data
 @app.callback(
     Output("detection_on_display", "data"),
     Input("wildfire_id_on_display", "data"),
     State("store_detections_data", "data"),
+    State("store_wildfires_data", "data"),
     prevent_initial_call=True,
 )
-def update_display_data(wildfire_id_on_display, local_detections):
+def update_display_data(wildfire_id_on_display, local_detections, local_wildfires):
     """
     Updates the display data based on the currently selected wildfire ID.
 
@@ -208,21 +209,23 @@ def update_display_data(wildfire_id_on_display, local_detections):
     Returns:
     - json: JSON formatted data for the selected wildfire.
     """
-    local_detections, data_loaded = read_stored_DataFrame(local_detections)
+    local_detections, data_detections_loaded = read_stored_DataFrame(local_detections)
+    local_wildfires, data_wildfires_loaded = read_stored_DataFrame(local_wildfires)
 
-    if not data_loaded:
+    if not data_detections_loaded or not data_wildfires_loaded:
         raise PreventUpdate
 
     if wildfire_id_on_display == 0:
         return json.dumps(
             {
                 "data": pd.DataFrame().to_json(orient="split"),
-                "data_loaded": True,
+                "data_loaded": False,
             }
         )
     else:
-        detection_on_display = local_detections[local_detections["id"] == wildfire_id_on_display]
 
+        detection_ids = local_wildfires[local_wildfires["id"] == wildfire_id_on_display]["detection_ids"].values[0]
+        detection_on_display = local_detections[local_detections["id"].isin(detection_ids)]
         return json.dumps({"data": detection_on_display.to_json(orient="split"), "data_loaded": True})
 
 
@@ -276,8 +279,6 @@ def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list
         images.append(media_url[str(detection["id"])])
     boxes = detection_data["processed_loc"].tolist()
 
-    print("slider value dans update_image_and_bbox: " + str(slider_value))
-    print("slider max value: " + str(len(images) - 1))
     if slider_value < len(images):
         img_src = images[slider_value]
         images_bbox_list = boxes[slider_value]
@@ -372,7 +373,7 @@ def toggle_auto_move(n_clicks, data):
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wildfire_id, wildfires):
+def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wildfire_id_on_display, local_wildfires):
     """
     Automatically moves the image slider based on a regular interval and the current auto-move state.
 
@@ -386,11 +387,9 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wi
     Returns:
     - int: Updated value for the image slider.
     """
-    wildfires_df, data_loaded = read_stored_DataFrame(wildfires)
+    local_wildfires, data_loaded = read_stored_DataFrame(local_wildfires)
     if data_loaded:
-        detection_ids_list = wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"].tolist()[0]
-        print("detection_ids_list size:" + str(len(detection_ids_list)))
-        print(str(wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"]))
+        detection_ids_list = local_wildfires[local_wildfires["id"] == wildfire_id_on_display]["detection_ids"].values[0]
     else:
         detection_ids_list = []
 
@@ -422,7 +421,6 @@ def update_download_link(slider_value, wildfire_id, wildfires, media_url):
     detection_ids_list = wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"].tolist()[0]
     if data_loaded and len(detection_ids_list):
         try:
-            print("Value of the slider : " + str(slider_value))
             detection_id = detection_ids_list[slider_value]
             if str(detection_id) in media_url.keys():
                 return media_url[str(detection_id)]
@@ -545,7 +543,7 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
     ],
     prevent_initial_call=True,
 )
-def acknowledge_event(n_clicks, local_wildfires, wildfire_id_on_display, client_token):
+def acknowledge_wildfire(n_clicks, local_wildfires, wildfire_id_on_display, client_token):
     """
     Acknowledges the selected wildfire and updates the state to reflect this.
 
@@ -555,7 +553,7 @@ def acknowledge_event(n_clicks, local_wildfires, wildfire_id_on_display, client_
     - client_token (str): Token used for API requests.
 
     Returns:
-    - int: The ID of thewildfire that has been acknowledged.
+    - int: The ID of the wildfire that has been acknowledged.
     """
     if wildfire_id_on_display == 0 or n_clicks == 0:
         raise PreventUpdate

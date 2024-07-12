@@ -114,13 +114,13 @@ def data_transform(n_intervals, client_token):
             json.dumps(
                 {
                     "data": pd.DataFrame().to_json(orient="split"),
-                    "data_loaded": True,
+                    "data_loaded": False,
                 }
             ),
             json.dumps(
                 {
                     "data": pd.DataFrame().to_json(orient="split"),
-                    "data_loaded": True,
+                    "data_loaded": False,
                 }
             ),
             dash.no_update,
@@ -171,7 +171,6 @@ def data_transform(n_intervals, client_token):
             if time_diff <= pd.Timedelta(minutes=30):
                 # Si la différence de temps est inférieure à 30 minutes, ajouter à l'actuel wildfire
                 wildfires_dict[camera_id][-1]["detection_ids"].append(detection["id"])
-                print("ON AJOUTE UNE DETECTION : " + str(wildfires_dict[camera_id][-1]["detection_ids"]))
             else:
                 # Initialize a new wildfire for this camera
                 wildfire = {
