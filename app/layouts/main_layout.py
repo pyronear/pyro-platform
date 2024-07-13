@@ -9,9 +9,9 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import dcc, html
 
+import config as cfg
 from components.navbar import Navbar
 from services import instantiate_token
-import config as cfg
 
 if not cfg.LOGIN:
     api_client = instantiate_token()

@@ -17,7 +17,7 @@ from pyroclient import Client
 
 import config as cfg
 from services import instantiate_token
-from utils.data import process_bbox, read_stored_DataFrame
+from utils.data import process_bbox
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
