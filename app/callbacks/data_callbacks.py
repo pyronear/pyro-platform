@@ -57,14 +57,13 @@ def login_callback(n_clicks, username, password, client_token):
 
                 return (
                     client.token,
-                    client.headers,
                     dash.no_update,
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
                 form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
 
-                return dash.no_update, dash.no_update, form_feedback
+                return dash.no_update, form_feedback
 
     raise PreventUpdate
 

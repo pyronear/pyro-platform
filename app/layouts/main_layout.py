@@ -11,8 +11,13 @@ from dash import dcc, html
 
 from components.navbar import Navbar
 from services import instantiate_token
+import config as cfg
 
-api_client = instantiate_token()
+if not cfg.LOGIN:
+    api_client = instantiate_token()
+    token = api_client.token
+else:
+    token = None
 
 
 def get_main_layout():
@@ -92,7 +97,7 @@ def get_main_layout():
                 is_open=False,
             ),
             # Storage components saving the user's headers and credentials
-            dcc.Store(id="client_token", storage_type="session", data=api_client.token),
+            dcc.Store(id="client_token", storage_type="session", data=token),
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="to_acknowledge", data=0),
             dcc.Store(id="trigger_no_wildfires", data=False),
