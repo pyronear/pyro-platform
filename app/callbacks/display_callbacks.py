@@ -388,7 +388,7 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wi
     - int: Updated value for the image slider.
     """
     local_wildfires, data_loaded = read_stored_DataFrame(local_wildfires)
-    if data_loaded:
+    if data_loaded and wildfire_id_on_display != 0:
         detection_ids_list = local_wildfires[local_wildfires["id"] == wildfire_id_on_display]["detection_ids"].values[0]
     else:
         detection_ids_list = []

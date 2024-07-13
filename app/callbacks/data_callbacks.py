@@ -73,15 +73,17 @@ def login_callback(n_clicks, username, password, client_token):
     [
         Output("store_wildfires_data", "data"),
         Output("store_detections_data", "data"),
+        Output("media_url", "data"),
         Output("trigger_no_wildfires", "data"),
     ],
     [Input("main_api_fetch_interval", "n_intervals")],
     [
         State("client_token", "data"),
+        State("media_url", "data"),
     ],
     prevent_initial_call=True,
 )
-def data_transform(n_intervals, client_token):
+def data_transform(n_intervals, client_token, media_url):
     """
     Fetches and processes live wildfire and detection data from the API at regular intervals.
 
@@ -106,8 +108,8 @@ def data_transform(n_intervals, client_token):
     # Fetch Detections
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d_%H:%M:%S")
     api_client = Client(client_token, cfg.API_URL)
-    response = api_client.fetch_unacknowledged_detections(from_date=yesterday)
-    api_detections = pd.DataFrame(response.json())
+    response = api_client.fetch_unlabeled_detections(from_date=yesterday)
+    api_detections = pd.DataFrame(response.json()[0])
 
     if api_detections.empty:
         return [
@@ -123,7 +125,8 @@ def data_transform(n_intervals, client_token):
                     "data_loaded": False,
                 }
             ),
-            dash.no_update,
+            [],
+            True,
         ]
 
     # Find ongoing detections for the wildfires started within 30 minutes;
@@ -144,6 +147,8 @@ def data_transform(n_intervals, client_token):
     last_detection_time_per_camera: dict[int, str] = {}
     wildfires_dict: dict[int, list] = {}
 
+    media_list = response.json()[1]
+
     # Parcourir les détections pour les regrouper en wildfires
     for i in range(0, len(api_detections)):
         camera_id = api_detections.at[i, "camera_id"]
@@ -152,6 +157,7 @@ def data_transform(n_intervals, client_token):
         api_detections.at[i, "lat"] = camera["lat"]
         api_detections.at[i, "lon"] = camera["lon"]
         detection = api_detections.iloc[i]
+        media_url[str(detection["id"])] = media_list[i]["url"]
 
         if camera_id not in wildfires_dict:
             wildfires_dict.setdefault(camera_id, [])
@@ -191,68 +197,9 @@ def data_transform(n_intervals, client_token):
 
     # Convertir la liste des wildfires en DataFrame
     wildfires_df = pd.DataFrame(wildfires)
-
     return [
         json.dumps({"data": wildfires_df.to_json(orient="split"), "data_loaded": True}),
         json.dumps({"data": api_detections.to_json(orient="split"), "data_loaded": True}),
+        media_url,
         dash.no_update,
     ]
-
-
-@app.callback(
-    Output("media_url", "data"),
-    Input("store_detections_data", "data"),
-    [
-        State("media_url", "data"),
-        State("client_token", "data"),
-    ],
-    prevent_initial_call=True,
-)
-def get_media_url(
-    local_detections,
-    media_url,
-    client_token,
-):
-    """
-    Retrieves media URLs for detections and manages the fetching process from the API.
-
-    This callback is designed to efficiently load media URLs during app initialization
-    and subsequently update them. Initially, it focuses on loading URLs wildfire by wildfire
-    to quickly provide data for visualization. Once URLs for all wildfires are loaded, the
-    callback then methodically checks for and retrieves any missing URLs.
-
-    The callback is triggered by two inputs: a change in the data to load and a regular
-    interval check. It includes a cleanup step to remove wildfire IDs no longer present in
-    local detections.
-
-    Parameters:
-
-    - interval (int): Current interval for fetching URLs.
-    - local_detections (json): Currently stored detections data in JSON format.
-    - media_url (dict): Dictionary holding media URLs for detections.
-    - client_token (str): Token used for API calls
-
-
-
-    Returns:
-    - dict: Updated dictionary with media URLs for each detection.
-    """
-    if client_token is None:
-        raise PreventUpdate
-
-    local_detections, detections_data_loaded = read_stored_DataFrame(local_detections)
-
-    if not detections_data_loaded:
-        raise PreventUpdate
-
-    if local_detections.empty:
-        return {}
-
-    # Loop through each row in local_detections
-    for _, row in local_detections.iterrows():
-        detection_id = str(row["id"])
-
-        # Fetch the URL for this media_id
-        response = Client(client_token, cfg.API_URL).get_detection_url(detection_id)
-        media_url[detection_id] = response.json()["url"]
-    return media_url
