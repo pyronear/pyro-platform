@@ -79,6 +79,7 @@ def login_callback(n_clicks, username, password, user_headers):
     [
         Output("store_api_events_data", "data"),
         Output("store_api_alerts_data", "data"),
+        Output("media_url", "data"),
         Output("trigger_no_events", "data"),
     ],
     [Input("main_api_fetch_interval", "n_intervals")],
@@ -87,10 +88,11 @@ def login_callback(n_clicks, username, password, user_headers):
         State("store_api_alerts_data", "data"),
         State("user_headers", "data"),
         State("user_credentials", "data"),
+        State("media_url", "data"),
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_credentials):
+def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_credentials, media_url):
     """
     Fetches and processes live event and alert data from the API at regular intervals.
 
@@ -120,7 +122,18 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
     logger.info("Start Fetching the events")
     # Fetch events
-    api_events = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
+    result_call = call_api(api_client.get_unacknowledged_events, user_credentials)()
+    api_events = result_call[0]
+    urls = result_call[1]
+
+    for i in range(len(api_events)):
+        event_id = api_events[i]["id"]
+        if event_id not in media_url:
+            media_url[event_id] = {}
+        media_url[event_id][urls[i][0]] = urls[i][1]
+
+    api_events = pd.DataFrame(api_events)
+        
     api_events["created_at"] = convert_time(api_events)
     if len(api_events) == 0:
         return [
@@ -136,6 +149,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
                     "data_loaded": True,
                 }
             ),
+            media_url,
             dash.no_update,
         ]
     else:
@@ -218,6 +232,8 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
                 subset=["id_x"]
             )[["azimuth", "device_id"]]
 
+            new_api_events = new_api_events.drop_duplicates()
+
             new_api_events["device_name"] = [
                 f"{retrieve_site_from_device_id(api_client, user_credentials, device_id)} - {int(azimuth)}°".title()
                 for _, (azimuth, device_id) in alerts_data.iterrows()
@@ -232,84 +248,7 @@ def api_watcher(n_intervals, local_events, local_alerts, user_headers, user_cred
 
         return [
             json.dumps({"data": local_events.to_json(orient="split"), "data_loaded": True}),
-            json.dumps({"data": local_alerts.to_json(orient="split"), "data_loaded": True}),
+            json.dumps({"data": local_alerts.to_json(orient="split"), "data_loaded": True}), 
+            media_url,
             dash.no_update,
         ]
-
-
-@app.callback(
-    Output("media_url", "data"),
-    Input("store_api_alerts_data", "data"),
-    [
-        State("media_url", "data"),
-        State("user_headers", "data"),
-        State("user_credentials", "data"),
-    ],
-    prevent_initial_call=True,
-)
-def get_media_url(
-    local_alerts,
-    media_url,
-    user_headers,
-    user_credentials,
-):
-    """
-    Retrieves media URLs for alerts and manages the fetching process from the API.
-
-    This callback is designed to efficiently load media URLs during app initialization
-    and subsequently update them. Initially, it focuses on loading URLs event by event
-    to quickly provide data for visualization. Once URLs for all events are loaded, the
-    callback then methodically checks for and retrieves any missing URLs.
-
-    The callback is triggered by two inputs: a change in the data to load and a regular
-    interval check. It includes a cleanup step to remove event IDs no longer present in
-    local alerts.
-
-    Parameters:
-
-    - interval (int): Current interval for fetching URLs.
-    - local_alerts (json): Currently stored alerts data in JSON format.
-    - media_url (dict): Dictionary holding media URLs for alerts.
-    - user_headers (dict): User authorization headers for API requests.
-    - user_credentials (tuple): User credentials (username, password).
-
-
-    Returns:
-    - dict: Updated dictionary with media URLs for each alert.
-    """
-    if user_headers is None:
-        raise PreventUpdate
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
-
-    local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
-
-    if not alerts_data_loaded:
-        raise PreventUpdate
-
-    if local_alerts.empty:
-        return {}
-
-    current_event_ids = set(local_alerts["event_id"].astype(str))
-
-    # Cleanup: Remove any event_ids from media_url not present in local_alerts
-    media_url_keys = set(media_url.keys())
-    for event_id in media_url_keys - current_event_ids:
-        del media_url[event_id]
-
-    # Loop through each row in local_alerts
-    for _, row in local_alerts.iterrows():
-        event_id = str(row["event_id"])
-        media_id = str(row["media_id"])
-        if event_id not in media_url:
-            media_url[event_id] = {}
-
-        # Check if the URL for this event_id and media_id already exists
-        if media_id not in media_url[event_id]:
-            # Fetch the URL for this media_id
-            try:
-                media_url[event_id][media_id] = call_api(api_client.get_media_url, user_credentials)(media_id)["url"]
-            except Exception:  # General catch-all for other exceptions
-                media_url[event_id][media_id] = ""  # Handle potential exceptions
-
-    return media_url
