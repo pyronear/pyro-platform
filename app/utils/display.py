@@ -34,12 +34,12 @@ def build_departments_geojson():
     return geojson
 
 
-def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
+def calculate_new_polygon_parameters(azimuth, opening_angle, bboxes):
     """
-    This function compute the vision polygon parameters based on localization
+    This function compute the vision polygon parameters based on bboxes
     """
-    # Assuming localization is in the format [x0, y0, x1, y1, confidence]
-    x0, _, width, _ = localization
+    # Assuming bboxes is in the format [x0, y0, x1, y1, confidence]
+    x0, _, width, _ = bboxes
     xc = (x0 + width / 2) / 100
 
     # New azimuth
@@ -100,12 +100,12 @@ def build_cameras_markers(token: str):
     return markers, cameras
 
 
-def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
+def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=None):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
     """
-    if len(localization):
-        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, localization[0])
+    if len(bboxes):
+        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, bboxes[0])
 
     # The center corresponds the point from which the vision angle "starts"
     center = [site_lat, site_lon]

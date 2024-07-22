@@ -475,26 +475,26 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
         if not wildfire_data_loaded:
             raise PreventUpdate
 
-        # Convert the 'localization' column to a list (empty lists if the original value was '[]').
-        detection_data["localization"] = detection_data["localization"].apply(
+        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
+        detection_data["bboxes"] = detection_data["bboxes"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
         )  # WHY?
 
-        # Filter out rows where 'localization' is not empty and get the last one.
+        # Filter out rows where 'bboxes' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
-        row_with_localization = (
-            detection_data[detection_data["localization"].astype(bool)].iloc[-1]
-            if not detection_data[detection_data["localization"].astype(bool)].empty
+        row_with_bboxes = (
+            detection_data[detection_data["bboxes"].astype(bool)].iloc[-1]
+            if not detection_data[detection_data["bboxes"].astype(bool)].empty
             else detection_data.iloc[-1]
         )
 
         polygon, detection_azimuth = build_vision_polygon(
-            site_lat=row_with_localization["lat"],
-            site_lon=row_with_localization["lon"],
-            azimuth=row_with_localization["azimuth"],
+            site_lat=row_with_bboxes["lat"],
+            site_lon=row_with_bboxes["lon"],
+            azimuth=row_with_bboxes["azimuth"],
             opening_angle=cfg.CAM_OPENING_ANGLE,
             dist_km=cfg.CAM_RANGE_KM,
-            localization=row_with_localization["processed_loc"],
+            bboxes=row_with_bboxes["processed_loc"],
         )
 
         date_val, cam_name = local_wildfires[local_wildfires["id"] == wildfire_id_on_display][
@@ -502,15 +502,15 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
         ].values[0]
 
         camera_info = f"Camera: {cam_name}"
-        location_info = f"Localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        location_info = f"Localisation: {row_with_bboxes['lat']:.4f}, {row_with_bboxes['lon']:.4f}"
         angle_info = f"Azimuth de detection: {detection_azimuth}°"
         date_info = f"Date: {date_val}"
 
         return (
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [row_with_bboxes["lat"], row_with_bboxes["lon"]],
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [row_with_bboxes["lat"], row_with_bboxes["lon"]],
             camera_info,
             location_info,
             angle_info,

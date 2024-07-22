@@ -108,7 +108,7 @@ def data_transform(n_intervals, client_token, media_url):
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d_%H:%M:%S")
     api_client = Client(client_token, cfg.API_URL)
     response = api_client.fetch_unlabeled_detections(from_date=yesterday)
-    api_detections = pd.DataFrame(response.json()[0])
+    api_detections = pd.DataFrame(response.json())
 
     if api_detections.empty:
         return [
@@ -141,22 +141,25 @@ def data_transform(n_intervals, client_token, media_url):
     api_detections["lon"] = None
     api_detections["wildfire_id"] = None
     api_detections["processed_loc"] = None
-    api_detections["processed_loc"] = api_detections["localization"].apply(process_bbox)
+    api_detections["processed_loc"] = api_detections["bboxes"].apply(process_bbox)
 
     last_detection_time_per_camera: dict[int, str] = {}
     wildfires_dict: dict[int, list] = {}
 
-    media_list = response.json()[1]
+    media_dict = api_detections.set_index("id")["url"].to_dict()
 
     # Parcourir les détections pour les regrouper en wildfires
-    for i in range(0, len(api_detections)):
+    for i, detection in api_detections.iterrows():
         camera_id = api_detections.at[i, "camera_id"]
         camera = cameras.loc[cameras["id"] == camera_id]
         camera = camera.iloc[0]  # Ensure camera is a Series
         api_detections.at[i, "lat"] = camera["lat"]
         api_detections.at[i, "lon"] = camera["lon"]
-        detection = api_detections.iloc[i]
-        media_url[str(detection["id"])] = media_list[i]["url"]
+        print("ICI")
+        print(detection["id"])
+        print(media_dict[int(detection["id"])])
+
+        media_url[detection["id"]] = media_dict[detection["id"]]
 
         if camera_id not in wildfires_dict:
             wildfires_dict.setdefault(camera_id, [])
