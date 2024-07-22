@@ -8,7 +8,7 @@ quality:
 # this target runs checks on all files and potentially modifies some of them
 style:
 	black .
-	ruff --fix .
+	ruff check --fix .
 
 # Build the docker
 build:
@@ -24,6 +24,9 @@ run:
 run_dev:
 	poetry export -f requirements.txt --without-hashes --output requirements.txt
 	docker compose -f docker-compose-dev.yml up -d --build
+
+run_local:
+	python app/index.py --host 0.0.0.0 --port 8050
 
 # Run the docker
 stop:

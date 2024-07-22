@@ -8,7 +8,7 @@ import callbacks.data_callbacks
 import callbacks.display_callbacks  # noqa: F401
 import logging_config
 from dash import html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 from layouts.main_layout import get_main_layout
 from main import app
 
@@ -26,22 +26,20 @@ app.layout = get_main_layout()
 # Manage Pages
 @app.callback(
     Output("page-content", "children"),
-    [Input("url", "pathname"), Input("user_headers", "data")],
-    State("user_credentials", "data"),
+    [Input("url", "pathname"), Input("client_token", "data")],
 )
-def display_page(pathname, user_headers, user_credentials):
+def display_page(pathname, client_token):
     logger.debug(
-        "display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
+        "display_page called with pathname: %s, user_credentials: %s",
         pathname,
-        user_headers,
-        user_credentials,
+        {cfg.API_LOGIN, cfg.API_PWD},
     )
-    if user_headers is None:
-        logger.info("No user headers found, showing login layout.")
+    if client_token is None:
+        logger.info("No token found, showing login layout.")
         return login_layout()
     if pathname == "/" or pathname is None:
         logger.info("Showing homepage layout.")
-        return homepage_layout(user_headers, user_credentials)
+        return homepage_layout(client_token)
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
