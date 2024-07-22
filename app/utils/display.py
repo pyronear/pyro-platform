@@ -186,7 +186,7 @@ def create_wildfire_list_from_df(wildfires):
                     f"{wildfire['camera_name']}",
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(wildfire["created_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(wildfire["created_at"]),
             ],
             n_clicks=0,
             style={

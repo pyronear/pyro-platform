@@ -74,15 +74,18 @@ def login_callback(n_clicks, username, password, client_token):
         Output("store_detections_data", "data"),
         Output("media_url", "data"),
         Output("trigger_no_wildfires", "data"),
+        Output("previous_time_event", "data"),
     ],
     [Input("main_api_fetch_interval", "n_intervals")],
     [
         State("client_token", "data"),
         State("media_url", "data"),
+        State("store_wildfires_data", "data"),
+        State("previous_time_event", "data"),
     ],
     prevent_initial_call=True,
 )
-def data_transform(n_intervals, client_token, media_url):
+def data_transform(n_intervals, client_token, media_url, store_wildfires_data, previous_time_event):
     """
     Fetches and processes live wildfire and detection data from the API at regular intervals.
 
@@ -105,16 +108,21 @@ def data_transform(n_intervals, client_token, media_url):
 
     logger.info("Start Fetching the events")
     # Fetch Detections
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d_%H:%M:%S")
-    api_client = Client(client_token, cfg.API_URL)
-    response = api_client.fetch_unlabeled_detections(from_date=yesterday)
-    api_detections = pd.DataFrame(response.json())
+    # Use the last event time or default to yesterday
+    if previous_time_event is None:
+        previous_time_event = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d_%H:%M:%S")
+    else:
+        previous_time_event = pd.to_datetime(previous_time_event).strftime("%Y-%m-%d_%H:%M:%S")
 
+    api_client = Client(client_token, cfg.API_URL)
+    response = api_client.fetch_unlabeled_detections(from_date=previous_time_event)
+    api_detections = pd.DataFrame(response.json())
+    previous_time_event = api_detections["created_at"].max()
     if api_detections.empty:
         return [
             json.dumps(
                 {
-                    "data": pd.DataFrame().to_json(orient="split"),
+                    "data": store_wildfires_data,
                     "data_loaded": False,
                 }
             ),
@@ -126,16 +134,17 @@ def data_transform(n_intervals, client_token, media_url):
             ),
             [],
             True,
+            previous_time_event,
         ]
 
     # Find ongoing detections for the wildfires started within 30 minutes;
     # after that, any new detection is part of a new wildfire
     api_detections["created_at"] = pd.to_datetime(api_detections["created_at"])
+
     # Trier les détections par "created_at"
     api_detections = api_detections.sort_values(by="created_at")
 
     # Initialiser la liste pour les wildfires
-    id_counter = 1
     cameras = pd.DataFrame(api_client.fetch_cameras().json())
     api_detections["lat"] = None
     api_detections["lon"] = None
@@ -143,9 +152,17 @@ def data_transform(n_intervals, client_token, media_url):
     api_detections["processed_loc"] = None
     api_detections["processed_loc"] = api_detections["bboxes"].apply(process_bbox)
 
-    last_detection_time_per_camera: dict[int, str] = {}
-    wildfires_dict: dict[int, list] = {}
+    wildfires_dict = json.loads(store_wildfires_data)["data"]
+    # Load existing wildfires data
+    if wildfires_dict != {}:
+        id_counter = (
+            max(wildfire["id"] for camera_wildfires in wildfires_dict.values() for wildfire in camera_wildfires) + 1
+        )
+    else:
+        wildfires_dict = {}
+        id_counter = 1
 
+    last_detection_time_per_camera: dict[int, str] = {}
     media_dict = api_detections.set_index("id")["url"].to_dict()
 
     # Parcourir les détections pour les regrouper en wildfires
@@ -155,9 +172,6 @@ def data_transform(n_intervals, client_token, media_url):
         camera = camera.iloc[0]  # Ensure camera is a Series
         api_detections.at[i, "lat"] = camera["lat"]
         api_detections.at[i, "lon"] = camera["lon"]
-        print("ICI")
-        print(detection["id"])
-        print(media_dict[int(detection["id"])])
 
         media_url[detection["id"]] = media_dict[detection["id"]]
 
@@ -168,7 +182,7 @@ def data_transform(n_intervals, client_token, media_url):
             wildfire = {
                 "id": id_counter,
                 "camera_name": camera["name"],
-                "created_at": detection["created_at"],
+                "created_at": detection["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
                 "detection_ids": [detection["id"]],
             }
             wildfires_dict[camera_id] = [wildfire]
@@ -184,7 +198,7 @@ def data_transform(n_intervals, client_token, media_url):
                 wildfire = {
                     "id": id_counter,
                     "camera_name": camera["name"],
-                    "created_at": detection["created_at"],
+                    "created_at": detection["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
                     "detection_ids": [detection["id"]],
                 }
                 wildfires_dict[camera_id].append(wildfire)
@@ -192,16 +206,12 @@ def data_transform(n_intervals, client_token, media_url):
         api_detections.at[i, "wildfire_id"] = wildfires_dict[camera_id][-1]["id"]
         last_detection_time_per_camera[camera_id] = detection["created_at"]
 
-    # Convert the dictionary to a list of wildfires
-    wildfires = []
-    for wildfire_list in wildfires_dict.values():
-        wildfires.extend(wildfire_list)
-
+    wildfires_dict = {int(k): v for k, v in wildfires_dict.items()}
     # Convertir la liste des wildfires en DataFrame
-    wildfires_df = pd.DataFrame(wildfires)
     return [
-        json.dumps({"data": wildfires_df.to_json(orient="split"), "data_loaded": True}),
+        json.dumps({"data": wildfires_dict, "data_loaded": True}),
         json.dumps({"data": api_detections.to_json(orient="split"), "data_loaded": True}),
         media_url,
         dash.no_update,
+        previous_time_event,
     ]

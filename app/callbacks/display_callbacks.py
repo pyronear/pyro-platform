@@ -63,7 +63,7 @@ def toggle_modal(media_url, client_token, trigger_no_wildfires, local_detections
     State("media_url", "data"),
     prevent_initial_call=True,
 )
-def update_wildfire_list(local_wildfires, to_acknowledge, media_url):
+def update_wildfire_list(store_wildfires_data, to_acknowledge, media_url):
     """
     Updates the wildfire list based on changes in the wildfires data or acknowledgement actions.
 
@@ -80,14 +80,22 @@ def update_wildfire_list(local_wildfires, to_acknowledge, media_url):
     if trigger_id == "to_acknowledge" and str(to_acknowledge) not in media_url.keys():
         raise PreventUpdate
 
-    local_wildfires, wildfire_data_loaded = read_stored_DataFrame(local_wildfires)
-    if not wildfire_data_loaded:
+    json_wildfire = json.loads(store_wildfires_data)
+    wildfires_dict = json_wildfire["data"]
+    data_loaded = json_wildfire["data_loaded"]
+
+    if not data_loaded:
         raise PreventUpdate
 
-    if len(local_wildfires):
-        local_wildfires = local_wildfires[~local_wildfires["id"].isin([to_acknowledge])]
+    wildfires_list = []
 
-    return create_wildfire_list_from_df(local_wildfires)
+    if len(wildfires_dict):
+        for camera_key, wildfires_item in wildfires_dict.items():
+            wildfires_dict[camera_key] = [wf for wf in wildfires_item if wf["id"] != to_acknowledge]
+        for wildfires_item in wildfires_dict.values():
+            wildfires_list.extend(wildfires_item)
+
+    return create_wildfire_list_from_df(pd.DataFrame(wildfires_list))
 
 
 # Select the wildfire id
@@ -198,7 +206,7 @@ def select_wildfire_with_button(
     State("store_wildfires_data", "data"),
     prevent_initial_call=True,
 )
-def update_display_data(wildfire_id_on_display, local_detections, local_wildfires):
+def update_display_data(wildfire_id_on_display, local_detections, store_wildfires_data):
     """
     Updates the display data based on the currently selected wildfire ID.
 
@@ -210,7 +218,8 @@ def update_display_data(wildfire_id_on_display, local_detections, local_wildfire
     - json: JSON formatted data for the selected wildfire.
     """
     local_detections, data_detections_loaded = read_stored_DataFrame(local_detections)
-    local_wildfires, data_wildfires_loaded = read_stored_DataFrame(local_wildfires)
+    wildfires_dict = json.loads(store_wildfires_data)["data"]
+    data_wildfires_loaded = json.loads(store_wildfires_data)["data_loaded"]
 
     if not data_detections_loaded or not data_wildfires_loaded:
         raise PreventUpdate
@@ -223,8 +232,10 @@ def update_display_data(wildfire_id_on_display, local_detections, local_wildfire
             }
         )
     else:
-
-        detection_ids = local_wildfires[local_wildfires["id"] == wildfire_id_on_display]["detection_ids"].values[0]
+        for wildfires_item in wildfires_dict.values():
+            for wildfire in wildfires_item:
+                if wildfire["id"] == wildfire_id_on_display:
+                    detection_ids = wildfire["detection_ids"]
         detection_on_display = local_detections[local_detections["id"].isin(detection_ids)]
         return json.dumps({"data": detection_on_display.to_json(orient="split"), "data_loaded": True})
 
@@ -373,7 +384,9 @@ def toggle_auto_move(n_clicks, data):
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wildfire_id_on_display, local_wildfires):
+def auto_move_slider(
+    n_intervals, current_value, max_value, auto_move_clicks, wildfire_id_on_display, store_wildfires_data
+):
     """
     Automatically moves the image slider based on a regular interval and the current auto-move state.
 
@@ -387,9 +400,15 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wi
     Returns:
     - int: Updated value for the image slider.
     """
-    local_wildfires, data_loaded = read_stored_DataFrame(local_wildfires)
+    json_wildfire = json.loads(store_wildfires_data)
+    wildfires_dict = json_wildfire["data"]
+    data_loaded = json_wildfire["data_loaded"]
+
     if data_loaded and wildfire_id_on_display != 0:
-        detection_ids_list = local_wildfires[local_wildfires["id"] == wildfire_id_on_display]["detection_ids"].values[0]
+        for wildfires_item in wildfires_dict.values():
+            for wildfire in wildfires_item:
+                if wildfire["id"] == wildfire_id_on_display:
+                    detection_ids_list = wildfire["detection_ids"]
     else:
         detection_ids_list = []
 
@@ -405,7 +424,7 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, wi
     [State("wildfire_id_on_display", "data"), State("store_wildfires_data", "data"), State("media_url", "data")],
     prevent_initial_call=True,
 )
-def update_download_link(slider_value, wildfire_id, wildfires, media_url):
+def update_download_link(slider_value, wildfire_id_on_display, store_wildfires_data, media_url):
     """
     Updates the download link for the currently displayed image.
 
@@ -417,8 +436,14 @@ def update_download_link(slider_value, wildfire_id, wildfires, media_url):
     Returns:
     - str: URL for downloading the current image.
     """
-    wildfires_df, data_loaded = read_stored_DataFrame(wildfires)
-    detection_ids_list = wildfires_df.loc[wildfires_df["id"] == wildfire_id, "detection_ids"].tolist()[0]
+    json_wildfire = json.loads(store_wildfires_data)
+    wildfires_dict = json_wildfire["data"]
+    data_loaded = json_wildfire["data_loaded"]
+    for wildfires_item in wildfires_dict.values():
+        for wildfire in wildfires_item:
+            if wildfire["id"] == wildfire_id_on_display:
+                detection_ids_list = wildfire["detection_ids"]
+
     if data_loaded and len(detection_ids_list):
         try:
             detection_id = detection_ids_list[slider_value]
@@ -448,7 +473,7 @@ def update_download_link(slider_value, wildfire_id, wildfires, media_url):
     [State("store_wildfires_data", "data"), State("wildfire_id_on_display", "data")],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_display):
+def update_map_and_alert_info(detection_data, store_wildfires_data, wildfire_id_on_display):
     """
         Updates the map's vision polygons, center, and alert information based on the current alert data.
     )
@@ -471,8 +496,10 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
         raise PreventUpdate
 
     if not detection_data.empty:
-        local_wildfires, wildfire_data_loaded = read_stored_DataFrame(local_wildfires)
-        if not wildfire_data_loaded:
+        json_wildfire = json.loads(store_wildfires_data)
+        wildfires_dict = json_wildfire["data"]
+        data_loaded = json_wildfire["data_loaded"]
+        if not data_loaded:
             raise PreventUpdate
 
         # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
@@ -497,9 +524,11 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
             bboxes=row_with_bboxes["processed_loc"],
         )
 
-        date_val, cam_name = local_wildfires[local_wildfires["id"] == wildfire_id_on_display][
-            ["created_at", "camera_name"]
-        ].values[0]
+        for wildfires_item in wildfires_dict.values():
+            for wildfire in wildfires_item:
+                if wildfire["id"] == wildfire_id_on_display:
+                    date_val = wildfire["created_at"]
+                    cam_name = wildfire["camera_name"]
 
         camera_info = f"Camera: {cam_name}"
         location_info = f"Localisation: {row_with_bboxes['lat']:.4f}, {row_with_bboxes['lon']:.4f}"
@@ -543,7 +572,7 @@ def update_map_and_alert_info(detection_data, local_wildfires, wildfire_id_on_di
     ],
     prevent_initial_call=True,
 )
-def acknowledge_wildfire(n_clicks, local_wildfires, wildfire_id_on_display, client_token):
+def acknowledge_wildfire(n_clicks, store_wildfires_data, wildfire_id_on_display, client_token):
     """
     Acknowledges the selected wildfire and updates the state to reflect this.
 
@@ -557,10 +586,14 @@ def acknowledge_wildfire(n_clicks, local_wildfires, wildfire_id_on_display, clie
     """
     if wildfire_id_on_display == 0 or n_clicks == 0:
         raise PreventUpdate
-    local_wildfires, _ = read_stored_DataFrame(local_wildfires)
+    json_wildfire = json.loads(store_wildfires_data)
+    wildfires_dict = json_wildfire["data"]
     wildfire_id = int(wildfire_id_on_display)
-    detection_ids = local_wildfires[local_wildfires["id"] == wildfire_id][["detection_ids"]].values
-    for detection_id in detection_ids:
+    for wildfires_item in wildfires_dict.values():
+        for wildfire in wildfires_item:
+            if wildfire["id"] == wildfire_id:
+                detection_ids_list = wildfire["detection_ids"]
+    for detection_id in detection_ids_list:
         Client(client_token, cfg.API_URL).label_detection(detection_id=detection_id, is_wildfire=False)
 
     return wildfire_id_on_display

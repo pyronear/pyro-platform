@@ -36,7 +36,7 @@ def get_main_layout():
                 storage_type="session",
                 data=json.dumps(
                     {
-                        "data": pd.DataFrame().to_json(orient="split"),
+                        "data": {},
                         "data_loaded": False,
                     }
                 ),
@@ -101,5 +101,6 @@ def get_main_layout():
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="to_acknowledge", data=0),
             dcc.Store(id="trigger_no_wildfires", data=False),
+            dcc.Store(id="previous_time_event", data=None),
         ]
     )
