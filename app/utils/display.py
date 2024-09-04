@@ -171,7 +171,7 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
     return map_object
 
 
-def create_event_list_from_df(api_events):
+def create_event_list_from_alerts(api_events):
     """
     This function build the list of events on the left based on event data
     """
@@ -184,7 +184,7 @@ def create_event_list_from_df(api_events):
             id={"type": "event-button", "index": event["id"]},
             children=[
                 html.Div(
-                    f"{event['device_name']}",
+                    f"{event['device_id']}",
                     style={"fontWeight": "bold"},
                 ),
                 html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
