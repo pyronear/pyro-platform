@@ -110,8 +110,9 @@ def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
 
     else:
         api_alerts["processed_loc"] = api_alerts["localization"].apply(process_bbox)
-        if alerts_data_loaded:
-            if all(api_alerts["alert_id"] == local_alerts["alert_id"]):
+        if alerts_data_loaded and not local_alerts.empty:
+            aligned_api_alerts, aligned_local_alerts = api_alerts["alert_id"].align(local_alerts["alert_id"])
+            if all(aligned_api_alerts == aligned_local_alerts):
                 return [dash.no_update]
 
         return [json.dumps({"data": api_alerts.to_json(orient="split"), "data_loaded": True})]
