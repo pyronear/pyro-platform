@@ -18,6 +18,7 @@ import config as cfg
 from services import api_client, call_api
 from utils.data import (
     convert_time,
+    past_ndays_api_events,
     process_bbox,
     read_stored_DataFrame,
 )
@@ -129,6 +130,7 @@ def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
     # Fetch events
     api_alerts = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
     api_alerts["created_at"] = convert_time(api_alerts)
+    api_alerts = past_ndays_api_events(api_alerts, n_days=0)
 
     if len(api_alerts) == 0:
         return [
