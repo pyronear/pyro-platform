@@ -224,11 +224,13 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
         return img_html, bbox_divs, 0
 
     # Filter images with non-empty URLs
-    images = []
-    boxes = []
-    for _, alert in alert_data.iterrows():
-        images.append(alert["media_url"])
-        boxes.append(alert["processed_loc"])
+    images, boxes = zip(
+        *(
+            (alert["media_url"], alert["processed_loc"])
+            for _, alert in alert_data.iterrows()
+            if alert["media_url"]  # Only include if media_url is not empty
+        )
+    )
 
     if not images:
         img_html = html.Img(
