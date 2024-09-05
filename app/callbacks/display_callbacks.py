@@ -39,7 +39,7 @@ def update_event_list(api_alerts, to_acknowledge):
     Parameters:
     - api_alerts (json): JSON formatted data containing current alerts information.
     - to_acknowledge (int): Event ID that is being acknowledged.
-    - media_url (dict): Dictionary containing media URLs for alerts.
+
 
     Returns:
     - html.Div: A Div containing the updated list of alerts.
@@ -75,20 +75,18 @@ def update_event_list(api_alerts, to_acknowledge):
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
     ],
     [
-        State("media_url", "data"),
         State({"type": "event-button", "index": ALL}, "id"),
         State("store_api_alerts_data", "data"),
         State("event_id_on_display", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, media_url, button_ids, local_alerts, event_id_on_display):
+def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_display):
     """
     Handles event selection through button clicks.
 
     Parameters:
     - n_clicks (list): List of click counts for each event button.
-    - media_url (dict): Dictionary containing media URLs for alerts.
     - button_ids (list): List of button IDs corresponding to events.
     - local_alerts (json): JSON formatted data containing current alert information.
     - event_id_on_display (int): Currently displayed event ID.
