@@ -184,7 +184,7 @@ def create_event_list_from_alerts(api_events):
             id={"type": "event-button", "index": event["id"]},
             children=[
                 html.Div(
-                    f"{event['device_id']}",
+                    f"{event['device_login'][:-2].replace('_', ' ') + ' - ' + str(int(event['device_azimuth'])) + '°'}",
                     style={"fontWeight": "bold"},
                 ),
                 html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
