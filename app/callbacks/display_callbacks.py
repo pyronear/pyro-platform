@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+import ast
 import json
 from typing import List
 
@@ -19,7 +20,7 @@ from main import app
 import config as cfg
 from services import api_client, call_api
 from utils.data import read_stored_DataFrame
-from utils.display import create_event_list_from_alerts
+from utils.display import build_vision_polygon, create_event_list_from_alerts
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -380,107 +381,101 @@ def update_download_link(slider_value, alert_data):
     return ""  # Return empty string if no image URL is available
 
 
-# # Map
-# @app.callback(
-#     [
-#         Output("vision_polygons", "children"),
-#         Output("map", "center"),
-#         Output("vision_polygons-md", "children"),
-#         Output("map-md", "center"),
-#         Output("alert-camera", "children"),
-#         Output("alert-location", "children"),
-#         Output("alert-azimuth", "children"),
-#         Output("alert-date", "children"),
-#         Output("alert-information", "style"),
-#         Output("slider-container", "style"),
-#     ],
-#     Input("alert_on_display", "data"),
-#     [State("store_api_events_data", "data"), State("event_id_on_display", "data")],
-#     prevent_initial_call=True,
-# )
-# def update_map_and_alert_info(alert_data, local_events, event_id_on_display):
-#     """
-#     Updates the map's vision polygons, center, and alert information based on the current alert data.
+# Map
+@app.callback(
+    [
+        Output("vision_polygons", "children"),
+        Output("map", "center"),
+        Output("vision_polygons-md", "children"),
+        Output("map-md", "center"),
+        Output("alert-camera", "children"),
+        Output("alert-location", "children"),
+        Output("alert-azimuth", "children"),
+        Output("alert-date", "children"),
+        Output("alert-information", "style"),
+        Output("slider-container", "style"),
+    ],
+    Input("alert_on_display", "data"),
+    prevent_initial_call=True,
+)
+def update_map_and_alert_info(alert_data):
+    """
+    Updates the map's vision polygons, center, and alert information based on the current alert data.
 
-#     Parameters:
-#     - alert_data (json): JSON formatted data for the selected event.
+    Parameters:
+    - alert_data (json): JSON formatted data for the selected event.
 
-#     Returns:
-#     - list: List of vision polygon elements to be displayed on the map.
-#     - list: New center coordinates for the map.
-#     - list: List of vision polygon elements to be displayed on the modal map.
-#     - list: New center coordinates for the modal map.
-#     - str: Camera information for the alert.
-#     - str: Location information for the alert.
-#     - str: Detection angle for the alert.
-#     - str: Date of the alert.
-#     """
-#     alert_data, data_loaded = read_stored_DataFrame(alert_data)
+    Returns:
+    - list: List of vision polygon elements to be displayed on the map.
+    - list: New center coordinates for the map.
+    - list: List of vision polygon elements to be displayed on the modal map.
+    - list: New center coordinates for the modal map.
+    - str: Camera information for the alert.
+    - str: Location information for the alert.
+    - str: Detection angle for the alert.
+    - str: Date of the alert.
+    """
+    alert_data, data_loaded = read_stored_DataFrame(alert_data)
 
-#     if not data_loaded:
-#         raise PreventUpdate
+    if not data_loaded:
+        raise PreventUpdate
 
-#     if not alert_data.empty:
-#         local_events, event_data_loaded = read_stored_DataFrame(local_events)
-#         if not event_data_loaded:
-#             raise PreventUpdate
+    if not alert_data.empty:
+        # Convert the 'localization' column to a list (empty lists if the original value was '[]').
+        alert_data["localization"] = alert_data["localization"].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
+        )
 
-#         # Convert the 'localization' column to a list (empty lists if the original value was '[]').
-#         alert_data["localization"] = alert_data["localization"].apply(
-#             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-#         )
+        # Filter out rows where 'localization' is not empty and get the last one.
+        # If all are empty, then simply get the last row of the DataFrame.
+        row_with_localization = (
+            alert_data[alert_data["localization"].astype(bool)].iloc[-1]
+            if not alert_data[alert_data["localization"].astype(bool)].empty
+            else alert_data.iloc[-1]
+        )
 
-#         # Filter out rows where 'localization' is not empty and get the last one.
-#         # If all are empty, then simply get the last row of the DataFrame.
-#         row_with_localization = (
-#             alert_data[alert_data["localization"].astype(bool)].iloc[-1]
-#             if not alert_data[alert_data["localization"].astype(bool)].empty
-#             else alert_data.iloc[-1]
-#         )
+        polygon, detection_azimuth = build_vision_polygon(
+            site_lat=row_with_localization["lat"],
+            site_lon=row_with_localization["lon"],
+            azimuth=row_with_localization["device_azimuth"],
+            opening_angle=cfg.CAM_OPENING_ANGLE,
+            dist_km=cfg.CAM_RANGE_KM,
+            localization=row_with_localization["processed_loc"],
+        )
 
-#         polygon, detection_azimuth = build_vision_polygon(
-#             site_lat=row_with_localization["lat"],
-#             site_lon=row_with_localization["lon"],
-#             azimuth=row_with_localization["azimuth"],
-#             opening_angle=cfg.CAM_OPENING_ANGLE,
-#             dist_km=cfg.CAM_RANGE_KM,
-#             localization=row_with_localization["processed_loc"],
-#         )
+        date_val = row_with_localization["created_at"]
+        cam_name = f"{row_with_localization['device_login'][:-2].replace('_', ' ') + ' - ' + str(int(row_with_localization['device_azimuth'])) + '°'}"
 
-#         date_val, cam_name = local_events[local_events["id"] == event_id_on_display][
-#             ["created_at", "device_name"]
-#         ].values[0]
+        camera_info = f"Camera: {cam_name}"
+        location_info = f"Station localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        angle_info = f"Azimuth de detection: {detection_azimuth}°"
+        date_info = f"Date: {date_val}"
 
-#         camera_info = f"Camera: {cam_name}"
-#         location_info = f"Localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
-#         angle_info = f"Azimuth de detection: {detection_azimuth}°"
-#         date_info = f"Date: {date_val}"
+        return (
+            polygon,
+            [row_with_localization["lat"], row_with_localization["lon"]],
+            polygon,
+            [row_with_localization["lat"], row_with_localization["lon"]],
+            camera_info,
+            location_info,
+            angle_info,
+            date_info,
+            {"display": "block"},
+            {"display": "block"},
+        )
 
-#         return (
-#             polygon,
-#             [row_with_localization["lat"], row_with_localization["lon"]],
-#             polygon,
-#             [row_with_localization["lat"], row_with_localization["lon"]],
-#             camera_info,
-#             location_info,
-#             angle_info,
-#             date_info,
-#             {"display": "block"},
-#             {"display": "block"},
-#         )
-
-#     return (
-#         [],
-#         dash.no_update,
-#         [],
-#         dash.no_update,
-#         dash.no_update,
-#         dash.no_update,
-#         dash.no_update,
-#         dash.no_update,
-#         {"display": "none"},
-#         {"display": "none"},
-#     )
+    return (
+        [],
+        dash.no_update,
+        [],
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        {"display": "none"},
+        {"display": "none"},
+    )
 
 
 @app.callback(
