@@ -46,7 +46,6 @@ def get_main_layout():
                     }
                 ),
             ),
-            dcc.Store(id="last_displayed_event_id", storage_type="session"),
             dcc.Store(
                 id="alert_on_display",
                 storage_type="session",
@@ -56,11 +55,6 @@ def get_main_layout():
                         "data_loaded": False,
                     }
                 ),
-            ),
-            dcc.Store(
-                id="media_url",
-                storage_type="session",
-                data={},
             ),
             dcc.Store(id="event_id_on_display", data=0),
             dcc.Store(id="auto-move-state", data={"active": True}),
