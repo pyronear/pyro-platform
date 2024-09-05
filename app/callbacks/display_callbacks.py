@@ -41,7 +41,6 @@ def update_event_list(api_alerts, to_acknowledge):
     - api_alerts (json): JSON formatted data containing current alerts information.
     - to_acknowledge (int): Event ID that is being acknowledged.
 
-
     Returns:
     - html.Div: A Div containing the updated list of alerts.
     """
@@ -95,6 +94,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     Returns:
     - list: List of styles for event buttons.
     - int: ID of the event to display.
+    - int: Number of clicks for the auto-move button reset.
     """
     ctx = dash.callback_context
 
@@ -201,10 +201,12 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     Parameters:
     - slider_value (int): Current value of the image slider.
     - alert_data (json): JSON formatted data for the selected event.
+    - alert_list (list): List of ongoing alerts.
 
     Returns:
     - html.Img: An image element displaying the selected alert image.
     - list: A list of html.Div elements representing bounding boxes.
+    - int: Maximum value for the image slider.
     """
     img_src = ""
     bbox_style = {}
@@ -342,7 +344,7 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, al
     - current_value (int): Current value of the image slider.
     - max_value (int): Maximum value of the image slider.
     - auto_move_clicks (int): Number of clicks on the auto-move button.
-    - alert_list(list) : Ongoing alert list
+    - alert_list (list): List of ongoing alerts.
 
     Returns:
     - int: Updated value for the image slider.
@@ -414,6 +416,8 @@ def update_map_and_alert_info(alert_data):
     - str: Location information for the alert.
     - str: Detection angle for the alert.
     - str: Date of the alert.
+    - dict: Style settings for alert information.
+    - dict: Style settings for the slider container.
     """
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
 
@@ -519,6 +523,16 @@ def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credenti
     prevent_initial_call=True,
 )
 def toggle_fullscreen_map(n_clicks_open, is_open):
+    """
+    Toggles the fullscreen map modal based on button clicks.
+
+    Parameters:
+    - n_clicks_open (int): Number of clicks on the map button to toggle modal.
+    - is_open (bool): Current state of the map modal.
+
+    Returns:
+    - bool: New state of the map modal (open/close).
+    """
     if n_clicks_open:
         return not is_open  # Toggle the modal
     return is_open  # Keep the current state
@@ -532,6 +546,15 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
     ],
 )
 def reset_zoom(n_clicks):
+    """
+    Resets the zoom level of the map when an event button is clicked.
+
+    Parameters:
+    - n_clicks (list): List of click counts for each event button.
+
+    Returns:
+    - int: Reset zoom level for the map.
+    """
     if n_clicks:
         return 10  # Reset zoom level to 10
     return dash.no_update

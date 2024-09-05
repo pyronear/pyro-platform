@@ -39,6 +39,22 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
     ],
 )
 def login_callback(n_clicks, username, password, user_headers):
+    """
+    Callback to handle user login.
+
+    Parameters:
+        n_clicks (int): Number of times the login button has been clicked.
+        username (str or None): The value entered in the username input field.
+        password (str or None): The value entered in the password input field.
+        user_headers (dict or None): Existing user headers, if any, containing authentication details.
+
+    This function is triggered when the login button is clicked. It verifies the provided username and password,
+    attempts to authenticate the user via the API, and updates the user credentials and headers.
+    If authentication fails or credentials are missing, it provides appropriate feedback.
+
+    Returns:
+        dash.dependencies.Output: Updated user credentials and headers, and form feedback.
+    """
     if user_headers is not None:
         return dash.no_update, dash.no_update, dash.no_update
 
@@ -85,6 +101,22 @@ def login_callback(n_clicks, username, password, user_headers):
     prevent_initial_call=True,
 )
 def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
+    """
+    Callback to periodically fetch alerts data from the API.
+
+    Parameters:
+        n_intervals (int): Number of times the interval has been triggered.
+        user_credentials (dict or None): Current user credentials for API authentication.
+        local_alerts (dict or None): Locally stored alerts data, serialized as JSON.
+        user_headers (dict or None): Current user headers containing authentication details.
+
+    This function is triggered at specified intervals and when user credentials are updated.
+    It retrieves unacknowledged events from the API, processes the data, and stores it locally.
+    If the local data matches the API data, no updates are made.
+
+    Returns:
+        dash.dependencies.Output: Serialized JSON data of alerts and a flag indicating if data is loaded.
+    """
     if user_headers is None:
         raise PreventUpdate
     user_token = user_headers["Authorization"].split(" ")[1]
