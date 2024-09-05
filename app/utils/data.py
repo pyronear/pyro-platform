@@ -7,14 +7,11 @@ import ast
 import json
 from datetime import datetime
 from io import StringIO
-from pathlib import Path
 from typing import List
 
 import pandas as pd
 import pytz
 from timezonefinder import TimezoneFinder
-
-from utils.sites import get_sites
 
 tf = TimezoneFinder()
 
@@ -126,60 +123,3 @@ def past_ndays_api_events(api_events, n_days=0):
     api_events = api_events[(api_events["created_at"] > start_date) | (api_events["created_at"] == start_date)]
 
     return api_events
-
-
-# Sites
-
-
-def retrieve_site_from_device_id(api_client, user_credentials, device_id):
-    """
-    Retrieves the site name associated with a given device ID by looking up in the site devices data.
-
-    Args:
-        api_client: API client to interact with the remote server.
-        user_credentials (tuple): User credentials (username, password).
-        device_id: Device ID for which the site name is to be retrieved.
-
-    Returns:
-        str: The name of the site associated with the given device ID.
-    """
-    site_devices_data = load_site_data_file(api_client, user_credentials)
-    device_id = str(int(device_id))
-
-    if device_id in site_devices_data.keys():
-        return site_devices_data[device_id]
-    else:
-        site_devices_data = load_site_data_file(api_client, user_credentials, force_dl=True)
-
-        return site_devices_data[device_id]
-
-
-def load_site_data_file(api_client, user_credentials, site_devices_file="site_devices.json", force_dl=False):
-    """
-    Loads site device data from a file or fetches it from the API if the file does not exist or if forced to download.
-
-    Args:
-        api_client: API client to interact with the remote server.
-        user_credentials (tuple): User credentials (username, password).
-        site_devices_file (str): Path to the file where site device data is stored. Defaults to 'site_devices.json'.
-        force_dl (bool): If True, forces downloading the data from the API. Defaults to False.
-
-    Returns:
-        A dictionary mapping site names to device IDs.
-    """
-    site_devices_path = Path(site_devices_file)
-
-    if site_devices_path.is_file() and not force_dl:
-        with site_devices_path.open() as json_file:
-            return json.load(json_file)
-
-    client_sites = get_sites(user_credentials)
-    site_devices_dict = {}
-    for _, site in client_sites.iterrows():
-        site_ids = set(api_client.get_site_devices(site["id"]).json())
-        for site_id in site_ids:
-            site_devices_dict[str(site_id)] = site["name"].replace("_", " ")
-    with site_devices_path.open("w") as fp:
-        json.dump(site_devices_dict, fp)
-
-    return site_devices_dict
