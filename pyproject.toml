@@ -16,7 +16,7 @@ dash = ">=2.14.0"
 dash-bootstrap-components = ">=1.5.0"
 dash-leaflet = "^0.1.4"
 pandas = ">=2.1.4"
-pyroclient = { git = "https://github.com/pyronear/pyro-api.git", rev = "5da3d23d38cb78a4a4e15cf2f9f83bf2da7cdaee", subdirectory = "client" }
+pyroclient = { git = "https://github.com/pyronear/pyro-api.git", rev = "a46f5a00869049ffd1a8bb920ac685e44f18deb5", subdirectory = "client" }
 python-dotenv = ">=1.0.0"
 geopy = ">=2.4.0"
 
