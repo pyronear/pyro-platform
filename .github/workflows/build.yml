@@ -66,4 +66,4 @@ jobs:
           docker network create web
           docker compose up -d --build
       - name: Check docker sanity
-        run: sleep 200 && docker-compose logs && curl http://platform.localhost:8050/
+        run: sleep 200 && docker compose logs && curl http://platform.localhost:8050/
