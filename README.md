@@ -28,7 +28,7 @@ make stop
 ```
 
 If you need to launch the pyro-api in your development environment you can use the pyro-devops project.
-You can use it in two different ways : 
+You can use it in two different ways :
 => by building the pyro-platform image and launch the full development environment with the command :
 ```shell
 make run
