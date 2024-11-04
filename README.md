@@ -5,9 +5,36 @@ The building blocks of our wildfire detection & monitoring API.
 
 
 ## Quick Tour
+### Pyro API
+1. Hosted by pyronear
+You can use apidev.pyronear.org/docs if you don't need to modify the API for your task
+
+What to do : 
+=> you need to ask an administrator to create a user for you. Better to have an admin user in order to be able to create cameras & detections with it.
+=> check that the version of the dev API will be fitter to your need.
+=> modify the API_URL var env in your .env
+
+2. Locally
+You can use the pyro-devops project in two different ways :
+=> by building the pyro-platform image and launch the full development environment with the command :
+```shell
+make run
+```
+=> by launching the development environment without the platform :
+```shell
+make run-engine
+```
+adding this line in your /etc/hosts :
+```
+127.0.0.1 www.localstack.com localstack
+```
+after that you can set up the .env of the pyro-platform project according to the values contained in the .env of the pyro-devops project 
+And launch your project according to the section below "Directly in python" 
+
+
 
 ### Running/stopping the service
-
+1. Dockerized
 You can run the app container using this command for dev purposes:
 
 ```shell
@@ -27,23 +54,15 @@ In order to stop the service, run:
 make stop
 ```
 
-If you need to launch the pyro-api in your development environment you can use the pyro-devops project.
-You can use it in two different ways :
-=> by building the pyro-platform image and launch the full development environment with the command :
+This dockerized setup won't work with an API launch thanks to the pyro-devops projet
+
+2. Directly in python
+Set up your .env
+
 ```shell
-make run
-```
-=> by launching the development environment without the platform :
-```shell
-make run-engine
-```
-adding this line in your /etc/hosts :
-```
-127.0.0.1 www.localstack.com localstack
-```
-and launching your project locally :
-```
-python3 app/index.py
+pip install -r requirements.txt
+pip install --no-cache-dir git+https://github.com/pyronear/pyro-api.git@ce7bf66d1624fcb615daee567dfa77d7d5bca487#subdirectory=client
+python app/index.py --host 0.0.0.0 --port 8050
 ```
 
 ## Installation
