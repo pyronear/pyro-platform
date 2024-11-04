@@ -78,7 +78,7 @@ jobs:
           black --version
           black --check --diff .
 
-  bandit: 
+  bandit:
    runs-on: ${{ matrix.os }}
    strategy:
      matrix:
