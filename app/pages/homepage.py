@@ -23,21 +23,47 @@ def homepage_layout(user_headers, user_credentials):
                     dbc.Col(
                         [
                             html.Div(
-                                id="image-container-with-bbox",
-                                style={"position": "relative"},
+                                id="zoom-containement-container",
+                                className="common-style",
+                                style={"overflow": "hidden"},
                                 children=[
                                     html.Div(
-                                        id="image-container",
-                                        children=[
-                                            html.Img(
-                                                src="./assets/images/no-alert-default.png",
-                                                className="common-style",
-                                                style={"max-width": "100%", "height": "auto"},
-                                            )
-                                        ],
-                                    ),
-                                    html.Div(id="bbox-container", style={"display": "block"}),
-                                ],
+                                    id="image-container-with-bbox",
+                                    style={"position": "relative"},
+                                    children=[
+                                        html.Div(
+                                            id="image-container",
+                                            children=[
+                                                html.Img(
+                                                    id="main-image",
+                                                    src="./assets/images/no-alert-default.png",
+                                                    className="zoomable-image",
+                                                    style={"max-width": "100%", "height": "auto"},
+                                                )
+                                            ],
+                                        ),
+                                        html.Div(
+                                            id="bbox-container", 
+                                            style={"display": "block"},
+                                            children=[
+                                                html.Div(
+                                                    id="bbox-positioning",
+                                                    style={"visibility": "hidden"},
+                                                    children=[
+                                                        html.Div(
+                                                            id="bbox-styling",
+                                                            style={"border": "2px solid red",
+                                                                   "height": "100%", 
+                                                                   "width": "100%",
+                                                                    "zIndex": "1"},
+                                                        ),
+                                                    ]
+                                                )
+                                            ],
+                                            ),
+                                    ],
+                            ),
+                                ]
                             ),
                             html.Div(
                                 dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
