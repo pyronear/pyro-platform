@@ -48,7 +48,7 @@ def homepage_layout(user_headers, user_credentials):
                                             children=[
                                                 html.Div(
                                                     id="bbox-positioning",
-                                                    style={"visibility": "hidden"},
+                                                    style={"display": "none"},
                                                     children=[
                                                         html.Div(
                                                             id="bbox-styling",

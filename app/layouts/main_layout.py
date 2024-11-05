@@ -30,6 +30,12 @@ def get_main_layout():
         [
             dcc.Location(id="url", refresh=False),
             html.Div(
+                id="custom_js_trigger",
+                className="custom_js_trigger",
+                title="none",
+                style={"display": "none"},
+            ),
+            html.Div(
                 [
                     Navbar(),  # This includes the navbar at the top of the page
                     html.Div(id="page-content"),

@@ -70,6 +70,7 @@ def update_event_list(api_alerts, to_acknowledge):
         Output({"type": "event-button", "index": ALL}, "style"),
         Output("event_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
+        Output("custom_js_trigger", "title"),
     ],
     [
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
@@ -82,6 +83,7 @@ def update_event_list(api_alerts, to_acknowledge):
     prevent_initial_call=True,
 )
 def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_display):
+
     """
     Handles event selection through button clicks.
 
@@ -96,11 +98,12 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     - int: ID of the event to display.
     - int: Number of clicks for the auto-move button reset.
     """
+
     ctx = dash.callback_context
 
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
     if len(local_alerts) == 0:
-        return [[], 0, 1]
+        return [[], 0, 1, "reset_zoom"]
 
     if not alerts_data_loaded:
         raise PreventUpdate
@@ -140,7 +143,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
                 },
             )  # Default style
 
-    return [styles, button_index, 1]
+    return [styles, button_index, 1, "reset_zoom"]
 
 
 # Get event_id data
@@ -210,7 +213,7 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     - int: Maximum value for the image slider.
     """
     img_src = ""
-    bbox_style = {"visibility": "hidden"}  # Default style for the bounding box
+    bbox_style = {"display": "none"}  # Default style for the bounding box
     # bbox_divs: List[html.Div] = []  # This will contain the bounding box as an html.Div
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
@@ -252,7 +255,7 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
             "top": f"{y0}%",  # Top position based on image height
             "width": f"{width}%",  # Width based on image width
             "height": f"{height}%",  # Height based on image height
-            "visibility": "visible",
+            "display": "block",
             # "border": "2px solid red",
             # "zIndex": "10",
         }

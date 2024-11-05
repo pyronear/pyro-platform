@@ -27,6 +27,10 @@ def create_event_list():
 
     return html.Div(
         [
-            html.Div(id="alert-list-container", style=event_list_style, children=[]),  # Empty container
+            html.Div(
+                id="alert-list-container", 
+                className="alert-list-container", 
+                style=event_list_style, 
+                children=[]),  # Empty container
         ]
     )
