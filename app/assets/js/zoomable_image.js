@@ -11,6 +11,8 @@
  * Because Dash is slow to add elements to the page as a result of API calls,
  * the script s `waitForElement()` to wait for specific elements to be available in the DOM before attaching event listeners or running other logic on the element.
  * (The DOMContentLoaded event is not sufficient because some elements load faster than others).
+ *
+ * JS packages can be loaded from CDN in main.py using the `external_scripts` argument of the app object.
  */
 
 /**

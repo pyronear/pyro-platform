@@ -188,7 +188,6 @@ def update_display_data(event_id_on_display, local_alerts):
 @app.callback(
     [
         Output("main-image", "src"),  # Output for the image
-        # Output("bbox-container", "children"),  # Output for the bounding box
         Output("bbox-positioning", "style"),
         Output("image-slider", "max"),
     ],
@@ -214,7 +213,6 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     """
     img_src = ""
     bbox_style = {"display": "none"}  # Default style for the bounding box
-    # bbox_divs: List[html.Div] = []  # This will contain the bounding box as an html.Div
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
         raise PreventUpdate
@@ -256,13 +254,7 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
             "width": f"{width}%",  # Width based on image width
             "height": f"{height}%",  # Height based on image height
             "display": "block",
-            # "border": "2px solid red",
-            # "zIndex": "10",
         }
-
-    # Create a div that represents the bounding box
-    # bbox_div = html.Div(style=bbox_style)
-    # bbox_divs.append(bbox_div)
 
     return img_src, bbox_style, len(images) - 1
 

@@ -38,7 +38,7 @@ def homepage_layout(user_headers, user_credentials):
                                                     id="main-image",
                                                     src="./assets/images/no-alert-default.png",
                                                     className="zoomable-image",
-                                                    style={"max-width": "100%", "height": "auto"},
+                                                    style={"maxWidth": "100%", "height": "auto"},
                                                 )
                                             ],
                                         ),
@@ -55,7 +55,7 @@ def homepage_layout(user_headers, user_credentials):
                                                             style={"border": "2px solid red",
                                                                    "height": "100%", 
                                                                    "width": "100%",
-                                                                    "zIndex": "1"},
+                                                                    "zIndex": "10"},
                                                         ),
                                                     ]
                                                 )
