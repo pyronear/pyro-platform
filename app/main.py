@@ -30,9 +30,9 @@ if isinstance(cfg.SENTRY_DSN, str):
     logger.info(f"Sentry middleware enabled on server {cfg.SERVER_NAME}")
 
 # We start by instantiating the app
-app = dash.Dash(__name__, 
-                external_stylesheets=[dbc.themes.UNITED], 
-                external_scripts = [
+app = dash.Dash(__name__,
+                external_stylesheets=[dbc.themes.UNITED],
+                external_scripts=[
                     'https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js'
                 ])
 

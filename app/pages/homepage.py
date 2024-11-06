@@ -43,7 +43,7 @@ def homepage_layout(user_headers, user_credentials):
                                             ],
                                         ),
                                         html.Div(
-                                            id="bbox-container", 
+                                            id="bbox-container",
                                             style={"display": "block"},
                                             children=[
                                                 html.Div(
@@ -53,7 +53,7 @@ def homepage_layout(user_headers, user_credentials):
                                                         html.Div(
                                                             id="bbox-styling",
                                                             style={"border": "2px solid red",
-                                                                   "height": "100%", 
+                                                                   "height": "100%",
                                                                    "width": "100%",
                                                                     "zIndex": "10"},
                                                         ),

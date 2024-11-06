@@ -3,16 +3,13 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-
 import ast
 import json
-from typing import List
 
 import dash
 import logging_config
 import numpy as np
 import pandas as pd
-from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
@@ -83,7 +80,6 @@ def update_event_list(api_alerts, to_acknowledge):
     prevent_initial_call=True,
 )
 def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_display):
-
     """
     Handles event selection through button clicks.
 
@@ -98,7 +94,6 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     - int: ID of the event to display.
     - int: Number of clicks for the auto-move button reset.
     """
-
     ctx = dash.callback_context
 
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
