@@ -3,16 +3,13 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-
 import ast
 import json
-from typing import List
 
 import dash
 import logging_config
 import numpy as np
 import pandas as pd
-from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
@@ -70,6 +67,7 @@ def update_event_list(api_alerts, to_acknowledge):
         Output({"type": "event-button", "index": ALL}, "style"),
         Output("event_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
+        Output("custom_js_trigger", "title"),
     ],
     [
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
@@ -100,7 +98,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
 
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
     if len(local_alerts) == 0:
-        return [[], 0, 1]
+        return [[], 0, 1, "reset_zoom"]
 
     if not alerts_data_loaded:
         raise PreventUpdate
@@ -140,7 +138,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
                 },
             )  # Default style
 
-    return [styles, button_index, 1]
+    return [styles, button_index, 1, "reset_zoom"]
 
 
 # Get event_id data
@@ -184,8 +182,8 @@ def update_display_data(event_id_on_display, local_alerts):
 
 @app.callback(
     [
-        Output("image-container", "children"),  # Output for the image
-        Output("bbox-container", "children"),  # Output for the bounding box
+        Output("main-image", "src"),  # Output for the image
+        Output("bbox-positioning", "style"),
         Output("image-slider", "max"),
     ],
     [Input("image-slider", "value"), Input("alert_on_display", "data")],
@@ -209,19 +207,14 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     - int: Maximum value for the image slider.
     """
     img_src = ""
-    bbox_style = {}
-    bbox_divs: List[html.Div] = []  # This will contain the bounding box as an html.Div
+    bbox_style = {"display": "none"}  # Default style for the bounding box
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
         raise PreventUpdate
 
     if len(alert_list) == 0:
-        img_html = html.Img(
-            src="./assets/images/no-alert-default.png",
-            className="common-style",
-            style={"width": "100%", "height": "auto"},
-        )
-        return img_html, bbox_divs, 0
+        img_src = "./assets/images/no-alert-default.png"
+        return img_src, bbox_style, 0
 
     # Filter images with non-empty URLs
     images, boxes = zip(
@@ -233,12 +226,8 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     )
 
     if not images:
-        img_html = html.Img(
-            src="./assets/images/no-alert-default.png",
-            className="common-style",
-            style={"width": "100%", "height": "auto"},
-        )
-        return img_html, bbox_divs, 0
+        img_src = "./assets/images/no-alert-default.png"
+        return img_src, bbox_style, 0
 
     # Ensure slider_value is within the range of available images
     slider_value = slider_value % len(images)
@@ -259,16 +248,10 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
             "top": f"{y0}%",  # Top position based on image height
             "width": f"{width}%",  # Width based on image width
             "height": f"{height}%",  # Height based on image height
-            "border": "2px solid red",
-            "zIndex": "10",
+            "display": "block",
         }
 
-    # Create a div that represents the bounding box
-    bbox_div = html.Div(style=bbox_style)
-    bbox_divs.append(bbox_div)
-
-    img_html = html.Img(src=img_src, className="common-style", style={"width": "100%", "height": "auto"})
-    return img_html, bbox_divs, len(images) - 1
+    return img_src, bbox_style, len(images) - 1
 
 
 @app.callback(
