@@ -12,7 +12,7 @@ import config as cfg
 
 
 def get_token(api_url: str, login: str, pwd: str) -> str:
-    response = requests.post(f"{api_url}/login/access-token", data={"username": login, "password": pwd}, timeout=10)
+    response = requests.post(f"{api_url}/login/access-token", data={"username": login, "password": pwd}, timeout=3)
     if response.status_code != 200:
         raise ValueError(response.json()["detail"])
     return response.json()["access_token"]
