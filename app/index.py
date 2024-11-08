@@ -30,6 +30,9 @@ app.layout = get_main_layout()
     State("user_credentials", "data"),
 )
 def display_page(pathname, user_headers, user_credentials):
+
+    print("PATHNAME", pathname)
+
     logger.debug(
         "display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
         pathname,
@@ -40,8 +43,14 @@ def display_page(pathname, user_headers, user_credentials):
         logger.info("No user headers found, showing login layout.")
         return login_layout()
     if pathname == "/" or pathname is None:
-        logger.info("Showing homepage layout.")
-        return homepage_layout(user_headers, user_credentials)
+        logger.info("Showing homepage layout (default language: French).")
+        return homepage_layout(user_headers, user_credentials, lang="french")
+    if pathname == "/fr":
+        logger.info("Showing homepage layout (language: French).")
+        return homepage_layout(user_headers, user_credentials, lang="fr")
+    if pathname == "/es":
+        logger.info("Showing homepage layout (language: Spanish).")
+        return homepage_layout(user_headers, user_credentials, lang="es")
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
