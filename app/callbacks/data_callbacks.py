@@ -56,9 +56,11 @@ def login_callback(n_clicks, username, password, user_headers):
     This function is triggered when the login button is clicked. It verifies the provided username and password,
     attempts to authenticate the user via the API, and updates the user credentials and headers.
     If authentication fails or credentials are missing, it provides appropriate feedback.
+    After login succeeds and while data required to boot the dashboard is being fetched from the API,
+    the login form is hidden and a spinner is displayed.
 
     Returns:
-        dash.dependencies.Output: Updated user credentials and headers, and form feedback.
+        dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login and loading spinners.
     """
     input_style_unchanged = {"width": "250px"}
     connection_button_style_unchanged = {}
