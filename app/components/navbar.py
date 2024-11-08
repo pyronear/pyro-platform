@@ -11,12 +11,6 @@ pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
 
 def Navbar():
-    buttons_container = html.Div(
-        # children=[home_button, alert_screen_button],
-        className="ml-auto",
-        style={"display": "flex"},
-    )
-
     navbar = dbc.Navbar(
         [
             dbc.Row(
@@ -25,13 +19,20 @@ def Navbar():
                 ],
                 align="center",
             ),
-            dbc.NavbarToggler(id="navbar-toggler"),
-            dbc.Collapse(buttons_container, id="navbar-collapse", navbar=True),
+            html.Div(
+                className="ml-auto",
+                style={"display": "flex", "flexDirection": "row", "gap": "10px", "marginRight": "10px"},
+                children=[
+                    dbc.Button(["🇫🇷", " FR"], href="/fr", color="light", className="mr-2"),
+                    dbc.Button(["🇪🇸", " ES"], href="/es", color="light"),
+                ],
+            ),
         ],
         id="main_navbar",
         color="#044448",
         dark=True,
         className="mb-4",
+        style={"display": "flex", "justify-content": "space-between"},
     )
 
     return navbar
