@@ -375,10 +375,10 @@ def update_download_link(slider_value, alert_data):
         Output("map", "center"),
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
-        Output("alert-camera", "children"),
-        Output("alert-location", "children"),
-        Output("alert-azimuth", "children"),
-        Output("alert-date", "children"),
+        Output("alert-camera-value", "children"),
+        Output("alert-location-value", "children"),
+        Output("alert-azimuth-value", "children"),
+        Output("alert-date-value", "children"),
         Output("alert-information", "style"),
         Output("slider-container", "style"),
     ],
@@ -435,10 +435,10 @@ def update_map_and_alert_info(alert_data):
         date_val = row_with_localization["created_at"]
         cam_name = f"{row_with_localization['device_login'][:-2].replace('_', ' ')} - {int(row_with_localization['device_azimuth'])}°"
 
-        camera_info = f"Camera: {cam_name}"
-        location_info = f"Station localisation: {row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
-        angle_info = f"Azimuth de detection: {detection_azimuth}°"
-        date_info = f"Date: {date_val}"
+        camera_info = f"{cam_name}"
+        location_info = f"{row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        angle_info = f"{detection_azimuth}°"
+        date_info = f"{date_val}"
 
         return (
             polygon,

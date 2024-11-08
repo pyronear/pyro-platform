@@ -25,7 +25,11 @@ else:
     user_headers = None
 
 
-def get_main_layout():
+def get_main_layout(lang="french", **other_unknown_query_strings):
+
+    print("GET MAIN LAYOUT")
+    print(lang)
+
     return html.Div(
         [
             dcc.Location(id="url", refresh=False),
