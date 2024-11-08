@@ -46,7 +46,7 @@ def login_layout():
                     # Feedback message area
                     html.Div(id="form_feedback_area"),
                     html.Div(
-                        dbc.Spinner(size="xl"),
+                        dbc.Spinner(),
                         id="loading_spinner",
                         style={"display": "none"},
                     ),
