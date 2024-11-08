@@ -34,6 +34,7 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         Output("username_input", "style"),
         Output("password_input", "style"),
         Output("send_form_button", "style"),
+        Output("form_feedback_area", "style"),
         Output("loading_spinner", "style"),
     ],
     Input("send_form_button", "n_clicks"),
@@ -60,10 +61,10 @@ def login_callback(n_clicks, username, password, user_headers):
     the login form is hidden and a spinner is displayed.
 
     Returns:
-        dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login and loading spinners.
+        dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login elements and loading spinners.
     """
     input_style_unchanged = {"width": "250px"}
-    connection_button_style_unchanged = {}
+    empty_style_unchanged = {"": ""}
     hide_element_style = {"display": "none"}
     show_spinner_style = {"transform": "scale(4)"}
 
@@ -74,7 +75,8 @@ def login_callback(n_clicks, username, password, user_headers):
             dash.no_update,
             input_style_unchanged,
             input_style_unchanged,
-            connection_button_style_unchanged,
+            empty_style_unchanged,
+            empty_style_unchanged,
             hide_element_style,
         )
 
@@ -95,7 +97,8 @@ def login_callback(n_clicks, username, password, user_headers):
                 form_feedback,
                 input_style_unchanged,
                 input_style_unchanged,
-                connection_button_style_unchanged,
+                empty_style_unchanged,
+                empty_style_unchanged,
                 hide_element_style,
             )
         else:
@@ -107,6 +110,7 @@ def login_callback(n_clicks, username, password, user_headers):
                     {"username": username, "password": password},
                     client.headers,
                     dash.no_update,
+                    hide_element_style,
                     hide_element_style,
                     hide_element_style,
                     hide_element_style,
@@ -122,7 +126,8 @@ def login_callback(n_clicks, username, password, user_headers):
                     form_feedback,
                     input_style_unchanged,
                     input_style_unchanged,
-                    connection_button_style_unchanged,
+                    empty_style_unchanged,
+                    empty_style_unchanged,
                     hide_element_style,
                 )
 

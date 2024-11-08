@@ -42,14 +42,14 @@ def login_layout():
                         color="primary",
                         className="ml-3",
                     ),
+                    html.Div(style={"height": "15px"}),  # Spacing
+                    # Feedback message area
+                    html.Div(id="form_feedback_area"),
                     html.Div(
                         dbc.Spinner(size="xl"),
                         id="loading_spinner",
                         style={"display": "none"},
                     ),
-                    html.Div(style={"height": "15px"}),  # Spacing
-                    # Feedback message area
-                    html.Div(id="form_feedback_area"),
                 ],
             ),
         ]
