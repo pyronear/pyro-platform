@@ -45,6 +45,11 @@ def login_layout():
                     html.Div(style={"height": "15px"}),  # Spacing
                     # Feedback message area
                     html.Div(id="form_feedback_area"),
+                    html.Div(
+                        dbc.Spinner(),
+                        id="loading_spinner",
+                        style={"display": "none"},
+                    ),
                 ],
             ),
         ]

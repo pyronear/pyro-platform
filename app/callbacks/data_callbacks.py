@@ -31,6 +31,11 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         Output("user_credentials", "data"),
         Output("user_headers", "data"),
         Output("form_feedback_area", "children"),
+        Output("username_input", "style"),
+        Output("password_input", "style"),
+        Output("send_form_button", "style"),
+        Output("form_feedback_area", "style"),
+        Output("loading_spinner", "style"),
     ],
     Input("send_form_button", "n_clicks"),
     [
@@ -52,12 +57,28 @@ def login_callback(n_clicks, username, password, user_headers):
     This function is triggered when the login button is clicked. It verifies the provided username and password,
     attempts to authenticate the user via the API, and updates the user credentials and headers.
     If authentication fails or credentials are missing, it provides appropriate feedback.
+    After login succeeds and while data required to boot the dashboard is being fetched from the API,
+    the login form is hidden and a spinner is displayed.
 
     Returns:
-        dash.dependencies.Output: Updated user credentials and headers, and form feedback.
+        dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login elements and loading spinners.
     """
+    input_style_unchanged = {"width": "250px"}
+    empty_style_unchanged = {"": ""}
+    hide_element_style = {"display": "none"}
+    show_spinner_style = {"transform": "scale(4)"}
+
     if user_headers is not None:
-        return dash.no_update, dash.no_update, dash.no_update
+        return (
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            input_style_unchanged,
+            input_style_unchanged,
+            empty_style_unchanged,
+            empty_style_unchanged,
+            hide_element_style,
+        )
 
     if n_clicks:
         # We instantiate the form feedback output
@@ -70,7 +91,16 @@ def login_callback(n_clicks, username, password, user_headers):
             form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
 
             # The login modal remains open; other outputs are updated with arbitrary values
-            return dash.no_update, dash.no_update, form_feedback
+            return (
+                dash.no_update,
+                dash.no_update,
+                form_feedback,
+                input_style_unchanged,
+                input_style_unchanged,
+                empty_style_unchanged,
+                empty_style_unchanged,
+                hide_element_style,
+            )
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
@@ -80,12 +110,26 @@ def login_callback(n_clicks, username, password, user_headers):
                     {"username": username, "password": password},
                     client.headers,
                     dash.no_update,
+                    hide_element_style,
+                    hide_element_style,
+                    hide_element_style,
+                    hide_element_style,
+                    show_spinner_style,
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
                 form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
 
-                return dash.no_update, dash.no_update, form_feedback
+                return (
+                    dash.no_update,
+                    dash.no_update,
+                    form_feedback,
+                    input_style_unchanged,
+                    input_style_unchanged,
+                    empty_style_unchanged,
+                    empty_style_unchanged,
+                    hide_element_style,
+                )
 
     raise PreventUpdate
 
