@@ -40,16 +40,16 @@ def display_page(pathname, user_headers, user_credentials):
     if user_headers is None:
         if pathname == "/" or pathname is None:
             logger.info("No user headers found, showing login layout (default language: French).")
-            return login_layout(lang="french")
+            return login_layout(lang="fr")
         if pathname == "/fr":
             logger.info("No user headers found, showing login layout (language: French).")
-            return login_layout(lang="french")
+            return login_layout(lang="fr")
         if pathname == "/es":
             logger.info("No user headers found, showing login layout (language: Spanish).")
-            return login_layout(lang="spanish")
+            return login_layout(lang="es")
     if pathname == "/" or pathname is None:
         logger.info("Showing homepage layout (default language: French).")
-        return homepage_layout(user_headers, user_credentials, lang="french")
+        return homepage_layout(user_headers, user_credentials, lang="fr")
     if pathname == "/fr":
         logger.info("Showing homepage layout (language: French).")
         return homepage_layout(user_headers, user_credentials, lang="fr")

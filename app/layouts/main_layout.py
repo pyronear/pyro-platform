@@ -25,7 +25,7 @@ else:
     user_headers = None
 
 
-def get_main_layout(lang="french", **other_unknown_query_strings):
+def get_main_layout():
 
     return html.Div(
         [

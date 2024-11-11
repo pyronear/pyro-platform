@@ -37,14 +37,17 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         Output("form_feedback_area", "style"),
         Output("loading_spinner", "style"),
     ],
-    Input("send_form_button", "n_clicks"),
+    [
+        Input("language", "data"),
+        Input("send_form_button", "n_clicks"),
+    ],
     [
         State("username_input", "value"),
         State("password_input", "value"),
         State("user_headers", "data"),
     ],
 )
-def login_callback(n_clicks, username, password, user_headers):
+def login_callback(lang, n_clicks, username, password, user_headers):
     """
     Callback to handle user login.
 
@@ -63,10 +66,24 @@ def login_callback(n_clicks, username, password, user_headers):
     Returns:
         dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login elements and loading spinners.
     """
+    print("login_callback")
+    print(lang)
+
     input_style_unchanged = {"width": "250px"}
     empty_style_unchanged = {"": ""}
     hide_element_style = {"display": "none"}
     show_spinner_style = {"transform": "scale(4)"}
+
+    translate = {
+        "fr": {
+            "missing_password_or_user_name": "Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe.",
+            "wrong_credentials": "Nom d'utilisateur et/ou mot de passe erroné.",
+        },
+        "es": {
+            "missing_password_or_user_name": "Parece que falta su nombre de usuario y/o su contraseña.",
+            "wrong_credentials": "Nombre de usuario y/o contraseña incorrectos.",
+        },
+    }
 
     if user_headers is not None:
         return (
@@ -88,7 +105,7 @@ def login_callback(n_clicks, username, password, user_headers):
             # If either the username or the password is missing, the condition is verified
 
             # We add the appropriate feedback
-            form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
+            form_feedback.append(html.P(translate[lang]["missing_password_or_user_name"]))
 
             # The login modal remains open; other outputs are updated with arbitrary values
             return (
@@ -118,7 +135,7 @@ def login_callback(n_clicks, username, password, user_headers):
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
-                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
+                form_feedback.append(html.P(translate[lang]["wrong_credentials"]))
 
                 return (
                     dash.no_update,

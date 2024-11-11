@@ -184,43 +184,54 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                 html.Div(
                                     id="alert-information",
                                     className="common-style",
-                                    style={"fontSize": "15px", "fontWeight": "bold", "display": "none"},
+                                    style={"display": "none"},
                                     children=[
-                                        html.H4(translate[lang]["alert_information"]),
                                         html.Div(
-                                            id="alert-camera",
-                                            style={"marginBottom": "10px"},
+                                            id="alert-information-styling-container",
+                                            style={"padding": "5px"},
                                             children=[
-                                                html.Span(id="alert-camera-header", children=translate[lang]["camera"]),
-                                                html.Span(id="alert-camera-value", children=[]),
-                                            ],
-                                        ),
-                                        html.Div(
-                                            id="alert-location",
-                                            style={"marginBottom": "10px"},
-                                            children=[
-                                                html.Span(
-                                                    id="alert-location-header", children=translate[lang]["location"]
+                                                html.H4(translate[lang]["alert_information"]),
+                                                html.Div(
+                                                    id="alert-camera",
+                                                    style={"marginBottom": "10px"},
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-camera-header", children=translate[lang]["camera"]
+                                                        ),
+                                                        html.Span(id="alert-camera-value", children=[]),
+                                                    ],
                                                 ),
-                                                html.Span(id="alert-location-value", children=[]),
-                                            ],
-                                        ),
-                                        html.Div(
-                                            id="alert-azimuth",
-                                            style={"marginBottom": "10px"},
-                                            children=[
-                                                html.Span(
-                                                    id="alert-azimuth-header",
-                                                    children=translate[lang]["detection_azimuth"],
+                                                html.Div(
+                                                    id="alert-location",
+                                                    style={"marginBottom": "10px"},
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-location-header",
+                                                            children=translate[lang]["location"],
+                                                        ),
+                                                        html.Span(id="alert-location-value", children=[]),
+                                                    ],
                                                 ),
-                                                html.Span(id="alert-azimuth-value", children=[]),
-                                            ],
-                                        ),
-                                        html.Div(
-                                            id="alert-date",
-                                            children=[
-                                                html.Span(id="alert-date-header", children=translate[lang]["date"]),
-                                                html.Span(id="alert-date-value", children=[]),
+                                                html.Div(
+                                                    id="alert-azimuth",
+                                                    style={"marginBottom": "10px"},
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-azimuth-header",
+                                                            children=translate[lang]["detection_azimuth"],
+                                                        ),
+                                                        html.Span(id="alert-azimuth-value", children=[]),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="alert-date",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-date-header", children=translate[lang]["date"]
+                                                        ),
+                                                        html.Span(id="alert-date-value", children=[]),
+                                                    ],
+                                                ),
                                             ],
                                         ),
                                     ],
