@@ -38,16 +38,16 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         Output("loading_spinner", "style"),
     ],
     [
-        Input("language", "data"),
         Input("send_form_button", "n_clicks"),
     ],
     [
         State("username_input", "value"),
         State("password_input", "value"),
         State("user_headers", "data"),
+        State("language", "data"),
     ],
 )
-def login_callback(lang, n_clicks, username, password, user_headers):
+def login_callback(n_clicks, username, password, user_headers, lang):
     """
     Callback to handle user login.
 
@@ -66,9 +66,6 @@ def login_callback(lang, n_clicks, username, password, user_headers):
     Returns:
         dash.dependencies.Output: Updated user credentials and headers, and form feedback + styles to hide/show login elements and loading spinners.
     """
-    print("login_callback")
-    print(lang)
-
     input_style_unchanged = {"width": "250px"}
     empty_style_unchanged = {"": ""}
     hide_element_style = {"display": "none"}

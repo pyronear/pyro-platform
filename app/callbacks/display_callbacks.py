@@ -189,10 +189,11 @@ def update_display_data(event_id_on_display, local_alerts):
     [Input("image-slider", "value"), Input("alert_on_display", "data")],
     [
         State("alert-list-container", "children"),
+        State("language", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, alert_data, alert_list):
+def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
     """
     Updates the image and bounding box display based on the slider value.
 
@@ -206,15 +207,21 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     - list: A list of html.Div elements representing bounding boxes.
     - int: Maximum value for the image slider.
     """
+    print("update_image_and_bbox")
+    print(lang)
+
     img_src = ""
+    no_alert_image_src = "./assets/images/no-alert-default.png"
+    if lang == "es":
+        no_alert_image_src = "./assets/images/no-alert-default-es.png"
+
     bbox_style = {"display": "none"}  # Default style for the bounding box
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if not data_loaded:
         raise PreventUpdate
 
     if len(alert_list) == 0:
-        img_src = "./assets/images/no-alert-default.png"
-        return img_src, bbox_style, 0
+        return no_alert_image_src, bbox_style, 0
 
     # Filter images with non-empty URLs
     images, boxes = zip(
@@ -226,8 +233,7 @@ def update_image_and_bbox(slider_value, alert_data, alert_list):
     )
 
     if not images:
-        img_src = "./assets/images/no-alert-default.png"
-        return img_src, bbox_style, 0
+        return no_alert_image_src, bbox_style, 0
 
     # Ensure slider_value is within the range of available images
     slider_value = slider_value % len(images)

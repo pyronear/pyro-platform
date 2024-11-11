@@ -29,6 +29,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "detection_azimuth": "Azimuth de detection: ",
             "date": "Date: ",
             "map": "Carte",
+            "no_alert_default_image": "./assets/images/no-alert-default.png",
         },
         "es": {
             "animate_on_off": "Activar / Desactivar la animación",
@@ -42,6 +43,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "detection_azimuth": "Azimut de detección: ",
             "date": "Fecha: ",
             "map": "Mapa",
+            "no_alert_default_image": "./assets/images/no-alert-default-es.png",
         },
     }
 
@@ -66,7 +68,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                                 children=[
                                                     html.Img(
                                                         id="main-image",
-                                                        src="./assets/images/no-alert-default.png",
+                                                        src=translate[lang]["no_alert_default_image"],
                                                         className="zoomable-image",
                                                         style={"maxWidth": "100%", "height": "auto"},
                                                     )
