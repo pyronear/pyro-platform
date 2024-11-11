@@ -11,7 +11,6 @@ pyro_logo = "https://pyronear.org/img/logo_letters.png"
 
 
 def login_layout(lang="fr"):
-
     translate = {
         "fr": {
             "username_placeholder": "UTILISATEUR",

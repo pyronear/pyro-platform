@@ -30,7 +30,6 @@ app.layout = get_main_layout()
     State("user_credentials", "data"),
 )
 def display_page(pathname, user_headers, user_credentials):
-
     logger.debug(
         "display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
         pathname,

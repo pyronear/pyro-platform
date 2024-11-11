@@ -15,7 +15,6 @@ app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_headers, user_credentials, lang="fr"):
-
     translate = {
         "fr": {
             "animate_on_off": "Activer / Désactiver l'animation",

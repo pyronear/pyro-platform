@@ -26,7 +26,6 @@ else:
 
 
 def get_main_layout():
-
     return html.Div(
         [
             dcc.Location(id="url", refresh=False),
