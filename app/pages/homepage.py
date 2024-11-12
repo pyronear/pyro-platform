@@ -259,6 +259,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                 fullscreen=True,
                 is_open=False,
             ),
+            dcc.Store(id="language", data=lang),
         ],
         fluid=True,
     )

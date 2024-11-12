@@ -207,9 +207,6 @@ def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
     - list: A list of html.Div elements representing bounding boxes.
     - int: Maximum value for the image slider.
     """
-    print("update_image_and_bbox")
-    print(lang)
-
     img_src = ""
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":

@@ -37,9 +37,7 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         Output("form_feedback_area", "style"),
         Output("loading_spinner", "style"),
     ],
-    [
-        Input("send_form_button", "n_clicks"),
-    ],
+    Input("send_form_button", "n_clicks"),
     [
         State("username_input", "value"),
         State("password_input", "value"),
