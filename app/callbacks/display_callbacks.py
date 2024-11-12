@@ -5,6 +5,7 @@
 
 import ast
 import json
+import os
 
 import dash
 import logging_config
@@ -491,6 +492,9 @@ def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credenti
     - int: The ID of the event that has been acknowledged.
     """
     if event_id_on_display == 0 or n_clicks == 0:
+        raise PreventUpdate
+
+    if os.getenv("SAFE_DEV_MODE") == "True":
         raise PreventUpdate
 
     user_token = user_headers["Authorization"].split(" ")[1]
