@@ -115,7 +115,7 @@ def homepage_layout(user_headers, user_credentials):
                                         dbc.Button(
                                             "Acquitter l'alerte",
                                             id="acknowledge-button",
-                                            n_clicks=1,
+                                            n_clicks=0,
                                             className="btn-uniform common-style",
                                             style={"backgroundColor": "#054546"},
                                         ),
