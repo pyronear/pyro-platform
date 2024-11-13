@@ -15,6 +15,7 @@ from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
+from services import api_client, call_api
 from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_alerts
 
