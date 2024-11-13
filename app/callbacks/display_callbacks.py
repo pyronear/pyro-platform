@@ -5,7 +5,6 @@
 
 import ast
 import json
-import os
 
 import dash
 import logging_config
@@ -16,7 +15,6 @@ from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
-from services import api_client, call_api
 from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_alerts
 
@@ -494,7 +492,7 @@ def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credenti
     if event_id_on_display == 0 or n_clicks == 0:
         raise PreventUpdate
 
-    if os.getenv("SAFE_DEV_MODE") == "True":
+    if cfg.SAFE_DEV_MODE == "True":
         raise PreventUpdate
 
     user_token = user_headers["Authorization"].split(" ")[1]
