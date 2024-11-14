@@ -23,6 +23,9 @@ GEOJSON_FILE: str = "https://github.com/pyronear/pyro-risks/releases/download/v0
 SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
 SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
 
+# Safeguards
+SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
+
 # App config variables
 MAX_ALERTS_PER_EVENT = 10
 CAM_OPENING_ANGLE = 87

@@ -493,6 +493,9 @@ def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credenti
     if event_id_on_display == 0 or n_clicks == 0:
         raise PreventUpdate
 
+    if cfg.SAFE_DEV_MODE == "True":
+        raise PreventUpdate
+
     user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
     call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id_on_display))
