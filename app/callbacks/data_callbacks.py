@@ -42,9 +42,10 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
         State("username_input", "value"),
         State("password_input", "value"),
         State("user_headers", "data"),
+        State("language", "data"),
     ],
 )
-def login_callback(n_clicks, username, password, user_headers):
+def login_callback(n_clicks, username, password, user_headers, lang):
     """
     Callback to handle user login.
 
@@ -68,6 +69,17 @@ def login_callback(n_clicks, username, password, user_headers):
     hide_element_style = {"display": "none"}
     show_spinner_style = {"transform": "scale(4)"}
 
+    translate = {
+        "fr": {
+            "missing_password_or_user_name": "Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe.",
+            "wrong_credentials": "Nom d'utilisateur et/ou mot de passe erroné.",
+        },
+        "es": {
+            "missing_password_or_user_name": "Parece que falta su nombre de usuario y/o su contraseña.",
+            "wrong_credentials": "Nombre de usuario y/o contraseña incorrectos.",
+        },
+    }
+
     if user_headers is not None:
         return (
             dash.no_update,
@@ -88,7 +100,7 @@ def login_callback(n_clicks, username, password, user_headers):
             # If either the username or the password is missing, the condition is verified
 
             # We add the appropriate feedback
-            form_feedback.append(html.P("Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe."))
+            form_feedback.append(html.P(translate[lang]["missing_password_or_user_name"]))
 
             # The login modal remains open; other outputs are updated with arbitrary values
             return (
@@ -118,7 +130,7 @@ def login_callback(n_clicks, username, password, user_headers):
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
-                form_feedback.append(html.P("Nom d'utilisateur et/ou mot de passe erroné."))
+                form_feedback.append(html.P(translate[lang]["wrong_credentials"]))
 
                 return (
                     dash.no_update,
