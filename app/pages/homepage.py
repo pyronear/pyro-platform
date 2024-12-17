@@ -13,6 +13,7 @@ from utils.display import build_detections_map
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.css.append_css({"external_url": "/assets/style.css"})
 
+
 def homepage_layout(client_token, lang="fr"):
     translate = {
         "fr": {

@@ -6,10 +6,11 @@
 import ast
 import json
 from typing import List
+
 import dash
-from dash import html
 import logging_config
 import pandas as pd
+from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
@@ -294,7 +295,6 @@ def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list
     for _, detection in detection_data.iterrows():
         images.append(media_url[str(detection["id"])])
     boxes = detection_data["processed_loc"].tolist()
-
 
     if slider_value < len(images):
         img_src = images[slider_value]
