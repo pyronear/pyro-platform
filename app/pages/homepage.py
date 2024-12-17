@@ -24,7 +24,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "enlarge_map": "Agrandir la carte",
             "alert_information": "Information Alerte",
             "camera": "Caméra: ",
-            "location": "Localisation: ",
+            "camera_location": "Position caméra: ",
             "detection_azimuth": "Azimuth de detection: ",
             "date": "Date: ",
             "map": "Carte",
@@ -38,7 +38,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "enlarge_map": "Ampliar el mapa",
             "alert_information": "Información sobre alerta",
             "camera": "Cámara: ",
-            "location": "Ubicación: ",
+            "camera_location": "Ubicación cámara: ",
             "detection_azimuth": "Azimut de detección: ",
             "date": "Fecha: ",
             "map": "Mapa",
@@ -203,14 +203,14 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-location",
+                                                    id="camera-location",
                                                     style={"marginBottom": "10px"},
                                                     children=[
                                                         html.Span(
-                                                            id="alert-location-header",
-                                                            children=translate[lang]["location"],
+                                                            id="camera-location-header",
+                                                            children=translate[lang]["camera_location"],
                                                         ),
-                                                        html.Span(id="alert-location-value", children=[]),
+                                                        html.Span(id="camera-location-value", children=[]),
                                                     ],
                                                 ),
                                                 html.Div(
