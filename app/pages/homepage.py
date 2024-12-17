@@ -203,15 +203,14 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-location",
+                                                    id="camera-location",
                                                     style={"marginBottom": "10px"},
                                                     children=[
                                                         html.Span(
-                                                            id="alert-location-header",
-                                                            children=translate[lang]["location"],
+                                                            id="camera-location-header",
                                                             children=translate[lang]["camera_location"],
                                                         ),
-                                                        html.Span(id="alert-location-value", children=[]),
+                                                        html.Span(id="camera-location-value", children=[]),
                                                     ],
                                                 ),
                                                 html.Div(
