@@ -6,11 +6,10 @@
 import ast
 import json
 from typing import List
-
 import dash
+from dash import html
 import logging_config
 import pandas as pd
-from dash import html
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
@@ -104,6 +103,7 @@ def update_wildfire_list(store_wildfires_data, to_acknowledge, media_url):
         Output({"type": "wildfire-button", "index": ALL}, "style"),
         Output("wildfire_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
+        Output("custom_js_trigger", "title"),
     ],
     [
         Input({"type": "wildfire-button", "index": ALL}, "n_clicks"),
@@ -139,7 +139,7 @@ def select_wildfire_with_button(
 
     local_detections, detections_data_loaded = read_stored_DataFrame(local_detections)
     if len(local_detections) == 0:
-        return [[], 0, 1]
+        return [[], 0, 1, "reset_zoom"]
 
     if not detections_data_loaded:
         raise PreventUpdate
@@ -195,7 +195,7 @@ def select_wildfire_with_button(
                 },
             )  # Default style
 
-    return [styles, button_index, 1]
+    return [styles, button_index, 1, "reset_zoom"]
 
 
 # Get wildfire_id data
@@ -242,18 +242,19 @@ def update_display_data(wildfire_id_on_display, local_detections, store_wildfire
 
 @app.callback(
     [
-        Output("image-container", "children"),  # Output for the image
-        Output("bbox-container", "children"),  # Output for the bounding box
+        Output("main-image", "src"),  # Output for the image
+        Output("bbox-positioning", "style"),
         Output("image-slider", "max"),
     ],
     [Input("image-slider", "value"), Input("detection_on_display", "data")],
     [
         State("media_url", "data"),
         State("wildfire-list-container", "children"),
+        State("language", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list):
+def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list, lang):
     """
     Updates the image and bounding box display based on the slider value.
 
@@ -273,9 +274,13 @@ def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list
     if not data_loaded:
         raise PreventUpdate
 
+    no_alert_image_src = "./assets/images/no-alert-default.png"
+    if lang == "es":
+        no_alert_image_src = "./assets/images/no-alert-default-es.png"
+
     if len(wildfire_list) == 0:
         img_html = html.Img(
-            src="./assets/images/no-alert-default.png",
+            src=no_alert_image_src,
             className="common-style",
             style={"width": "100%", "height": "auto"},
         )
@@ -289,6 +294,7 @@ def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list
     for _, detection in detection_data.iterrows():
         images.append(media_url[str(detection["id"])])
     boxes = detection_data["processed_loc"].tolist()
+
 
     if slider_value < len(images):
         img_src = images[slider_value]
@@ -309,12 +315,7 @@ def update_image_and_bbox(slider_value, detection_data, media_url, wildfire_list
                 "zIndex": "10",
             }
 
-    # Create a div that represents the bounding box
-    bbox_div = html.Div(style=bbox_style)
-    bbox_divs.append(bbox_div)
-
-    img_html = html.Img(src=img_src, className="common-style", style={"width": "100%", "height": "auto"})
-    return img_html, bbox_divs, len(images) - 1
+    return img_src, bbox_style, len(images) - 1
 
 
 @app.callback(
@@ -462,10 +463,10 @@ def update_download_link(slider_value, wildfire_id_on_display, store_wildfires_d
         Output("map", "center"),
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
-        Output("alert-camera", "children"),
-        Output("alert-location", "children"),
-        Output("alert-azimuth", "children"),
-        Output("alert-date", "children"),
+        Output("alert-camera-value", "children"),
+        Output("alert-location-value", "children"),
+        Output("alert-azimuth-value", "children"),
+        Output("alert-date-value", "children"),
         Output("alert-information", "style"),
         Output("slider-container", "style"),
     ],
@@ -595,6 +596,9 @@ def acknowledge_wildfire(n_clicks, store_wildfires_data, wildfire_id_on_display,
                 detection_ids_list = wildfire["detection_ids"]
     for detection_id in detection_ids_list:
         Client(client_token, cfg.API_URL).label_detection(detection_id=detection_id, is_wildfire=False)
+
+    if cfg.SAFE_DEV_MODE == "True":
+        raise PreventUpdate
 
     return wildfire_id_on_display
 

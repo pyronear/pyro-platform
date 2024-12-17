@@ -35,11 +35,18 @@ def display_page(pathname, client_token):
         {cfg.API_LOGIN, cfg.API_PWD},
     )
     if client_token is None:
-        logger.info("No token found, showing login layout.")
-        return login_layout()
-    if pathname == "/" or pathname is None:
-        logger.info("Showing homepage layout.")
-        return homepage_layout(client_token)
+        if pathname == "/" or pathname == "/fr" or pathname is None:
+            logger.info("No user headers found, showing login layout (language: French).")
+            return login_layout(lang="fr")
+        if pathname == "/es":
+            logger.info("No user headers found, showing login layout (language: Spanish).")
+            return login_layout(lang="es")
+    if pathname == "/" or pathname == "/fr" or pathname is None:
+        logger.info("Showing homepage layout (default language: French).")
+        return homepage_layout(client_token, lang="fr")
+    if pathname == "/es":
+        logger.info("Showing homepage layout (language: Spanish).")
+        return homepage_layout(client_token, lang="es")
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
