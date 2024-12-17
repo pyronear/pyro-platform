@@ -8,7 +8,7 @@ import callbacks.data_callbacks
 import callbacks.display_callbacks  # noqa: F401
 import logging_config
 from dash import html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 from layouts.main_layout import get_main_layout
 from main import app
 
@@ -26,17 +26,15 @@ app.layout = get_main_layout()
 # Manage Pages
 @app.callback(
     Output("page-content", "children"),
-    [Input("url", "pathname"), Input("user_headers", "data")],
-    State("user_credentials", "data"),
+    [Input("url", "pathname"), Input("client_token", "data")],
 )
-def display_page(pathname, user_headers, user_credentials):
+def display_page(pathname, client_token):
     logger.debug(
-        "display_page called with pathname: %s, user_headers: %s, user_credentials: %s",
+        "display_page called with pathname: %s, user_credentials: %s",
         pathname,
-        user_headers,
-        user_credentials,
+        {cfg.API_LOGIN, cfg.API_PWD},
     )
-    if user_headers is None:
+    if client_token is None:
         if pathname == "/" or pathname == "/fr" or pathname is None:
             logger.info("No user headers found, showing login layout (language: French).")
             return login_layout(lang="fr")
@@ -45,10 +43,10 @@ def display_page(pathname, user_headers, user_credentials):
             return login_layout(lang="es")
     if pathname == "/" or pathname == "/fr" or pathname is None:
         logger.info("Showing homepage layout (default language: French).")
-        return homepage_layout(user_headers, user_credentials, lang="fr")
+        return homepage_layout(client_token, lang="fr")
     if pathname == "/es":
         logger.info("Showing homepage layout (language: Spanish).")
-        return homepage_layout(user_headers, user_credentials, lang="es")
+        return homepage_layout(client_token, lang="es")
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])

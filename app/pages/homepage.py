@@ -7,14 +7,14 @@
 import dash_bootstrap_components as dbc
 from dash import Dash, dcc, html
 
-from components.alerts import create_event_list
-from utils.display import build_alerts_map
+from components.detections import create_wildfire_list
+from utils.display import build_detections_map
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.css.append_css({"external_url": "/assets/style.css"})
 
 
-def homepage_layout(user_headers, user_credentials, lang="fr"):
+def homepage_layout(client_token, lang="fr"):
     translate = {
         "fr": {
             "animate_on_off": "Activer / Désactiver l'animation",
@@ -50,7 +50,9 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
         [
             dbc.Row(
                 [
-                    dbc.Col([create_event_list()], width=2, className="mb-4"),
+                    # Column for the alert list
+                    dbc.Col(create_wildfire_list(), width=2, className="mb-4"),
+                    # Column for the image
                     dbc.Col(
                         [
                             html.Div(
@@ -172,7 +174,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                             ),
                             dbc.Row(
                                 dbc.Col(
-                                    build_alerts_map(user_headers, user_credentials),
+                                    build_detections_map(client_token),
                                     className="common-style",
                                     style={
                                         "position": "relative",
@@ -251,7 +253,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                 [
                     dbc.ModalHeader(translate[lang]["map"]),
                     dbc.ModalBody(
-                        build_alerts_map(user_headers, user_credentials, id_suffix="-md"),
+                        build_detections_map(client_token, id_suffix="-md"),
                     ),
                 ],
                 id="map-modal",
