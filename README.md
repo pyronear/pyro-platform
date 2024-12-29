@@ -5,7 +5,7 @@ The building blocks of our wildfire detection & monitoring API.
 
 
 ## Quick Tour
-### Pyro API
+### How to launch Pyro API for dev purpose
 1. Hosted by pyronear
 You can use apidev.pyronear.org/docs if you don't need to modify the API for your task
 
