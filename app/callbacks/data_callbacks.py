@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import json
+from datetime import datetime, timedelta
 
 import dash
 import logging_config
@@ -12,24 +13,17 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
-from pyroclient import Client
 
 import config as cfg
-from services import api_client, call_api
-from utils.data import (
-    convert_time,
-    past_ndays_api_events,
-    process_bbox,
-    read_stored_DataFrame,
-)
+from services import api_client, get_token
+from utils.data import assign_event_ids, process_bbox, read_stored_DataFrame
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
 @app.callback(
     [
-        Output("user_credentials", "data"),
-        Output("user_headers", "data"),
+        Output("user_token", "data"),
         Output("form_feedback_area", "children"),
         Output("username_input", "style"),
         Output("password_input", "style"),
@@ -41,11 +35,11 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
     [
         State("username_input", "value"),
         State("password_input", "value"),
-        State("user_headers", "data"),
+        State("user_token", "data"),
         State("language", "data"),
     ],
 )
-def login_callback(n_clicks, username, password, user_headers, lang):
+def login_callback(n_clicks, username, password, user_token, lang):
     """
     Callback to handle user login.
 
@@ -53,7 +47,7 @@ def login_callback(n_clicks, username, password, user_headers, lang):
         n_clicks (int): Number of times the login button has been clicked.
         username (str or None): The value entered in the username input field.
         password (str or None): The value entered in the password input field.
-        user_headers (dict or None): Existing user headers, if any, containing authentication details.
+        user_token (dict or None): Existing user headers, if any, containing authentication details.
 
     This function is triggered when the login button is clicked. It verifies the provided username and password,
     attempts to authenticate the user via the API, and updates the user credentials and headers.
@@ -80,9 +74,8 @@ def login_callback(n_clicks, username, password, user_headers, lang):
         },
     }
 
-    if user_headers is not None:
+    if user_token is not None:
         return (
-            dash.no_update,
             dash.no_update,
             dash.no_update,
             input_style_unchanged,
@@ -105,7 +98,6 @@ def login_callback(n_clicks, username, password, user_headers, lang):
             # The login modal remains open; other outputs are updated with arbitrary values
             return (
                 dash.no_update,
-                dash.no_update,
                 form_feedback,
                 input_style_unchanged,
                 input_style_unchanged,
@@ -116,11 +108,10 @@ def login_callback(n_clicks, username, password, user_headers, lang):
         else:
             # This is the route of the API that we are going to use for the credential check
             try:
-                client = Client(cfg.API_URL, username, password)
+                user_token = get_token(username, password)
 
                 return (
-                    {"username": username, "password": password},
-                    client.headers,
+                    user_token,
                     dash.no_update,
                     hide_element_style,
                     hide_element_style,
@@ -134,7 +125,6 @@ def login_callback(n_clicks, username, password, user_headers, lang):
 
                 return (
                     dash.no_update,
-                    dash.no_update,
                     form_feedback,
                     input_style_unchanged,
                     input_style_unchanged,
@@ -147,25 +137,34 @@ def login_callback(n_clicks, username, password, user_headers, lang):
 
 
 @app.callback(
+    Output("api_cameras", "data"),
+    Input("user_token", "data"),
+    prevent_initial_call=True,
+)
+def get_cameras(user_token):
+    logger.info("Get cameras data")
+    cameras = pd.DataFrame(api_client.fetch_cameras().json())
+
+    return json.dumps({"data": cameras.to_json(orient="split"), "data_loaded": True})
+
+
+@app.callback(
+    Output("api_detections", "data"),
+    [Input("main_api_fetch_interval", "n_intervals"), Input("api_cameras", "data")],
     [
-        Output("store_api_alerts_data", "data"),
-    ],
-    [Input("main_api_fetch_interval", "n_intervals"), Input("user_credentials", "data")],
-    [
-        State("store_api_alerts_data", "data"),
-        State("user_headers", "data"),
+        State("api_detections", "data"),
+        State("user_token", "data"),
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
+def api_watcher(n_intervals, api_cameras, local_detections, user_token):
     """
     Callback to periodically fetch alerts data from the API.
 
     Parameters:
         n_intervals (int): Number of times the interval has been triggered.
-        user_credentials (dict or None): Current user credentials for API authentication.
         local_alerts (dict or None): Locally stored alerts data, serialized as JSON.
-        user_headers (dict or None): Current user headers containing authentication details.
+        user_token (dict or None): Current user headers containing authentication details.
 
     This function is triggered at specified intervals and when user credentials are updated.
     It retrieves unacknowledged events from the API, processes the data, and stores it locally.
@@ -174,35 +173,30 @@ def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
     Returns:
         dash.dependencies.Output: Serialized JSON data of alerts and a flag indicating if data is loaded.
     """
-    if user_headers is None:
+    if user_token is None:
         raise PreventUpdate
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
 
-    # Read local data
-    local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
     logger.info("Start Fetching the events")
+    # Fetch Detections
+    previous_time_event = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d_%H:%M:%S")
+    response = api_client.fetch_unlabeled_detections(from_date=previous_time_event, limit=50)
+    api_detections = pd.DataFrame(response.json())
 
-    # Fetch events
-    api_alerts = pd.DataFrame(call_api(api_client.get_unacknowledged_events, user_credentials)())
-    api_alerts["created_at"] = convert_time(api_alerts)
-    api_alerts = past_ndays_api_events(api_alerts, n_days=0)
-
-    if len(api_alerts) == 0:
-        return [
-            json.dumps(
-                {
-                    "data": pd.DataFrame().to_json(orient="split"),
-                    "data_loaded": True,
-                }
-            )
-        ]
+    local_detections, _ = read_stored_DataFrame(local_detections)
+    if len(api_detections) == 0:
+        return json.dumps(
+            {
+                "data": pd.DataFrame().to_json(orient="split"),
+                "data_loaded": True,
+            }
+        )
 
     else:
-        api_alerts["processed_loc"] = api_alerts["localization"].apply(process_bbox)
-        if alerts_data_loaded and not local_alerts.empty:
-            aligned_api_alerts, aligned_local_alerts = api_alerts["alert_id"].align(local_alerts["alert_id"])
-            if all(aligned_api_alerts == aligned_local_alerts):
-                return [dash.no_update]
+        api_detections["processed_bboxes"] = api_detections["bboxes"].apply(process_bbox)
+        api_detections = assign_event_ids(api_detections, time_threshold=30 * 60)
+        if not local_detections.empty:
+            aligned_api_detections, aligned_local_detections = api_detections["id"].align(local_detections["id"])
+            if all(aligned_api_detections == aligned_local_detections):
+                return dash.no_update
 
-        return [json.dumps({"data": api_alerts.to_json(orient="split"), "data_loaded": True})]
+        return json.dumps({"data": api_detections.to_json(orient="split"), "data_loaded": True})
