@@ -5,10 +5,7 @@
 
 from typing import Any, Dict, Optional
 
-import pandas as pd
 import requests
-
-import config as cfg
 
 
 def get_token(api_url: str, login: str, pwd: str) -> str:
@@ -23,16 +20,3 @@ def api_request(method_type: str, route: str, headers=Dict[str, str], payload: O
 
     response = getattr(requests, method_type)(route, headers=headers, **kwargs)
     return response.json()
-
-
-def get_sites(user_credentials):
-    api_url = cfg.API_URL.rstrip("/")
-    superuser_login = user_credentials["username"]
-    superuser_pwd = user_credentials["password"]
-
-    superuser_auth = {
-        "Authorization": f"Bearer {get_token(api_url, superuser_login, superuser_pwd)}",
-        "Content-Type": "application/json",
-    }
-    api_sites = api_request("get", f"{api_url}/sites/", superuser_auth)
-    return pd.DataFrame(api_sites)

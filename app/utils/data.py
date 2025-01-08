@@ -123,3 +123,46 @@ def past_ndays_api_events(api_events, n_days=0):
     api_events = api_events[(api_events["created_at"] > start_date) | (api_events["created_at"] == start_date)]
 
     return api_events
+
+
+def assign_event_ids(df, time_threshold=30 * 60):
+    """
+    Assigns event IDs to detections in a DataFrame based on the same camera_id
+    and a time threshold between consecutive detections.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing 'camera_id' and 'created_at' columns.
+        time_threshold (int): The time difference in seconds to group detections into the same event.
+
+    Returns:
+        pd.DataFrame: A DataFrame with an additional 'event_id' column.
+    """
+    # Ensure 'created_at' is in datetime format
+    df["created_at"] = pd.to_datetime(df["created_at"])
+
+    # Sort by camera_id and created_at
+    df = df.sort_values(by=["camera_id", "created_at"]).reset_index(drop=True)
+
+    # Initialize variables
+    event_id = 0
+    event_ids = []  # To store the assigned event IDs
+
+    # Iterate through rows to assign event IDs
+    for i, row in df.iterrows():
+        if i == 0:
+            # First detection starts a new event
+            event_ids.append(event_id)
+        else:
+            # Compare with the previous row
+            prev_row = df.iloc[i - 1]
+            time_diff = (row["created_at"] - prev_row["created_at"]).total_seconds()
+
+            if row["camera_id"] != prev_row["camera_id"] or time_diff > time_threshold:
+                # Start a new event
+                event_id += 1
+
+            event_ids.append(event_id)
+
+    # Add the event_id column to the DataFrame
+    df["event_id"] = event_ids
+    return df
