@@ -15,7 +15,7 @@ from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
-from services import api_client, call_api
+from services import api_client
 from utils.data import read_stored_DataFrame
 from utils.display import build_vision_polygon, create_event_list_from_alerts
 
@@ -26,39 +26,45 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 @app.callback(
     Output("alert-list-container", "children"),
     [
-        Input("store_api_alerts_data", "data"),
+        Input("api_detections", "data"),
         Input("to_acknowledge", "data"),
     ],
+    State("api_cameras", "data"),
 )
-def update_event_list(api_alerts, to_acknowledge):
+def update_event_list(api_detections, to_acknowledge, cameras):
     """
     Updates the event list based on changes in the events data or acknowledgement actions.
 
     Parameters:
-    - api_alerts (json): JSON formatted data containing current alerts information.
+    - api_detections (json): JSON formatted data containing current alerts information.
     - to_acknowledge (int): Event ID that is being acknowledged.
 
     Returns:
     - html.Div: A Div containing the updated list of alerts.
     """
-    api_alerts, event_data_loaded = read_stored_DataFrame(api_alerts)
+    logger.info("update_event_list")
+
+    api_detections, event_data_loaded = read_stored_DataFrame(api_detections)
+    cameras, _ = read_stored_DataFrame(cameras)
+
+    print("api")
     if not event_data_loaded:
         raise PreventUpdate
 
-    if len(api_alerts):
+    if len(api_detections):
         # Drop acknowledge event for faster update
-        api_alerts = api_alerts[~api_alerts["id"].isin([to_acknowledge])]
+        api_detections = api_detections[~api_detections["event_id"].isin([to_acknowledge])]
 
         # Drop event with less than 5 alerts or less then 2 bbox
         drop_event = []
-        for event_id in np.unique(api_alerts["id"].values):
-            event_alerts = api_alerts[api_alerts["id"] == event_id]
-            if np.sum([len(box) > 2 for box in event_alerts["localization"]]) < 2 or len(event_alerts) < 5:
+        for event_id in np.unique(api_detections["event_id"].values):
+            event_alerts = api_detections[api_detections["event_id"] == event_id]
+            if np.sum([len(box) > 2 for box in event_alerts["bboxes"]]) < 2 or len(event_alerts) < 5:
                 drop_event.append(event_id)
 
-        api_alerts = api_alerts[~api_alerts["id"].isin([drop_event])]
+        api_detections = api_detections[~api_detections["event_id"].isin([drop_event])]
 
-    return create_event_list_from_alerts(api_alerts)
+    return create_event_list_from_alerts(api_detections, cameras)
 
 
 # Select the event id
@@ -74,7 +80,7 @@ def update_event_list(api_alerts, to_acknowledge):
     ],
     [
         State({"type": "event-button", "index": ALL}, "id"),
-        State("store_api_alerts_data", "data"),
+        State("api_detections", "data"),
         State("event_id_on_display", "data"),
     ],
     prevent_initial_call=True,
@@ -94,6 +100,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     - int: ID of the event to display.
     - int: Number of clicks for the auto-move button reset.
     """
+    logger.info("select_event_with_button")
     ctx = dash.callback_context
 
     local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
@@ -145,7 +152,7 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
 @app.callback(
     Output("alert_on_display", "data"),
     Input("event_id_on_display", "data"),
-    State("store_api_alerts_data", "data"),
+    State("api_detections", "data"),
     prevent_initial_call=True,
 )
 def update_display_data(event_id_on_display, local_alerts):
@@ -159,6 +166,7 @@ def update_display_data(event_id_on_display, local_alerts):
     Returns:
     - json: JSON formatted data for the selected event.
     """
+    logger.info("update_display_data")
     local_alerts, data_loaded = read_stored_DataFrame(local_alerts)
 
     if not data_loaded:
@@ -173,9 +181,9 @@ def update_display_data(event_id_on_display, local_alerts):
         )
     else:
         if event_id_on_display == 0:
-            event_id_on_display = local_alerts["id"].values[0]
+            event_id_on_display = local_alerts["event_id"].values[0]
 
-        alert_on_display = local_alerts[local_alerts["id"] == event_id_on_display]
+        alert_on_display = local_alerts[local_alerts["event_id"] == event_id_on_display]
 
         return json.dumps({"data": alert_on_display.to_json(orient="split"), "data_loaded": True})
 
@@ -214,6 +222,7 @@ def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
 
     bbox_style = {"display": "none"}  # Default style for the bounding box
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
+
     if not data_loaded:
         raise PreventUpdate
 
@@ -223,9 +232,9 @@ def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
     # Filter images with non-empty URLs
     images, boxes = zip(
         *(
-            (alert["media_url"], alert["processed_loc"])
+            (alert["url"], alert["processed_bboxes"])
             for _, alert in alert_data.iterrows()
-            if alert["media_url"]  # Only include if media_url is not empty
+            if alert["url"]  # Only include if url is not empty
         )
     )
 
@@ -278,6 +287,7 @@ def toggle_bbox_visibility(n_clicks, button_style):
     - dict: Updated style for the bounding box.
     - dict: Updated style for the hide/show button.
     """
+    logger.info("toggle_bbox_visibility")
     if n_clicks % 2 == 0:
         bbox_style = {"display": "block"}  # Show the bounding box
         button_style["backgroundColor"] = "#FEBA6A"  # Original button color
@@ -363,7 +373,7 @@ def update_download_link(slider_value, alert_data):
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
     if data_loaded and len(alert_data):
         try:
-            return alert_data["media_url"].values[slider_value]
+            return alert_data["url"].values[slider_value]
         except Exception as e:
             logger.info(e)
             logger.info(f"Size of the alert_data dataframe: {alert_data.size}")
@@ -386,9 +396,10 @@ def update_download_link(slider_value, alert_data):
         Output("slider-container", "style"),
     ],
     Input("alert_on_display", "data"),
+    State("api_cameras", "data"),
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(alert_data):
+def update_map_and_alert_info(alert_data, cameras):
     """
     Updates the map's vision polygons, center, and alert information based on the current alert data.
 
@@ -407,47 +418,52 @@ def update_map_and_alert_info(alert_data):
     - dict: Style settings for alert information.
     - dict: Style settings for the slider container.
     """
+    logger.info("update_map_and_alert_info")
     alert_data, data_loaded = read_stored_DataFrame(alert_data)
+    cameras, _ = read_stored_DataFrame(cameras)
 
     if not data_loaded:
         raise PreventUpdate
 
     if not alert_data.empty:
-        # Convert the 'localization' column to a list (empty lists if the original value was '[]').
-        alert_data["localization"] = alert_data["localization"].apply(
+        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
+        alert_data["bboxes"] = alert_data["bboxes"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
         )
 
-        # Filter out rows where 'localization' is not empty and get the last one.
+        # Filter out rows where 'bboxes' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
-        row_with_localization = (
-            alert_data[alert_data["localization"].astype(bool)].iloc[-1]
-            if not alert_data[alert_data["localization"].astype(bool)].empty
+        row_with_bboxes = (
+            alert_data[alert_data["bboxes"].astype(bool)].iloc[-1]
+            if not alert_data[alert_data["bboxes"].astype(bool)].empty
             else alert_data.iloc[-1]
         )
 
+        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
+        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
+
         polygon, detection_azimuth = build_vision_polygon(
-            site_lat=row_with_localization["lat"],
-            site_lon=row_with_localization["lon"],
-            azimuth=row_with_localization["device_azimuth"],
+            site_lat=lat,
+            site_lon=lon,
+            azimuth=row_with_bboxes["azimuth"],
             opening_angle=cfg.CAM_OPENING_ANGLE,
             dist_km=cfg.CAM_RANGE_KM,
-            localization=row_with_localization["processed_loc"],
+            bboxes=row_with_bboxes["processed_bboxes"],
         )
 
-        date_val = row_with_localization["created_at"]
-        cam_name = f"{row_with_localization['device_login'][:-2].replace('_', ' ')} - {int(row_with_localization['device_azimuth'])}°"
+        date_val = row_with_bboxes["created_at"].strftime("%Y-%m-%d %H:%M")
+        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
 
         camera_info = f"{cam_name}"
-        location_info = f"{row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        location_info = f"{lat:.4f}, {lon:.4f}"
         angle_info = f"{detection_azimuth}°"
         date_info = f"{date_val}"
 
         return (
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [lat, lon],
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [lat, lon],
             camera_info,
             location_info,
             angle_info,
@@ -475,20 +491,18 @@ def update_map_and_alert_info(alert_data):
     [Input("acknowledge-button", "n_clicks")],
     [
         State("event_id_on_display", "data"),
-        State("user_headers", "data"),
-        State("user_credentials", "data"),
+        State("user_token", "data"),
     ],
     prevent_initial_call=True,
 )
-def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credentials):
+def acknowledge_event(n_clicks, event_id_on_display, user_token):
     """
     Acknowledges the selected event and updates the state to reflect this.
 
     Parameters:
     - n_clicks (int): Number of clicks on the acknowledge button.
     - event_id_on_display (int): Currently displayed event ID.
-    - user_headers (dict): User authorization headers for API requests.
-    - user_credentials (tuple): User credentials (username, password).
+    - user_token (dict): User authorization headers for API requests.
 
     Returns:
     - int: The ID of the event that has been acknowledged.
@@ -499,9 +513,8 @@ def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credenti
     if cfg.SAFE_DEV_MODE == "True":
         raise PreventUpdate
 
-    user_token = user_headers["Authorization"].split(" ")[1]
     api_client.token = user_token
-    call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id_on_display))
+    # call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id_on_display))
 
     return event_id_on_display
 
@@ -524,6 +537,7 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
     Returns:
     - bool: New state of the map modal (open/close).
     """
+    logger.info("toggle_fullscreen_map")
     if n_clicks_open:
         return not is_open  # Toggle the modal
     return is_open  # Keep the current state

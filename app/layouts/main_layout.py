@@ -7,22 +7,18 @@ import json
 
 import pandas as pd
 from dash import dcc, html
-from pyroclient import Client
 
 import config as cfg
 from components.navbar import Navbar
 from services import api_client
 
 if not cfg.LOGIN:
-    client = Client(cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD)
-    user_headers = client.headers
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
-    user_credentials = {"username": cfg.API_LOGIN, "password": cfg.API_PWD}
+    user_token = api_client.token
 
 else:
-    user_credentials = {}
-    user_headers = None
+    user_token = None
+
+print("user token AA", user_token)
 
 
 def get_main_layout():
@@ -43,7 +39,17 @@ def get_main_layout():
             ),
             dcc.Interval(id="main_api_fetch_interval", interval=30 * 1000),
             dcc.Store(
-                id="store_api_alerts_data",
+                id="api_detections",
+                storage_type="session",
+                data=json.dumps(
+                    {
+                        "data": pd.DataFrame().to_json(orient="split"),
+                        "data_loaded": False,
+                    }
+                ),
+            ),
+            dcc.Store(
+                id="api_cameras",
                 storage_type="session",
                 data=json.dumps(
                     {
@@ -67,10 +73,9 @@ def get_main_layout():
             # Add this to your app.layout
             dcc.Store(id="bbox_visibility", data={"visible": True}),
             # Storage components saving the user's headers and credentials
-            dcc.Store(id="user_headers", storage_type="session", data=user_headers),
+            dcc.Store(id="user_token", storage_type="session", data=user_token),
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
-            dcc.Store(id="user_credentials", storage_type="session", data=user_credentials),
             dcc.Store(id="to_acknowledge", data=0),
-            dcc.Store(id="trigger_no_events", data=False),
+            dcc.Store(id="trigger_no_detections", data=False),
         ]
     )
