@@ -182,7 +182,10 @@ def create_event_list_from_alerts(api_events, cameras):
             id={"type": "event-button", "index": event["event_id"]},
             children=[
                 html.Div(
-                    f"{cameras[cameras["id"] == event["camera_id"]]['name'].values[0][:-3].replace('_', ' ')} : {int(event['azimuth'])}°",
+                    (
+                        f"{cameras[cameras['id'] == event['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
+                        f" : {int(event['azimuth'])}°"
+                    ),
                     style={"fontWeight": "bold"},
                 ),
                 html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
