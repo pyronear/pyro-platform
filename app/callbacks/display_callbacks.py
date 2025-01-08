@@ -379,7 +379,7 @@ def update_download_link(slider_value, alert_data):
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
         Output("alert-camera-value", "children"),
-        Output("alert-location-value", "children"),
+        Output("camera-location-value", "children"),
         Output("alert-azimuth-value", "children"),
         Output("alert-date-value", "children"),
         Output("alert-information", "style"),
@@ -401,7 +401,7 @@ def update_map_and_alert_info(alert_data):
     - list: List of vision polygon elements to be displayed on the modal map.
     - list: New center coordinates for the modal map.
     - str: Camera information for the alert.
-    - str: Location information for the alert.
+    - str: Camera location for the alert.
     - str: Detection angle for the alert.
     - str: Date of the alert.
     - dict: Style settings for alert information.
