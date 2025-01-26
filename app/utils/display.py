@@ -88,12 +88,10 @@ def build_sites_markers(user_headers, user_credentials):
                 icon=icon,
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup(
-                        [
-                            html.H2(f"Site {site_name}"),
-                            html.P(f"Coordonnées : ({lat}, {lon})"),
-                        ]
-                    ),
+                    dl.Popup([
+                        html.H2(f"Site {site_name}"),
+                        html.P(f"Coordonnées : ({lat}, {lon})"),
+                    ]),
                 ],
             )
         )
@@ -190,7 +188,7 @@ def create_event_list_from_alerts(api_events):
                 html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
             ],
             n_clicks=0,
-            className="alert-card"
+            className="alert-card",
         )
         for _, event in filtered_events.iterrows()
     ]

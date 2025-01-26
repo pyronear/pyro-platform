@@ -190,12 +190,10 @@ def api_watcher(n_intervals, user_credentials, local_alerts, user_headers):
 
     if len(api_alerts) == 0:
         return [
-            json.dumps(
-                {
-                    "data": pd.DataFrame().to_json(orient="split"),
-                    "data_loaded": True,
-                }
-            )
+            json.dumps({
+                "data": pd.DataFrame().to_json(orient="split"),
+                "data_loaded": True,
+            })
         ]
 
     else:

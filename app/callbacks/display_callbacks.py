@@ -120,7 +120,6 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
             styles.append(
                 {
                     "backgroundColor": "#feba6a",
-
                 },
             )  # Highlight style
         else:
@@ -155,12 +154,10 @@ def update_display_data(event_id_on_display, local_alerts):
         raise PreventUpdate
 
     if event_id_on_display == 0:
-        return json.dumps(
-            {
-                "data": pd.DataFrame().to_json(orient="split"),
-                "data_loaded": True,
-            }
-        )
+        return json.dumps({
+            "data": pd.DataFrame().to_json(orient="split"),
+            "data_loaded": True,
+        })
     else:
         if event_id_on_display == 0:
             event_id_on_display = local_alerts["id"].values[0]
