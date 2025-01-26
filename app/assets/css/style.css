@@ -1,5 +1,9 @@
 /* style.css */
-
+.btn-primary{
+  --bs-btn-bg: #054546;
+  --bs-btn-hover-bg: #032626;
+  --bs-btn-active-bg: #032626;
+}
 /* Style the scrollbar itself (width, color) */
 ::-webkit-scrollbar {
   width: 10px;  /* Scrollbar width */
@@ -25,6 +29,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 60px;
 }
 
 /* Custom link style */
@@ -34,8 +39,8 @@ a.no-underline {
 
 /* Common style for containers and panels */
 .common-style {
-  border: 2px solid #044448;
-  border-radius: 10px;  
+  border: 1px solid #044448;
+  border-radius: 4px;  
   background-color: rgba(4, 68, 72, 0.1);
 }
 
@@ -43,7 +48,6 @@ a.no-underline {
   border: 2px solid #044448;
   border-radius: 10px;  
   background-color: rgba(4, 68, 72, 0.1);
-  margin-top: 10px;
 }
 
 
@@ -52,4 +56,24 @@ a.no-underline {
   font-size: 24px;
   font-weight: bold;
   text-align: center;
+}
+
+.alert-card {
+  background-color: #FFE2C2;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  width: 100%;
+  border: 1px solid;
+}
+
+#alert-information-styling-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.alert-information-title {
+  font-weight: bold;
 }
