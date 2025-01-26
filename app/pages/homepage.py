@@ -17,7 +17,6 @@ app.css.append_css({"external_url": "/assets/style.css"})
 def homepage_layout(user_headers, user_credentials, lang="fr"):
     translate = {
         "fr": {
-            "animate_on_off": "Activer / Désactiver l'animation",
             "show_hide_prediction": "Afficher / Cacher la prédiction",
             "download_image": "Télécharger l'image",
             "acknowledge_alert": "Acquitter l'alerte",
@@ -31,7 +30,6 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "no_alert_default_image": "./assets/images/no-alert-default.png",
         },
         "es": {
-            "animate_on_off": "Activar / Desactivar la animación",
             "show_hide_prediction": "Mostrar / Ocultar la predicción",
             "download_image": "Descargar la imagen",
             "acknowledge_alert": "Descartar la alerta",
@@ -98,31 +96,38 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                     ),
                                 ],
                             ),
-                            html.Div(
-                                dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
-                                id="slider-container",
-                                className="common-style-slider",
-                                style={"display": "none", "marginTop": "10px"},
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dbc.Button(
+                                            html.Img(src="assets/images/play-pause.svg"),
+                                            id="auto-move-button",
+                                            n_clicks=1,
+                                            style={"height": "100%", "width": "100%"}
+                                        ),
+                                        width=1
+                                    ),
+                                    dbc.Col(
+                                        html.Div(
+                                            dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                            id="slider-container",
+                                            className="common-style-slider",
+                                            style={"display": "none"}
+                                        ), 
+                                        width=11
+                                    )
+                                   
+                                ], style={"marginTop": "10px"}
                             ),
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         dbc.Button(
-                                            translate[lang]["animate_on_off"],
-                                            id="auto-move-button",
-                                            n_clicks=1,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#FD5252"},
-                                        ),
-                                        width=3,
-                                    ),
-                                    dbc.Col(
-                                        dbc.Button(
                                             translate[lang]["show_hide_prediction"],
                                             id="hide-bbox-button",
                                             n_clicks=0,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#FEBA6A"},
+                                            className="btn-uniform",
+                                            style={}, # Will be overwritten dynamically
                                         ),
                                         width=3,
                                     ),
@@ -130,8 +135,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                         html.A(
                                             dbc.Button(
                                                 translate[lang]["download_image"],
-                                                className="btn-uniform common-style",
-                                                style={"backgroundColor": "#2C796E"},
+                                                className="btn-uniform",
                                                 id="dl-image-button",
                                             ),
                                             className="no-underline",
@@ -147,17 +151,17 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                             translate[lang]["acknowledge_alert"],
                                             id="acknowledge-button",
                                             n_clicks=0,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#054546"},
+                                            className="btn-uniform",
                                         ),
                                         width=3,
                                     ),
                                 ],
                                 className="mb-4",
-                                style={"display": "flex", "marginTop": "10px"},
+                                style={"display": "flex", "marginTop": "10px", "justify-content": "space-evenly"},
                             ),
                         ],
                         width=8,
+                        style={"padding": "0"}
                     ),
                     dbc.Col(
                         [
