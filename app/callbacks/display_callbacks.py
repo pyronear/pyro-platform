@@ -119,23 +119,13 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
         if button["index"] == button_index:
             styles.append(
                 {
-                    "backgroundColor": "#2C796E",
-                    "margin": "10px",
-                    "padding": "10px",
-                    "borderRadius": "20px",
-                    "color": "white",
-                    "width": "100%",
+                    "backgroundColor": "#feba6a",
+
                 },
             )  # Highlight style
         else:
             styles.append(
-                {
-                    "backgroundColor": "#FC816B",
-                    "margin": "10px",
-                    "padding": "10px",
-                    "borderRadius": "20px",
-                    "width": "100%",
-                },
+                {},
             )  # Default style
 
     return [styles, button_index, 1, "reset_zoom"]
@@ -280,21 +270,25 @@ def toggle_bbox_visibility(n_clicks, button_style):
     """
     if n_clicks % 2 == 0:
         bbox_style = {"display": "block"}  # Show the bounding box
-        button_style["backgroundColor"] = "#FEBA6A"  # Original button color
+        button_style["background-color"] = "#054546"  # Original button color
     else:
         bbox_style = {"display": "none"}  # Hide the bounding box
-        button_style["backgroundColor"] = "#C96A00"  # Darker color for the button
+        button_style["background-color"] = "#098386"  # Darker color for the button
 
     return bbox_style, button_style
 
 
 @app.callback(
-    Output("auto-move-state", "data"),
+    [
+        Output("auto-move-state", "data"),
+        Output("auto-move-button", "style"),  # Update the style of the button
+    ],
     Input("auto-move-button", "n_clicks"),
     State("auto-move-state", "data"),
+    State("auto-move-button", "style"),  # Get the current style of the button
     prevent_initial_call=True,
 )
-def toggle_auto_move(n_clicks, data):
+def toggle_auto_move(n_clicks, data, button_style):
     """
     Toggles the automatic movement of the image slider based on button clicks.
 
@@ -307,9 +301,12 @@ def toggle_auto_move(n_clicks, data):
     """
     if n_clicks % 2 == 0:  # Toggle between on and off states
         data["active"] = False
+        button_style["background-color"] = "#098386"  # Darker color for the button
+
     else:
         data["active"] = True
-    return data
+        button_style["background-color"] = "#054546"  # Original button color
+    return data, button_style
 
 
 @app.callback(
