@@ -102,7 +102,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                         html.Img(src="assets/images/play-pause.svg"),
                                         id="auto-move-button",
                                         n_clicks=1,
-                                        style={"height": "100%", "width": "100%"},
+                                        style={"height": "100%", "width": "100%", "border": "0"},
                                     ),
                                     width=1,
                                 ),
