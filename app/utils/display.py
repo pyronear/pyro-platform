@@ -88,10 +88,12 @@ def build_sites_markers(user_headers, user_credentials):
                 icon=icon,
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup([
-                        html.H2(f"Site {site_name}"),
-                        html.P(f"Coordonnées : ({lat}, {lon})"),
-                    ]),
+                    dl.Popup(
+                        [
+                            html.H2(f"Site {site_name}"),
+                            html.P(f"Coordonnées : ({lat}, {lon})"),
+                        ]
+                    ),
                 ],
             )
         )

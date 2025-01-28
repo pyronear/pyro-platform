@@ -25,6 +25,8 @@ def create_event_list():
         "padding-right": "10px",  # Prevent scroll bar from touching alerts list
     }
 
-    return html.Div([
-        html.Div(id="alert-list-container", style=event_list_style, children=[]),  # Empty container
-    ])
+    return html.Div(
+        [
+            html.Div(id="alert-list-container", style=event_list_style, children=[]),  # Empty container
+        ]
+    )
