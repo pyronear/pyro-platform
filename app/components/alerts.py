@@ -22,7 +22,7 @@ def create_event_list():
     event_list_style = {
         "height": "calc(100vh - 120px)",  # Adjust the height as required
         "overflowY": "scroll",  # Enable vertical scrolling
-        "padding": "10px",
+        "padding-right": "10px",  # Prevent scroll bar from touching alerts list
     }
 
     return html.Div(
