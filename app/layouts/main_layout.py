@@ -70,5 +70,89 @@ def get_main_layout():
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="to_acknowledge", data=0),
             dcc.Store(id="trigger_no_detections", data=False),
+            html.Div(
+                id="confirmation-modal",
+                style={
+                    "display": "none",  # Hidden by default
+                    "position": "fixed",
+                    "top": "0",
+                    "left": "0",
+                    "width": "100%",
+                    "height": "100%",
+                    "background-color": "rgba(0, 0, 0, 0.5)",
+                    "z-index": "1000",
+                    "justify-content": "center",
+                    "align-items": "center",
+                },
+                children=[
+                    html.Div(
+                        [
+                            html.H4(
+                                "Est-ce une fumée suspecte ? ",
+                                style={
+                                    "margin-bottom": "20px",
+                                    "font-size": "20px",
+                                    "font-weight": "bold",
+                                },
+                            ),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        "Oui, c'est une fumée",
+                                        id="confirm-wildfire",
+                                        n_clicks=0,
+                                        style={
+                                            "margin-right": "10px",
+                                            "padding": "10px 20px",
+                                            "background-color": "#4CAF50",
+                                            "color": "white",
+                                            "border": "none",
+                                            "border-radius": "5px",
+                                            "cursor": "pointer",
+                                        },
+                                    ),
+                                    html.Button(
+                                        "No, c'est un faux positif",
+                                        id="confirm-non-wildfire",
+                                        n_clicks=0,
+                                        style={
+                                            "margin-right": "10px",
+                                            "padding": "10px 20px",
+                                            "background-color": "#f44336",
+                                            "color": "white",
+                                            "border": "none",
+                                            "border-radius": "5px",
+                                            "cursor": "pointer",
+                                        },
+                                    ),
+                                    html.Button(
+                                        "Cancel",
+                                        id="cancel-confirmation",
+                                        n_clicks=0,
+                                        style={
+                                            "padding": "10px 20px",
+                                            "background-color": "#555",
+                                            "color": "white",
+                                            "border": "none",
+                                            "border-radius": "5px",
+                                            "cursor": "pointer",
+                                        },
+                                    ),
+                                ],
+                                style={"display": "flex", "justify-content": "center"},
+                            ),
+                        ],
+                        style={
+                            "background-color": "white",
+                            "padding": "30px",
+                            "border-radius": "10px",
+                            "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.2)",
+                            "max-width": "400px",
+                            "width": "100%",
+                            "text-align": "center",
+                        },
+                    ),
+                ],
+            ),
         ]
     )

@@ -423,36 +423,59 @@ def update_map_and_alert_info(sequence_on_display, cameras):
 
 
 @app.callback(
-    Output("to_acknowledge", "data"),
-    [Input("acknowledge-button", "n_clicks")],
+    [Output("confirmation-modal", "style"), Output("to_acknowledge", "data")],
     [
-        State("sequence_id_on_display", "data"),
-        State("user_token", "data"),
+        Input("acknowledge-button", "n_clicks"),
+        Input("confirm-wildfire", "n_clicks"),
+        Input("confirm-non-wildfire", "n_clicks"),
+        Input("cancel-confirmation", "n_clicks"),
     ],
+    [State("sequence_id_on_display", "data"), State("user_token", "data")],
     prevent_initial_call=True,
 )
-def acknowledge_event(n_clicks, sequence_id_on_display, user_token):
-    """
-    Acknowledges the selected event and updates the state to reflect this.
+def acknowledge_event(
+    acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
+):
+    ctx = dash.callback_context
 
-    Parameters:
-    - n_clicks (int): Number of clicks on the acknowledge button.
-    - sequence_id_on_display (int): Currently displayed event ID.
-    - user_token (dict): User authorization headers for API requests.
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
 
-    Returns:
-    - int: The ID of the event that has been acknowledged.
-    """
-    if sequence_id_on_display == 0 or n_clicks == 0:
-        raise PreventUpdate
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if cfg.SAFE_DEV_MODE == "True":
-        raise PreventUpdate
+    # Modal styles
+    modal_visible_style = {
+        "position": "fixed",
+        "top": "50%",
+        "left": "50%",
+        "transform": "translate(-50%, -50%)",
+        "z-index": "1000",
+        "background-color": "rgba(0, 0, 0, 0.5)",
+    }
+    modal_hidden_style = {"display": "none"}
 
-    api_client.token = user_token
-    # call_api(api_client.acknowledge_event, user_credentials)(event_id=int(sequence_id_on_display))
+    if triggered_id == "acknowledge-button":
+        # Show the modal
+        if acknowledge_clicks > 0:
+            return modal_visible_style, dash.no_update
 
-    return sequence_id_on_display
+    elif triggered_id == "confirm-wildfire":
+        # Send wildfire confirmation to the API
+        api_client.token = user_token
+        api_client.label_sequence(sequence_id_on_display, True)
+        return modal_hidden_style, sequence_id_on_display
+
+    elif triggered_id == "confirm-non-wildfire":
+        # Send non-wildfire confirmation to the API
+        api_client.token = user_token
+        api_client.label_sequence(sequence_id_on_display, False)
+        return modal_hidden_style, sequence_id_on_display
+
+    elif triggered_id == "cancel-confirmation":
+        # Cancel action
+        return modal_hidden_style, dash.no_update
+
+    raise dash.exceptions.PreventUpdate
 
 
 # Modal issue let's add this later
