@@ -17,7 +17,6 @@ app.css.append_css({"external_url": "/assets/style.css"})
 def homepage_layout(user_headers, user_credentials, lang="fr"):
     translate = {
         "fr": {
-            "animate_on_off": "Activer / Désactiver l'animation",
             "show_hide_prediction": "Afficher / Cacher la prédiction",
             "download_image": "Télécharger l'image",
             "acknowledge_alert": "Acquitter l'alerte",
@@ -31,7 +30,6 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
             "no_alert_default_image": "./assets/images/no-alert-default.png",
         },
         "es": {
-            "animate_on_off": "Activar / Desactivar la animación",
             "show_hide_prediction": "Mostrar / Ocultar la predicción",
             "download_image": "Descargar la imagen",
             "acknowledge_alert": "Descartar la alerta",
@@ -98,31 +96,38 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                     ),
                                 ],
                             ),
-                            html.Div(
-                                dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
-                                id="slider-container",
-                                className="common-style-slider",
-                                style={"display": "none", "marginTop": "10px"},
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dbc.Button(
+                                            html.Img(src="assets/images/play-pause.svg"),
+                                            id="auto-move-button",
+                                            n_clicks=1,
+                                            style={"height": "100%", "width": "100%", "border": "0"},
+                                        ),
+                                        width=1,
+                                    ),
+                                    dbc.Col(
+                                        html.Div(
+                                            dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                            id="slider-container",
+                                            className="common-style-slider",
+                                            style={"display": "none"},
+                                        ),
+                                        width=11,
+                                    ),
+                                ],
+                                style={"marginTop": "10px"},
                             ),
                             dbc.Row(
                                 [
                                     dbc.Col(
                                         dbc.Button(
-                                            translate[lang]["animate_on_off"],
-                                            id="auto-move-button",
-                                            n_clicks=1,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#FD5252"},
-                                        ),
-                                        width=3,
-                                    ),
-                                    dbc.Col(
-                                        dbc.Button(
                                             translate[lang]["show_hide_prediction"],
                                             id="hide-bbox-button",
                                             n_clicks=0,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#FEBA6A"},
+                                            className="btn-uniform",
+                                            style={},  # Will be overwritten dynamically
                                         ),
                                         width=3,
                                     ),
@@ -130,8 +135,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                         html.A(
                                             dbc.Button(
                                                 translate[lang]["download_image"],
-                                                className="btn-uniform common-style",
-                                                style={"backgroundColor": "#2C796E"},
+                                                className="btn-uniform",
                                                 id="dl-image-button",
                                             ),
                                             className="no-underline",
@@ -147,30 +151,95 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                             translate[lang]["acknowledge_alert"],
                                             id="acknowledge-button",
                                             n_clicks=0,
-                                            className="btn-uniform common-style",
-                                            style={"backgroundColor": "#054546"},
+                                            className="btn-uniform",
                                         ),
                                         width=3,
                                     ),
                                 ],
                                 className="mb-4",
-                                style={"display": "flex", "marginTop": "10px"},
+                                style={"display": "flex", "marginTop": "10px", "justify-content": "space-evenly"},
                             ),
                         ],
                         width=8,
+                        style={"padding": "0"},
                     ),
                     dbc.Col(
                         [
-                            dbc.Row(
-                                dbc.Button(
-                                    translate[lang]["enlarge_map"],
+                            html.Div(
+                                html.Div(
+                                    id="alert-information",
                                     className="common-style",
-                                    style={"backgroundColor": "#FEBA6A"},
-                                    id="map-button",
+                                    style={"display": "none", "padding": "8px"},
+                                    children=[
+                                        html.Div(
+                                            id="alert-information-styling-container",
+                                            children=[
+                                                html.H5(
+                                                    translate[lang]["alert_information"], style={"text-align": "center"}
+                                                ),
+                                                html.Div(
+                                                    id="alert-camera",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-camera-header",
+                                                            children=translate[lang]["camera"],
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="alert-camera-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="camera-location",
+                                                    children=[
+                                                        html.Span(
+                                                            id="camera-location-header",
+                                                            children=translate[lang]["camera_location"],
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="camera-location-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="alert-azimuth",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-azimuth-header",
+                                                            children=translate[lang]["detection_azimuth"],
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="alert-azimuth-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="alert-date",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-date-header",
+                                                            children=translate[lang]["date"],
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="alert-date-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                    ],
                                 ),
-                                className="mb-2",
+                                id="alert-panel",
                             ),
-                            dbc.Row(
+                            html.Div(
                                 dbc.Col(
                                     build_alerts_map(user_headers, user_credentials),
                                     className="common-style",
@@ -181,68 +250,21 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                                     },
                                 ),
                             ),
-                            dbc.Row(
-                                html.Div(
-                                    id="alert-information",
+                            html.Div(
+                                dbc.Button(
+                                    translate[lang]["enlarge_map"],
                                     className="common-style",
-                                    style={"display": "none"},
-                                    children=[
-                                        html.Div(
-                                            id="alert-information-styling-container",
-                                            style={"padding": "5px"},
-                                            children=[
-                                                html.H4(translate[lang]["alert_information"]),
-                                                html.Div(
-                                                    id="alert-camera",
-                                                    style={"marginBottom": "10px"},
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-camera-header", children=translate[lang]["camera"]
-                                                        ),
-                                                        html.Span(id="alert-camera-value", children=[]),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="camera-location",
-                                                    style={"marginBottom": "10px"},
-                                                    children=[
-                                                        html.Span(
-                                                            id="camera-location-header",
-                                                            children=translate[lang]["camera_location"],
-                                                        ),
-                                                        html.Span(id="camera-location-value", children=[]),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="alert-azimuth",
-                                                    style={"marginBottom": "10px"},
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-azimuth-header",
-                                                            children=translate[lang]["detection_azimuth"],
-                                                        ),
-                                                        html.Span(id="alert-azimuth-value", children=[]),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="alert-date",
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-date-header", children=translate[lang]["date"]
-                                                        ),
-                                                        html.Span(id="alert-date-value", children=[]),
-                                                    ],
-                                                ),
-                                            ],
-                                        ),
-                                    ],
+                                    style={"backgroundColor": "#FEBA6A", "color": "black", "width": "100%"},
+                                    id="map-button",
                                 ),
-                                className="mt-4",
-                                id="alert-panel",
                             ),
                         ],
                         width=2,
-                        className="mb-4",
+                        style={
+                            "display": "flex",
+                            "flex-direction": "column",
+                            "gap": "16px",
+                        },
                     ),
                 ]
             ),
