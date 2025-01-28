@@ -143,6 +143,8 @@ def login_callback(n_clicks, username, password, user_token, lang):
 )
 def get_cameras(user_token):
     logger.info("Get cameras data")
+    if user_token is not None:
+        api_client.token = user_token
     cameras = pd.DataFrame(api_client.fetch_cameras().json())
 
     return cameras.to_json(orient="split")
