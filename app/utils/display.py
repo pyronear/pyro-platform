@@ -194,13 +194,7 @@ def create_event_list_from_alerts(api_events, cameras):
                 html.Div(event["started_at"].strftime("%Y-%m-%d %H:%M")),
             ],
             n_clicks=0,
-            style={
-                "backgroundColor": "#FC816B",
-                "margin": "10px",
-                "padding": "10px",
-                "borderRadius": "20px",
-                "width": "100%",
-            },
+            className="alert-card",
         )
         for _, event in filtered_events.iterrows()
     ]
