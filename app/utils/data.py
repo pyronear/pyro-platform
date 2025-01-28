@@ -4,9 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
-import json
 from datetime import datetime
-from io import StringIO
 from typing import List
 
 import pandas as pd
@@ -35,32 +33,6 @@ def convert_time(df):
         df_ts_local.append(alert_ts_utc.astimezone(alert_timezone).strftime("%Y-%m-%dT%H:%M:%S"))
 
     return df_ts_local
-
-
-def read_stored_DataFrame(data):
-    """
-    Reads a JSON-formatted string representing a pandas DataFrame stored in a dcc.Store.
-
-    Args:
-        data (str): A JSON-formatted string representing the stored DataFrame.
-
-    Returns:
-        tuple: A tuple containing the DataFrame and a boolean indicating whether data has been loaded.
-    """
-    # if "false" in data:
-    #     return pd.DataFrame().to_json(orient="split"), False
-    data_dict = json.loads(data)
-
-    # Check if 'data' is empty or if 'columns' is empty
-    if not len(data_dict["data"]):
-        # If either is empty, create an empty DataFrame
-        return pd.DataFrame().to_json(orient="split"), data_dict["data_loaded"]
-    else:
-        # Otherwise, read the JSON data into a DataFrame
-        return (
-            pd.read_json(StringIO(data_dict["data"]), orient="split"),
-            data_dict["data_loaded"],
-        )
 
 
 def process_bbox(input_str):

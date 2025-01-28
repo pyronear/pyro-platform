@@ -15,7 +15,6 @@ app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_token, api_cameras, lang="fr"):
-    print("user token 00", user_token)
     translate = {
         "fr": {
             "animate_on_off": "Activer / Désactiver l'animation",

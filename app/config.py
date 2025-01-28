@@ -30,3 +30,10 @@ SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
 MAX_ALERTS_PER_EVENT = 10
 CAM_OPENING_ANGLE = 87
 CAM_RANGE_KM = 15
+
+API_URL = "https://alertapi.pyronear.org/"
+# API_LOGIN="pyroadmin"
+# API_PWD = "kctt&NMsRb7j!3?c"
+# API_PWD = "HelloTrees2023!"
+API_LOGIN = "test-mateo"
+API_PWD = "testmateo"

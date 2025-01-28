@@ -4,14 +4,16 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+from io import StringIO
+
 import dash_leaflet as dl
+import pandas as pd
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
 
 import config as cfg
-from utils.data import read_stored_DataFrame
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
@@ -69,7 +71,7 @@ def build_sites_markers(api_cameras):
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
     }
 
-    api_cameras, _ = read_stored_DataFrame(api_cameras)
+    api_cameras = pd.read_json(StringIO(api_cameras), orient="split")
 
     client_sites = api_cameras.drop_duplicates(subset=["lat", "lon"], keep="first")  # Keeps the first occurrence
     markers = []
@@ -175,11 +177,12 @@ def create_event_list_from_alerts(api_events, cameras):
     """
     if api_events.empty:
         return []
-    filtered_events = api_events.sort_values("created_at").drop_duplicates("event_id", keep="last")[::-1]
+
+    filtered_events = api_events.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
 
     return [
         html.Button(
-            id={"type": "event-button", "index": event["event_id"]},
+            id={"type": "event-button", "index": event["id"]},
             children=[
                 html.Div(
                     (
@@ -188,7 +191,7 @@ def create_event_list_from_alerts(api_events, cameras):
                     ),
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(event["started_at"].strftime("%Y-%m-%d %H:%M")),
             ],
             n_clicks=0,
             style={

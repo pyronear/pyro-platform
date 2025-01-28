@@ -18,8 +18,6 @@ if not cfg.LOGIN:
 else:
     user_token = None
 
-print("user token AA", user_token)
-
 
 def get_main_layout():
     return html.Div(
@@ -39,36 +37,31 @@ def get_main_layout():
             ),
             dcc.Interval(id="main_api_fetch_interval", interval=30 * 1000),
             dcc.Store(
+                id="api_sequences",
+                storage_type="session",
+                data=pd.DataFrame().to_json(orient="split"),
+            ),
+            dcc.Store(
                 id="api_detections",
                 storage_type="session",
-                data=json.dumps(
-                    {
-                        "data": pd.DataFrame().to_json(orient="split"),
-                        "data_loaded": False,
-                    }
-                ),
+                data=json.dumps({}),
+            ),
+            dcc.Store(
+                id="are_detections_loaded",
+                storage_type="session",
+                data=json.dumps({}),
             ),
             dcc.Store(
                 id="api_cameras",
                 storage_type="session",
-                data=json.dumps(
-                    {
-                        "data": pd.DataFrame().to_json(orient="split"),
-                        "data_loaded": False,
-                    }
-                ),
+                data=pd.DataFrame().to_json(orient="split"),
             ),
             dcc.Store(
-                id="alert_on_display",
+                id="sequence_on_display",
                 storage_type="session",
-                data=json.dumps(
-                    {
-                        "data": pd.DataFrame().to_json(orient="split"),
-                        "data_loaded": False,
-                    }
-                ),
+                data=pd.DataFrame().to_json(orient="split"),
             ),
-            dcc.Store(id="event_id_on_display", data=0),
+            dcc.Store(id="sequence_id_on_display", data=0),
             dcc.Store(id="auto-move-state", data={"active": True}),
             # Add this to your app.layout
             dcc.Store(id="bbox_visibility", data={"visible": True}),

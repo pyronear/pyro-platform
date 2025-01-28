@@ -11,7 +11,7 @@ def create_event_list():
     Creates a container for the alert list with a fixed height and scrollable content.
 
     This function generates a Dash HTML Div element containing a header and an empty container.
-    The empty container ('alert-list-container') is meant to be populated with alert buttons
+    The empty container ('sequence-list-container') is meant to be populated with alert buttons
     dynamically via a callback. The container has a fixed height and is scrollable, allowing
     users to browse through a potentially long list of alerts.
 
@@ -27,6 +27,6 @@ def create_event_list():
 
     return html.Div(
         [
-            html.Div(id="alert-list-container", style=event_list_style, children=[]),  # Empty container
+            html.Div(id="sequence-list-container", style=event_list_style, children=[]),  # Empty container
         ]
     )
