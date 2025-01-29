@@ -1,3 +1,3 @@
-from .api import api_client, call_api
+from .api import api_client, get_token
 
-__all__ = ["api_client", "call_api"]
+__all__ = ["api_client", "get_token"]

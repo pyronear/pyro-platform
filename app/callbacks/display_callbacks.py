@@ -5,18 +5,17 @@
 
 import ast
 import json
+from io import StringIO
 
 import dash
 import logging_config
-import numpy as np
 import pandas as pd
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
-from services import api_client, call_api
-from utils.data import read_stored_DataFrame
+from services import api_client
 from utils.display import build_vision_polygon, create_event_list_from_alerts
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
@@ -24,48 +23,41 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 # Create event list
 @app.callback(
-    Output("alert-list-container", "children"),
+    Output("sequence-list-container", "children"),
     [
-        Input("store_api_alerts_data", "data"),
+        Input("api_sequences", "data"),
         Input("to_acknowledge", "data"),
     ],
+    State("api_cameras", "data"),
 )
-def update_event_list(api_alerts, to_acknowledge):
+def update_event_list(api_sequences, to_acknowledge, cameras):
     """
     Updates the event list based on changes in the events data or acknowledgement actions.
 
     Parameters:
-    - api_alerts (json): JSON formatted data containing current alerts information.
+    - api_detections (json): JSON formatted data containing current alerts information.
     - to_acknowledge (int): Event ID that is being acknowledged.
 
     Returns:
     - html.Div: A Div containing the updated list of alerts.
     """
-    api_alerts, event_data_loaded = read_stored_DataFrame(api_alerts)
-    if not event_data_loaded:
-        raise PreventUpdate
+    logger.info("update_event_list")
 
-    if len(api_alerts):
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    cameras = pd.read_json(StringIO(cameras), orient="split")
+
+    if len(api_sequences):
         # Drop acknowledge event for faster update
-        api_alerts = api_alerts[~api_alerts["id"].isin([to_acknowledge])]
+        api_sequences = api_sequences[~api_sequences["id"].isin([to_acknowledge])]
 
-        # Drop event with less than 5 alerts or less then 2 bbox
-        drop_event = []
-        for event_id in np.unique(api_alerts["id"].values):
-            event_alerts = api_alerts[api_alerts["id"] == event_id]
-            if np.sum([len(box) > 2 for box in event_alerts["localization"]]) < 2 or len(event_alerts) < 5:
-                drop_event.append(event_id)
-
-        api_alerts = api_alerts[~api_alerts["id"].isin([drop_event])]
-
-    return create_event_list_from_alerts(api_alerts)
+    return create_event_list_from_alerts(api_sequences, cameras)
 
 
 # Select the event id
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
-        Output("event_id_on_display", "data"),
+        Output("sequence_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
         Output("custom_js_trigger", "title"),
     ],
@@ -74,12 +66,12 @@ def update_event_list(api_alerts, to_acknowledge):
     ],
     [
         State({"type": "event-button", "index": ALL}, "id"),
-        State("store_api_alerts_data", "data"),
-        State("event_id_on_display", "data"),
+        State("api_sequences", "data"),
+        State("sequence_id_on_display", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_display):
+def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display):
     """
     Handles event selection through button clicks.
 
@@ -87,21 +79,19 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     - n_clicks (list): List of click counts for each event button.
     - button_ids (list): List of button IDs corresponding to events.
     - local_alerts (json): JSON formatted data containing current alert information.
-    - event_id_on_display (int): Currently displayed event ID.
+    - sequence_id_on_display (int): Currently displayed event ID.
 
     Returns:
     - list: List of styles for event buttons.
     - int: ID of the event to display.
     - int: Number of clicks for the auto-move button reset.
     """
+    logger.info("select_event_with_button")
     ctx = dash.callback_context
 
-    local_alerts, alerts_data_loaded = read_stored_DataFrame(local_alerts)
-    if len(local_alerts) == 0:
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if api_sequences.empty:
         return [[], 0, 1, "reset_zoom"]
-
-    if not alerts_data_loaded:
-        raise PreventUpdate
 
     # Extracting the index of the clicked button
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
@@ -130,66 +120,27 @@ def select_event_with_button(n_clicks, button_ids, local_alerts, event_id_on_dis
     return [styles, button_index, 1, "reset_zoom"]
 
 
-# Get event_id data
-@app.callback(
-    Output("alert_on_display", "data"),
-    Input("event_id_on_display", "data"),
-    State("store_api_alerts_data", "data"),
-    prevent_initial_call=True,
-)
-def update_display_data(event_id_on_display, local_alerts):
-    """
-    Updates the display data based on the currently selected event ID.
-
-    Parameters:
-    - event_id_on_display (int): Currently displayed event ID.
-    - local_alerts (json): JSON formatted data containing current alert information.
-
-    Returns:
-    - json: JSON formatted data for the selected event.
-    """
-    local_alerts, data_loaded = read_stored_DataFrame(local_alerts)
-
-    if not data_loaded:
-        raise PreventUpdate
-
-    if event_id_on_display == 0:
-        return json.dumps(
-            {
-                "data": pd.DataFrame().to_json(orient="split"),
-                "data_loaded": True,
-            }
-        )
-    else:
-        if event_id_on_display == 0:
-            event_id_on_display = local_alerts["id"].values[0]
-
-        alert_on_display = local_alerts[local_alerts["id"] == event_id_on_display]
-
-        return json.dumps({"data": alert_on_display.to_json(orient="split"), "data_loaded": True})
-
-
 @app.callback(
     [
         Output("main-image", "src"),  # Output for the image
         Output("bbox-positioning", "style"),
         Output("image-slider", "max"),
     ],
-    [Input("image-slider", "value"), Input("alert_on_display", "data")],
+    [Input("image-slider", "value"), Input("sequence_on_display", "data")],
     [
-        State("alert-list-container", "children"),
+        State("sequence-list-container", "children"),
         State("language", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
+def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang):
     """
     Updates the image and bounding box display based on the slider value.
 
     Parameters:
     - slider_value (int): Current value of the image slider.
     - alert_data (json): JSON formatted data for the selected event.
-    - alert_list (list): List of ongoing alerts.
+    - sequence_list (list): List of ongoing alerts.
 
     Returns:
     - html.Img: An image element displaying the selected alert image.
@@ -202,19 +153,20 @@ def update_image_and_bbox(slider_value, alert_data, alert_list, lang):
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
 
     bbox_style = {"display": "none"}  # Default style for the bounding box
-    alert_data, data_loaded = read_stored_DataFrame(alert_data)
-    if not data_loaded:
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+
+    if sequence_on_display.empty:
         raise PreventUpdate
 
-    if len(alert_list) == 0:
+    if len(sequence_list) == 0:
         return no_alert_image_src, bbox_style, 0
 
     # Filter images with non-empty URLs
     images, boxes = zip(
         *(
-            (alert["media_url"], alert["processed_loc"])
-            for _, alert in alert_data.iterrows()
-            if alert["media_url"]  # Only include if media_url is not empty
+            (alert["url"], alert["processed_bboxes"])
+            for _, alert in sequence_on_display.iterrows()
+            if alert["url"]  # Only include if url is not empty
         )
     )
 
@@ -267,6 +219,7 @@ def toggle_bbox_visibility(n_clicks, button_style):
     - dict: Updated style for the bounding box.
     - dict: Updated style for the hide/show button.
     """
+    logger.info("toggle_bbox_visibility")
     if n_clicks % 2 == 0:
         bbox_style = {"display": "block"}  # Show the bounding box
         button_style["background-color"] = "#054546"  # Original button color
@@ -315,11 +268,11 @@ def toggle_auto_move(n_clicks, data, button_style):
         State("image-slider", "value"),
         State("image-slider", "max"),
         State("auto-move-button", "n_clicks"),
-        State("alert-list-container", "children"),
+        State("sequence-list-container", "children"),
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, alert_list):
+def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
     """
     Automatically moves the image slider based on a regular interval and the current auto-move state.
 
@@ -328,12 +281,12 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, al
     - current_value (int): Current value of the image slider.
     - max_value (int): Maximum value of the image slider.
     - auto_move_clicks (int): Number of clicks on the auto-move button.
-    - alert_list (list): List of ongoing alerts.
+    - sequence_list (list): List of ongoing alerts.
 
     Returns:
     - int: Updated value for the image slider.
     """
-    if auto_move_clicks % 2 != 0 and len(alert_list):  # Auto-move is active and there is ongoing alerts
+    if auto_move_clicks % 2 != 0 and len(sequence_list):  # Auto-move is active and there is ongoing alerts
         return (current_value + 1) % (max_value + 1)
     else:
         raise PreventUpdate
@@ -342,10 +295,10 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, al
 @app.callback(
     Output("download-link", "href"),
     [Input("image-slider", "value")],
-    [State("alert_on_display", "data")],
+    [State("sequence_on_display", "data")],
     prevent_initial_call=True,
 )
-def update_download_link(slider_value, alert_data):
+def update_download_link(slider_value, sequence_on_display):
     """
     Updates the download link for the currently displayed image.
 
@@ -356,13 +309,13 @@ def update_download_link(slider_value, alert_data):
     Returns:
     - str: URL for downloading the current image.
     """
-    alert_data, data_loaded = read_stored_DataFrame(alert_data)
-    if data_loaded and len(alert_data):
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    if len(sequence_on_display):
         try:
-            return alert_data["media_url"].values[slider_value]
+            return sequence_on_display["url"].values[slider_value]
         except Exception as e:
             logger.info(e)
-            logger.info(f"Size of the alert_data dataframe: {alert_data.size}")
+            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
 
     return ""  # Return empty string if no image URL is available
 
@@ -381,10 +334,11 @@ def update_download_link(slider_value, alert_data):
         Output("alert-information", "style"),
         Output("slider-container", "style"),
     ],
-    Input("alert_on_display", "data"),
+    Input("sequence_on_display", "data"),
+    State("api_cameras", "data"),
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(alert_data):
+def update_map_and_alert_info(sequence_on_display, cameras):
     """
     Updates the map's vision polygons, center, and alert information based on the current alert data.
 
@@ -403,47 +357,49 @@ def update_map_and_alert_info(alert_data):
     - dict: Style settings for alert information.
     - dict: Style settings for the slider container.
     """
-    alert_data, data_loaded = read_stored_DataFrame(alert_data)
+    logger.info("update_map_and_alert_info")
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    cameras = pd.read_json(StringIO(cameras), orient="split")
 
-    if not data_loaded:
-        raise PreventUpdate
-
-    if not alert_data.empty:
-        # Convert the 'localization' column to a list (empty lists if the original value was '[]').
-        alert_data["localization"] = alert_data["localization"].apply(
+    if not sequence_on_display.empty:
+        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
+        sequence_on_display["bboxes"] = sequence_on_display["bboxes"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
         )
 
-        # Filter out rows where 'localization' is not empty and get the last one.
+        # Filter out rows where 'bboxes' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
-        row_with_localization = (
-            alert_data[alert_data["localization"].astype(bool)].iloc[-1]
-            if not alert_data[alert_data["localization"].astype(bool)].empty
-            else alert_data.iloc[-1]
+        row_with_bboxes = (
+            sequence_on_display[sequence_on_display["bboxes"].astype(bool)].iloc[-1]
+            if not sequence_on_display[sequence_on_display["bboxes"].astype(bool)].empty
+            else sequence_on_display.iloc[-1]
         )
+
+        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
+        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
 
         polygon, detection_azimuth = build_vision_polygon(
-            site_lat=row_with_localization["lat"],
-            site_lon=row_with_localization["lon"],
-            azimuth=row_with_localization["device_azimuth"],
+            site_lat=lat,
+            site_lon=lon,
+            azimuth=row_with_bboxes["azimuth"],
             opening_angle=cfg.CAM_OPENING_ANGLE,
             dist_km=cfg.CAM_RANGE_KM,
-            localization=row_with_localization["processed_loc"],
+            bboxes=row_with_bboxes["processed_bboxes"],
         )
 
-        date_val = row_with_localization["created_at"]
-        cam_name = f"{row_with_localization['device_login'][:-2].replace('_', ' ')} - {int(row_with_localization['device_azimuth'])}°"
+        date_val = row_with_bboxes["created_at"].strftime("%Y-%m-%d %H:%M")
+        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
 
         camera_info = f"{cam_name}"
-        location_info = f"{row_with_localization['lat']:.4f}, {row_with_localization['lon']:.4f}"
+        location_info = f"{lat:.4f}, {lon:.4f}"
         angle_info = f"{detection_azimuth}°"
         date_info = f"{date_val}"
 
         return (
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [lat, lon],
             polygon,
-            [row_with_localization["lat"], row_with_localization["lon"]],
+            [lat, lon],
             camera_info,
             location_info,
             angle_info,
@@ -467,39 +423,59 @@ def update_map_and_alert_info(alert_data):
 
 
 @app.callback(
-    Output("to_acknowledge", "data"),
-    [Input("acknowledge-button", "n_clicks")],
+    [Output("confirmation-modal", "style"), Output("to_acknowledge", "data")],
     [
-        State("event_id_on_display", "data"),
-        State("user_headers", "data"),
-        State("user_credentials", "data"),
+        Input("acknowledge-button", "n_clicks"),
+        Input("confirm-wildfire", "n_clicks"),
+        Input("confirm-non-wildfire", "n_clicks"),
+        Input("cancel-confirmation", "n_clicks"),
     ],
+    [State("sequence_id_on_display", "data"), State("user_token", "data")],
     prevent_initial_call=True,
 )
-def acknowledge_event(n_clicks, event_id_on_display, user_headers, user_credentials):
-    """
-    Acknowledges the selected event and updates the state to reflect this.
+def acknowledge_event(
+    acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
+):
+    ctx = dash.callback_context
 
-    Parameters:
-    - n_clicks (int): Number of clicks on the acknowledge button.
-    - event_id_on_display (int): Currently displayed event ID.
-    - user_headers (dict): User authorization headers for API requests.
-    - user_credentials (tuple): User credentials (username, password).
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
 
-    Returns:
-    - int: The ID of the event that has been acknowledged.
-    """
-    if event_id_on_display == 0 or n_clicks == 0:
-        raise PreventUpdate
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if cfg.SAFE_DEV_MODE == "True":
-        raise PreventUpdate
+    # Modal styles
+    modal_visible_style = {
+        "position": "fixed",
+        "top": "50%",
+        "left": "50%",
+        "transform": "translate(-50%, -50%)",
+        "z-index": "1000",
+        "background-color": "rgba(0, 0, 0, 0.5)",
+    }
+    modal_hidden_style = {"display": "none"}
 
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
-    call_api(api_client.acknowledge_event, user_credentials)(event_id=int(event_id_on_display))
+    if triggered_id == "acknowledge-button":
+        # Show the modal
+        if acknowledge_clicks > 0:
+            return modal_visible_style, dash.no_update
 
-    return event_id_on_display
+    elif triggered_id == "confirm-wildfire":
+        # Send wildfire confirmation to the API
+        api_client.token = user_token
+        api_client.label_sequence(sequence_id_on_display, True)
+        return modal_hidden_style, sequence_id_on_display
+
+    elif triggered_id == "confirm-non-wildfire":
+        # Send non-wildfire confirmation to the API
+        api_client.token = user_token
+        api_client.label_sequence(sequence_id_on_display, False)
+        return modal_hidden_style, sequence_id_on_display
+
+    elif triggered_id == "cancel-confirmation":
+        # Cancel action
+        return modal_hidden_style, dash.no_update
+
+    raise dash.exceptions.PreventUpdate
 
 
 # Modal issue let's add this later
@@ -520,6 +496,7 @@ def toggle_fullscreen_map(n_clicks_open, is_open):
     Returns:
     - bool: New state of the map modal (open/close).
     """
+    logger.info("toggle_fullscreen_map")
     if n_clicks_open:
         return not is_open  # Toggle the modal
     return is_open  # Keep the current state

@@ -14,7 +14,7 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.css.append_css({"external_url": "/assets/style.css"})
 
 
-def homepage_layout(user_headers, user_credentials, lang="fr"):
+def homepage_layout(user_token, api_cameras, lang="fr"):
     translate = {
         "fr": {
             "show_hide_prediction": "Afficher / Cacher la prédiction",
@@ -241,7 +241,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                             ),
                             html.Div(
                                 dbc.Col(
-                                    build_alerts_map(user_headers, user_credentials),
+                                    build_alerts_map(api_cameras),
                                     className="common-style",
                                     style={
                                         "position": "relative",
@@ -273,7 +273,7 @@ def homepage_layout(user_headers, user_credentials, lang="fr"):
                 [
                     dbc.ModalHeader(translate[lang]["map"]),
                     dbc.ModalBody(
-                        build_alerts_map(user_headers, user_credentials, id_suffix="-md"),
+                        build_alerts_map(api_cameras, id_suffix="-md"),
                     ),
                 ],
                 id="map-modal",

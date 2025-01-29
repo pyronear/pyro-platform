@@ -4,15 +4,16 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+from io import StringIO
+
 import dash_leaflet as dl
+import pandas as pd
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
 
 import config as cfg
-from services import api_client
-from utils.sites import get_sites
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
 
@@ -34,12 +35,12 @@ def build_departments_geojson():
     return geojson
 
 
-def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
+def calculate_new_polygon_parameters(azimuth, opening_angle, bboxes):
     """
-    This function compute the vision polygon parameters based on localization
+    This function compute the vision polygon parameters based on bboxes
     """
-    # Assuming localization is in the format [x0, y0, x1, y1, confidence]
-    x0, _, width, _ = localization
+    # Assuming bboxes is in the format [x0, y0, x1, y1, confidence]
+    x0, _, width, _ = bboxes
     xc = (x0 + width / 2) / 100
 
     # New azimuth
@@ -51,7 +52,7 @@ def calculate_new_polygon_parameters(azimuth, opening_angle, localization):
     return int(new_azimuth) % 360, int(new_opening_angle)
 
 
-def build_sites_markers(user_headers, user_credentials):
+def build_sites_markers(api_cameras):
     """
     This function reads the site markers by making the API, that contains all the
     information about the sites equipped with detection units.
@@ -70,17 +71,16 @@ def build_sites_markers(user_headers, user_credentials):
         "popupAnchor": [0, -20],  # Point from which the popup should open relative to the iconAnchor
     }
 
-    user_token = user_headers["Authorization"].split(" ")[1]
-    api_client.token = user_token
+    api_cameras = pd.read_json(StringIO(api_cameras), orient="split")
 
-    client_sites = get_sites(user_credentials)
+    client_sites = api_cameras.drop_duplicates(subset=["lat", "lon"], keep="first")  # Keeps the first occurrence
     markers = []
 
     for _, site in client_sites.iterrows():
         site_id = site["id"]
         lat = round(site["lat"], 4)
         lon = round(site["lon"], 4)
-        site_name = site["name"].replace("_", " ").title()
+        site_name = site["name"][:-3].replace("_", " ").title()
         markers.append(
             dl.Marker(
                 id=f"site_{site_id}",  # Necessary to set an id for each marker to receive callbacks
@@ -102,12 +102,12 @@ def build_sites_markers(user_headers, user_credentials):
     return markers, client_sites
 
 
-def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, localization=None):
+def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=None):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
     """
-    if len(localization):
-        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, localization[0])
+    if len(bboxes):
+        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, bboxes[0])
 
     # The center corresponds the point from which the vision angle "starts"
     center = [site_lat, site_lon]
@@ -137,7 +137,7 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, lo
     return polygon, azimuth
 
 
-def build_alerts_map(user_headers, user_credentials, id_suffix=""):
+def build_alerts_map(api_cameras, id_suffix=""):
     """
     The following function mobilises functions defined hereabove or in the utils module to
     instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
@@ -150,7 +150,7 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
         "height": "100%",
     }
 
-    markers, client_sites = build_sites_markers(user_headers, user_credentials)
+    markers, client_sites = build_sites_markers(api_cameras)
 
     map_object = dl.Map(
         center=[
@@ -171,23 +171,27 @@ def build_alerts_map(user_headers, user_credentials, id_suffix=""):
     return map_object
 
 
-def create_event_list_from_alerts(api_events):
+def create_event_list_from_alerts(api_events, cameras):
     """
     This function build the list of events on the left based on event data
     """
     if api_events.empty:
         return []
-    filtered_events = api_events.sort_values("created_at").drop_duplicates("id", keep="last")[::-1]
+
+    filtered_events = api_events.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
 
     return [
         html.Button(
             id={"type": "event-button", "index": event["id"]},
             children=[
                 html.Div(
-                    f"{event['device_login'][:-2].replace('_', ' ')} - {int(event['device_azimuth'])}°",
+                    (
+                        f"{cameras[cameras['id'] == event['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
+                        f" : {int(event['azimuth'])}°"
+                    ),
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(event["created_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(event["started_at"].strftime("%Y-%m-%d %H:%M")),
             ],
             n_clicks=0,
             className="alert-card",
