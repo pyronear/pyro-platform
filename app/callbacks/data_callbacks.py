@@ -205,6 +205,9 @@ def api_watcher(n_intervals, api_cameras, local_sequences, user_token):
 def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded):
     # Deserialize data
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if api_sequences.empty:
+        return dash.no_update, dash.no_update, dash.no_update
+
     sequence_id_on_display = str(sequence_id_on_display)
     are_detections_loaded = json.loads(are_detections_loaded)
     api_detections = json.loads(api_detections)
