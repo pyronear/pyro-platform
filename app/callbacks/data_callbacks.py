@@ -188,6 +188,10 @@ def api_watcher(n_intervals, api_cameras, local_sequences, user_token):
         return pd.DataFrame().to_json(orient="split")
 
     else:
+        # Filter alerts before today
+        started_at = pd.to_datetime(api_sequences["started_at"])
+        today = pd.Timestamp.today().normalize()
+        api_sequences = api_sequences[started_at > today]
         if not local_sequences.empty:
             aligned_api_sequences, aligned_local_sequences = api_sequences["id"].align(local_sequences["id"])
             if all(aligned_api_sequences == aligned_local_sequences):
