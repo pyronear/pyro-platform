@@ -170,7 +170,7 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     bbox_styles = [{"display": "none"} for _ in range(4)]
 
     # Update styles for available bounding boxes
-    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:4]):  # Limit to 4 bboxes
+    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
         bbox_styles[i] = {
             "position": "absolute",
             "left": f"{x0}%",

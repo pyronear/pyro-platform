@@ -85,7 +85,6 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     html.Div(id="bbox-0", style={"display": "none"}),
                                                     html.Div(id="bbox-1", style={"display": "none"}),
                                                     html.Div(id="bbox-2", style={"display": "none"}),
-                                                    html.Div(id="bbox-3", style={"display": "none"}),
                                                 ],
                                             ),
                                         ],
