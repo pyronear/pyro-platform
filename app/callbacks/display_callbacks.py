@@ -166,7 +166,7 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     images_bbox_list = boxes[slider_value]
 
     # Create styles for each bbox (default hidden)
-    bbox_styles = [{"display": "none"} for _ in range(4)]
+    bbox_styles = [{"display": "none"} for _ in range(3)]
 
     # Update styles for available bounding boxes
     for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
