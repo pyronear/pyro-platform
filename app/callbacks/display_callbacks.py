@@ -126,7 +126,6 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
         Output("bbox-0", "style"),
         Output("bbox-1", "style"),
         Output("bbox-2", "style"),
-        Output("bbox-3", "style"),
         Output("image-slider", "max"),
     ],
     [Input("image-slider", "value"), Input("sequence_on_display", "data")],
