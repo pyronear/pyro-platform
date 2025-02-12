@@ -73,23 +73,18 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                             ),
                                             html.Div(
                                                 id="bbox-container",
-                                                style={"display": "block"},
+                                                style={
+                                                    "display": "block",
+                                                    "position": "absolute",
+                                                    "top": "0",
+                                                    "left": "0",
+                                                    "width": "100%",
+                                                    "height": "100%",
+                                                },
                                                 children=[
-                                                    html.Div(
-                                                        id="bbox-positioning",
-                                                        style={"display": "none"},
-                                                        children=[
-                                                            html.Div(
-                                                                id="bbox-styling",
-                                                                style={
-                                                                    "border": "2px solid red",
-                                                                    "height": "100%",
-                                                                    "width": "100%",
-                                                                    "zIndex": "10",
-                                                                },
-                                                            ),
-                                                        ],
-                                                    )
+                                                    html.Div(id="bbox-0", style={"display": "none"}),
+                                                    html.Div(id="bbox-1", style={"display": "none"}),
+                                                    html.Div(id="bbox-2", style={"display": "none"}),
                                                 ],
                                             ),
                                         ],
