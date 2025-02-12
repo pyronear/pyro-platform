@@ -122,8 +122,11 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
 
 @app.callback(
     [
-        Output("main-image", "src"),  # Output for the image
-        Output("bbox-positioning", "style"),
+        Output("main-image", "src"),
+        Output("bbox-0", "style"),
+        Output("bbox-1", "style"),
+        Output("bbox-2", "style"),
+        Output("bbox-3", "style"),
         Output("image-slider", "max"),
     ],
     [Input("image-slider", "value"), Input("sequence_on_display", "data")],
@@ -136,66 +139,51 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
 def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang):
     """
     Updates the image and bounding box display based on the slider value.
-
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
-    - sequence_list (list): List of ongoing alerts.
-
-    Returns:
-    - html.Img: An image element displaying the selected alert image.
-    - list: A list of html.Div elements representing bounding boxes.
-    - int: Maximum value for the image slider.
     """
     img_src = ""
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
 
-    bbox_style = {"display": "none"}  # Default style for the bounding box
     sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
 
     if sequence_on_display.empty:
         raise PreventUpdate
 
     if len(sequence_list) == 0:
-        return no_alert_image_src, bbox_style, 0
+        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
 
     # Filter images with non-empty URLs
     images, boxes = zip(
-        *(
-            (alert["url"], alert["processed_bboxes"])
-            for _, alert in sequence_on_display.iterrows()
-            if alert["url"]  # Only include if url is not empty
-        )
+        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
     )
 
     if not images:
-        return no_alert_image_src, bbox_style, 0
+        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
 
     # Ensure slider_value is within the range of available images
     slider_value = slider_value % len(images)
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
-    img_src = images[slider_value]
-    images_bbox_list = boxes[slider_value]
+    # Create styles for each bbox (default hidden)
+    bbox_styles = [{"display": "none"} for _ in range(4)]
 
-    if len(images_bbox_list):
-        # Calculate the position and size of the bounding box
-        x0, y0, width, height = images_bbox_list[0]  # first box for now
-
-        # Create the bounding box style
-        bbox_style = {
+    # Update styles for available bounding boxes
+    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:4]):  # Limit to 4 bboxes
+        bbox_styles[i] = {
             "position": "absolute",
-            "left": f"{x0}%",  # Left position based on image width
-            "top": f"{y0}%",  # Top position based on image height
-            "width": f"{width}%",  # Width based on image width
-            "height": f"{height}%",  # Height based on image height
+            "left": f"{x0}%",
+            "top": f"{y0}%",
+            "width": f"{width}%",
+            "height": f"{height}%",
+            "border": "2px solid red",
+            "box-sizing": "border-box",
+            "zIndex": "10",
             "display": "block",
         }
 
-    return img_src, bbox_style, len(images) - 1
+    return [img_src, *bbox_styles, len(images) - 1]
 
 
 @app.callback(
