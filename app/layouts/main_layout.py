@@ -88,7 +88,7 @@ def get_main_layout():
                     html.Div(
                         [
                             html.H4(
-                                "Est-ce une fumée suspecte ? ",
+                                "Est-ce une fumée suspecte ?",
                                 style={
                                     "margin-bottom": "20px",
                                     "font-size": "20px",
@@ -112,7 +112,7 @@ def get_main_layout():
                                         },
                                     ),
                                     html.Button(
-                                        "No, c'est un faux positif",
+                                        "Non, c'est un faux positif",
                                         id="confirm-non-wildfire",
                                         n_clicks=0,
                                         style={
@@ -126,7 +126,7 @@ def get_main_layout():
                                         },
                                     ),
                                     html.Button(
-                                        "Cancel",
+                                        "Annuler",
                                         id="cancel-confirmation",
                                         n_clicks=0,
                                         style={
