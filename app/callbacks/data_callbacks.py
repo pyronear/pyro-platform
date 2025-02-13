@@ -227,7 +227,8 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
         if sequence_id_on_display not in api_detections:
             response = api_client.fetch_sequences_detections(sequence_id_on_display)
             detections = pd.DataFrame(response.json())
-            detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
+            if not detections.empty and "bboxes" in detections.columns:
+                detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
             api_detections[sequence_id_on_display] = detections.to_json(orient="split")
 
         sequence_on_display = api_detections[sequence_id_on_display]
@@ -247,7 +248,8 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
             if sequence_id not in are_detections_loaded or are_detections_loaded[sequence_id] != str(last_seen_at):
                 response = api_client.fetch_sequences_detections(sequence_id)
                 detections = pd.DataFrame(response.json())
-                detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
+                if not detections.empty and "bboxes" in detections.columns:
+                    detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
                 api_detections[sequence_id] = detections.to_json(orient="split")
                 are_detections_loaded[sequence_id] = str(last_seen_at)
                 break
