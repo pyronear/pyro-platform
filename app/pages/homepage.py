@@ -40,7 +40,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
             "confirmation_modal_title": "¿Es un humo sospechoso?",
             "confirmation_modal_yes": "Sí, es un humo",
             "confirmation_modal_no": "No, es un falso positivo",
-            "confirmation_modal_cancel" : "Cancelar",
+            "confirmation_modal_cancel": "Cancelar",
             "enlarge_map": "Ampliar el mapa",
             "alert_information": "Información sobre alerta",
             "camera": "Cámara: ",
@@ -250,8 +250,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                         },
                                     ),
                                 ],
-                            )
-
+                            ),
                         ],
                         width=8,
                         style={"padding": "0"},
