@@ -242,7 +242,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                         style={
                                             "background-color": "white",
                                             "padding": "30px",
-                                            "border-radius": "10px",
+                                            "border-radius": "8px",
                                             "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.2)",
                                             "max-width": "600px",
                                             "width": "100%",
