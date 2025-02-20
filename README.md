@@ -149,6 +149,13 @@ Traefik interacts with the Dash frontend app via an external network called web,
 docker network create web
 ```
 
+## Contributing
+
+Any sort of contribution is greatly appreciated!
+
+You can find a short guide in [`CONTRIBUTING`](CONTRIBUTING.md) to help grow this project!
+
+
 ## License
 
 Distributed under the Apache 2.0 License. See `LICENSE` for more information.
