@@ -1,54 +1,12 @@
 # Pyronear Platform
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e4490e06eaf41a3a5faea69dad5caa9)](https://www.codacy.com/gh/pyronear/pyro-platform/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=pyronear/pyro-platform&amp;utm_campaign=Badge_Grade) ![Build Status](https://github.com/pyronear/pyro-platform/workflows/dash-project/badge.svg)
 
-The building blocks of our wildfire detection & monitoring API.
+The open-source platform for managing early wildfire detection
 
 
-## Quick Tour
+# Installation
 
-### Running/stopping the service
-
-You can run the app container using this command for dev purposes:
-
-```shell
-make run_dev
-```
-
-or for production:
-
-```shell
-make run
-```
-
-You can now navigate to `http://localhost:8050/` to interact with the app.
-
-In order to stop the service, run:
-```shell
-make stop
-```
-
-If you need to launch the pyro-api in your development environment you can use the pyro-devops project.
-You can use it in two different ways : 
-=> by building the pyro-platform image and launch the full development environment with the command :
-```shell
-make run
-```
-=> by launching the development environment without the platform :
-```shell
-make run-engine
-```
-adding this line in your /etc/hosts :
-```
-127.0.0.1 www.localstack.com localstack
-```
-and launching your project locally :
-```
-python3 app/index.py
-```
-
-## Installation
-
-### Prerequisites
+## Prerequisites
 
 - [Docker](https://docs.docker.com/engine/install/)
 - [Docker compose](https://docs.docker.com/compose/)
@@ -60,6 +18,7 @@ The project was designed so that everything runs with Docker orchestration (stan
 ## Configuration
 
 In order to run the project, you will need to specific some information, which can be done using a `.env` file.
+
 This file will have to hold the following information:
 - `API_URL`: URL to the endpoint of [Pyronear Alert API](https://github.com/pyronear/pyro-api)
 - `API_LOGIN`: your login for the API
@@ -81,10 +40,105 @@ SENTRY_SERVER_NAME=my_storage_bucket_name
 
 The file should be placed at the root folder of your local copy of the project.
 
-Also please note that you should use docker-compose-dev.yml file for dev as we do not need reverse proxy:
+
+## Running you service locally
+
+### Clone the repository
+```shell
+git clone https://github.com/pyronear/pyro-platform.git && cd pyro-platform
+```
+
+Here, there are several ways to start the service
+- Either you have access to a pyronear alert api online trhough a specific API_URL
+- Otherwise, you'll need to create a development environment. Don't panic, here's a tutorial on how to do it smoothly
+
+### Run the service directly with the URL of a pyronear alert api
+
+#### 1 - Set your environment variables 
+First copy the example environment setup
+```shell
+cp .env.example .env
+```
+
+Fill it with your API_URL and credentials
+
+#### 2 - You can run the app container using this command for dev purposes:
 
 ```shell
-docker-compose -f docker-compose-dev.yml up
+make run_dev
+```
+
+### Run the service via a development environment
+
+#### 1 - clone pyro-envdev repository 
+
+Move to a directoty where to clone the [pyro-envdev repo](https://github.com/pyronear/pyro-envdev), then
+
+```shell
+git clone https://github.com/pyronear/pyro-envdev.git && cd pyro-envdev
+```
+
+#### 2 - build & launch required pyro-envdev services
+
+
+```shell
+make build
+```
+Then, with the following command, you will run the API locally and services that simulate 2 cameras generating alerts
+
+```shell
+make run-engine
+```
+### 3 - let your webbrowser access images from developpement environnement
+
+by adding this line in your /etc/hosts
+
+```
+127.0.0.1 www.localstack.com localstack
+```
+
+#### 3 - Go back to pyro-platform & setup credentials
+
+```shell
+cd PATH_TO_PYRO-PLATFORM
+```
+
+Fill credentials to access your local API, the example below shall work properly as the API_URL give access to your local pyronear api and (API_LOGIN, API_PWD) are taken from [default credentials in the developpement environnement](https://github.com/pyronear/pyro-envdev/blob/main/data/csv/API_DATA_DEV%20-%20users.csv)
+
+```
+API_URL='http://host.docker.internal:5050/'
+API_LOGIN='github-engine'
+API_PWD='passwrd6'
+```
+
+### 4 - Start your local pyro-plateform 
+
+Now, you can run the app container using this command for dev purposes:
+
+```shell
+make run_dev
+```
+
+or launch your project locally directly with python: 
+
+```shell
+python3 app/index.py
+```
+
+### Check how what you've deployed
+
+You can now navigate to `http://localhost:8050/` to interact with the app.
+
+In order to stop the service, run:
+```shell
+make stop
+```
+
+
+## Running your service in production
+
+```shell
+make run
 ```
 
 For production we use docker-compose.yml in which there is the [Traefik Reverse Proxy](https://traefik.io/traefik/).
@@ -94,7 +148,6 @@ Traefik interacts with the Dash frontend app via an external network called web,
 ```shell
 docker network create web
 ```
-
 
 ## License
 
