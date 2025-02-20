@@ -29,16 +29,7 @@ Optionally, the following information can be added:
 - `SENTRY_SERVER_NAME`: the server tag to apply to events.
 - `DEBUG`: whether the app is in debug or production mode
 
-So your `.env` file should look like something similar to:
-```
-API_URL='https://alert.mydomain.com/api'
-API_LOGIN='forest_saver'
-API_PWD='ILoveForest!'
-SENTRY_DSN='https://replace.with.you.sentry.dsn/'
-SENTRY_SERVER_NAME=my_storage_bucket_name
-```
-
-The file should be placed at the root folder of your local copy of the project.
+The file should be placed at the root folder of your local copy of the project. 
 
 
 ## Running you service locally
