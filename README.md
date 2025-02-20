@@ -49,7 +49,7 @@ git clone https://github.com/pyronear/pyro-platform.git && cd pyro-platform
 ```
 
 Here, there are several ways to start the service
-- Either you have access to a pyronear alert api online trhough a specific API_URL
+- Either you have access to a pyronear alert api online through a specific API_URL
 - Otherwise, you'll need to create a development environment. Don't panic, here's a tutorial on how to do it smoothly
 
 ### Run the service directly with the URL of a pyronear alert api
@@ -59,11 +59,9 @@ First copy the example environment setup
 ```shell
 cp .env.example .env
 ```
-
 Fill it with your API_URL and credentials
 
 #### 2 - You can run the app container using this command for dev purposes:
-
 ```shell
 make run_dev
 ```
@@ -71,7 +69,6 @@ make run_dev
 ### Run the service via a development environment
 
 #### 1 - clone pyro-envdev repository 
-
 Move to a directoty where to clone the [pyro-envdev repo](https://github.com/pyronear/pyro-envdev), then
 
 ```shell
@@ -79,8 +76,6 @@ git clone https://github.com/pyronear/pyro-envdev.git && cd pyro-envdev
 ```
 
 #### 2 - build & launch required pyro-envdev services
-
-
 ```shell
 make build
 ```
@@ -89,21 +84,19 @@ Then, with the following command, you will run the API locally and services that
 ```shell
 make run-engine
 ```
-### 3 - let your webbrowser access images from developpement environnement
-
+### 3 - Let your webbrowser access images from development environment
 by adding this line in your /etc/hosts
 
 ```
 127.0.0.1 www.localstack.com localstack
 ```
 
-#### 3 - Go back to pyro-platform & setup credentials
-
+#### 4 - Go back to pyro-platform & setup credentials
 ```shell
 cd PATH_TO_PYRO-PLATFORM
 ```
 
-Fill credentials to access your local API, the example below shall work properly as the API_URL give access to your local pyronear api and (API_LOGIN, API_PWD) are taken from [default credentials in the developpement environnement](https://github.com/pyronear/pyro-envdev/blob/main/data/csv/API_DATA_DEV%20-%20users.csv)
+Fill credentials to access your local API, the example below shall work properly as the API_URL give access to your local pyronear api and (API_LOGIN, API_PWD) are taken from [default credentials in the development environment](https://github.com/pyronear/pyro-envdev/blob/main/data/csv/API_DATA_DEV%20-%20users.csv)
 
 ```
 API_URL='http://host.docker.internal:5050/'
