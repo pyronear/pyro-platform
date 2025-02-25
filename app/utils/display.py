@@ -4,18 +4,59 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+from datetime import datetime
 from io import StringIO
 
 import dash_leaflet as dl
 import pandas as pd
+import pytz
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
+from timezonefinder import TimezoneFinder
 
 import config as cfg
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
+
+
+tf = TimezoneFinder()
+
+
+def convert_dt_to_local_tz(lat, lon, str_utc_timestamp):
+    """
+    Convert a UTC timestamp string to a local timezone string based on latitude and longitude.
+
+    Parameters:
+    lat (float): Latitude of the location.
+    lon (float): Longitude of the location.
+    str_utc_timestamp (str): UTC timestamp string in ISO 8601 format (e.g., "2023-10-01T12:34:56").
+
+    Returns:
+    str: Local timezone string in the format "%Y-%m-%d %H:%M" or None if the input timestamp is invalid.
+
+    Example:
+    >>> convert_dt_to_local_tz(48.8566, 2.3522, "2023-10-01T12:34:56")
+    '2023-10-01 14:34'
+    """
+    lat = round(lat, 4)
+    lon = round(lon, 4)
+
+    # Convert str_utc_timestamp to a timezone-aware datetime object assuming it's in UTC
+    try:
+        ts_utc = datetime.fromisoformat(str(str_utc_timestamp)).replace(tzinfo=pytz.utc)
+    except ValueError:
+        return None  # Handle invalid datetime format
+
+    # Find the local timezone
+    timezone_str = tf.timezone_at(lat=lat, lng=lon)
+    if timezone_str is None:  # If the timezone is not found, handle it appropriately
+        timezone_str = "UTC"  # Fallback to UTC
+    timezone = pytz.timezone(timezone_str)
+
+    # Convert ts_utc to the local timezone
+    return ts_utc.astimezone(timezone).strftime("%Y-%m-%d %H:%M")
 
 
 def build_departments_geojson():
@@ -191,7 +232,13 @@ def create_event_list_from_alerts(api_events, cameras):
                     ),
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(event["started_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(
+                    convert_dt_to_local_tz(
+                        lat=cameras[cameras["id"] == event["camera_id"]]["lat"].values[0],
+                        lon=cameras[cameras["id"] == event["camera_id"]]["lon"].values[0],
+                        str_utc_timestamp=event["started_at"],
+                    )
+                ),
             ],
             n_clicks=0,
             className="alert-card",
