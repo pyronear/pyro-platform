@@ -58,14 +58,17 @@ a.no-underline {
   text-align: center;
 }
 
-.alert-card {
+.pyronear-card {
   background-color: #FFEBD6;
-  margin-bottom: 12px;
-  padding: 8px;
   border-radius: 8px;
-  width: 100%;
   border: 0px solid;
   box-shadow: 0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12);
+}
+
+.alert-card {
+  margin-bottom: 12px;
+  padding: 8px;
+  width: 100%;
 }
 
 #alert-information-styling-container {
@@ -80,4 +83,16 @@ a.no-underline {
 
 .alert-information-title {
   font-weight: bold;
+}
+
+.navbar-button{
+  color: white;
+  border: 1px solid white;
+
+}
+
+.navbar-button:hover{
+  color: white;
+  border: 1px solid white;
+  background-color: #03383c;
 }
