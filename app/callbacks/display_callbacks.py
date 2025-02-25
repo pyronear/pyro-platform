@@ -17,6 +17,7 @@ from main import app
 import config as cfg
 from services import api_client
 from utils.display import build_vision_polygon, create_event_list_from_alerts
+from utils.display import build_vision_polygon, convert_dt_to_local_tz, create_event_list_from_alerts
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -374,7 +375,7 @@ def update_map_and_alert_info(sequence_on_display, cameras):
             bboxes=row_with_bboxes["processed_bboxes"],
         )
 
-        date_val = row_with_bboxes["created_at"].strftime("%Y-%m-%d %H:%M")
+        date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])
         cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
 
         camera_info = f"{cam_name}"
