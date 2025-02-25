@@ -10,12 +10,18 @@ from dash import html
 pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
 
-def Navbar():
+def Navbar(lang="fr"):
     navbar = dbc.Navbar(
         [
             dbc.Row(
                 [
-                    dbc.Col(html.Img(src=pyro_logo, height="30px"), width=3),
+                    dbc.Col(
+                        html.A(
+                            html.Img(src=pyro_logo, height="30px"),
+                            href="/",
+                        ),
+                        width=3,
+                    ),
                 ],
                 align="center",
             ),
@@ -23,8 +29,23 @@ def Navbar():
                 className="ml-auto",
                 style={"display": "flex", "flexDirection": "row", "gap": "10px", "marginRight": "10px"},
                 children=[
-                    dbc.Button(["🇫🇷", " FR"], href="/fr", color="light", className="mr-2"),
-                    dbc.Button(["🇪🇸", " ES"], href="/es", color="light"),
+                    dbc.Button(
+                        html.Div(
+                            [
+                                html.Img(
+                                    src="assets/images/camera.svg",
+                                    style={"width": "20px", "height": "20px", "marginRight": "5px"},
+                                ),
+                                html.P(children=[], style={"margin": "0"}, id="camera_status_button_text"),
+                            ],
+                            style={"display": "flex", "alignItems": "center"},
+                        ),
+                        href="/cameras-status",
+                        outline=True,
+                        className="navbar-button",
+                    ),
+                    dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
+                    dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
                 ],
             ),
         ],
