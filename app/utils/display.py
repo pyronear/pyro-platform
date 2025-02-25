@@ -232,7 +232,13 @@ def create_event_list_from_alerts(api_events, cameras):
                     ),
                     style={"fontWeight": "bold"},
                 ),
-                html.Div(event["started_at"].strftime("%Y-%m-%d %H:%M")),
+                html.Div(
+                    convert_dt_to_local_tz(
+                        lat=cameras[cameras["id"] == event["camera_id"]]["lat"].values[0],
+                        lon=cameras[cameras["id"] == event["camera_id"]]["lon"].values[0],
+                        str_utc_timestamp=event["started_at"],
+                    )
+                ),
             ],
             n_clicks=0,
             className="alert-card",
