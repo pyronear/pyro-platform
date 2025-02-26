@@ -3,6 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 import argparse
+import urllib.parse
 
 import callbacks.data_callbacks
 import callbacks.display_callbacks  # noqa: F401
@@ -13,6 +14,7 @@ from layouts.main_layout import get_main_layout
 from main import app
 
 import config as cfg
+from pages.cameras_status import cameras_status_layout
 from pages.homepage import homepage_layout
 from pages.login import login_layout
 
@@ -26,28 +28,29 @@ app.layout = get_main_layout()
 # Manage Pages
 @app.callback(
     Output("page-content", "children"),
-    [Input("url", "pathname"), Input("api_cameras", "data")],
+    [Input("url", "pathname"), Input("api_cameras", "data"), Input("url", "search")],
     State("user_token", "data"),
 )
-def display_page(pathname, api_cameras, user_token):
+def display_page(pathname, api_cameras, search, user_token):
     logger.debug(
         "display_page called with pathname: %s, user_token: %s",
         pathname,
         user_token,
     )
-    if user_token is None:
-        if pathname == "/" or pathname == "/fr" or pathname is None:
-            logger.info("No user headers found, showing login layout (language: French).")
-            return login_layout(lang="fr")
-        if pathname == "/es":
-            logger.info("No user headers found, showing login layout (language: Spanish).")
-            return login_layout(lang="es")
-    if pathname == "/" or pathname == "/fr" or pathname is None:
-        logger.info("Showing homepage layout (default language: French).")
-        return homepage_layout(user_token, api_cameras, lang="fr")
-    if pathname == "/es":
-        logger.info("Showing homepage layout (language: Spanish).")
-        return homepage_layout(user_token, api_cameras, lang="es")
+
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+
+    if lang not in cfg.AVAILABLE_LANGS:
+        lang = cfg.DEFAULT_LANGUAGE
+
+    if not isinstance(user_token, str) or not user_token:
+        return login_layout(lang=lang)
+    if pathname == "/" or pathname is None:
+        return homepage_layout(user_token, api_cameras, lang=lang)
+    if pathname == "/cameras-status":
+        return cameras_status_layout(user_token, api_cameras, lang=lang)
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])

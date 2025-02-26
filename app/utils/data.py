@@ -4,35 +4,9 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
-from datetime import datetime
 from typing import List
 
 import pandas as pd
-import pytz
-from timezonefinder import TimezoneFinder
-
-tf = TimezoneFinder()
-
-
-def convert_time(df):
-    df_ts_local = []
-    for _, row in df.iterrows():
-        lat = round(row["lat"], 4)
-        lon = round(row["lon"], 4)
-
-        # Convert created_at to a timezone-aware datetime object assuming it's in UTC
-        alert_ts_utc = datetime.fromisoformat(str(row["created_at"])).replace(tzinfo=pytz.utc)
-
-        # Find the timezone for the alert location
-        timezone_str = tf.timezone_at(lat=lat, lng=lon)
-        if timezone_str is None:  # If the timezone is not found, handle it appropriately
-            timezone_str = "UTC"  # Fallback to UTC or some default
-        alert_timezone = pytz.timezone(timezone_str)
-
-        # Convert alert_ts_utc to the local timezone of the alert
-        df_ts_local.append(alert_ts_utc.astimezone(alert_timezone).strftime("%Y-%m-%dT%H:%M:%S"))
-
-    return df_ts_local
 
 
 def process_bbox(input_str):
