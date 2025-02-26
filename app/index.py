@@ -45,7 +45,7 @@ def display_page(pathname, api_cameras, search, user_token):
     if lang not in cfg.AVAILABLE_LANGS:
         lang = cfg.DEFAULT_LANGUAGE
 
-    if not isinstance(user_token, str) or not user_token or user_token == """{"columns":[],"index":[],"data":[]}""":
+    if not isinstance(user_token, str) or not user_token:
         return login_layout(lang=lang)
     if pathname == "/" or pathname is None:
         return homepage_layout(user_token, api_cameras, lang=lang)
