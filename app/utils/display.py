@@ -241,7 +241,7 @@ def create_event_list_from_alerts(api_events, cameras):
                 ),
             ],
             n_clicks=0,
-            className="alert-card",
+            className="pyronear-card alert-card",
         )
         for _, event in filtered_events.iterrows()
     ]

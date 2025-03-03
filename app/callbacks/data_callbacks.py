@@ -15,6 +15,7 @@ from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
+from pages.cameras_status import display_cam_cards
 from services import api_client, get_token
 from utils.data import process_bbox
 
@@ -148,6 +149,24 @@ def get_cameras(user_token):
     cameras = pd.DataFrame(api_client.fetch_cameras().json())
 
     return cameras.to_json(orient="split")
+
+
+@app.callback(
+    Output("camera-cards-container", "children"),
+    [Input("main_api_fetch_interval", "n_intervals"), Input("api_cameras", "data")],
+    State("user_token", "data"),
+)
+def api_cameras_watcher(n_intervals, api_cameras, user_token):
+
+    logger.info("Get cameras data")
+    if user_token is not None:
+        api_client.token = user_token
+
+    cameras = pd.DataFrame(api_client.fetch_cameras().json())
+    cameras["last_active_at"] = pd.to_datetime(cameras["last_active_at"]).dt.strftime("%Y-%m-%d %H:%M")
+    cameras = cameras.sort_values("name")
+
+    return display_cam_cards(cameras)
 
 
 @app.callback(
