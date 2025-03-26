@@ -194,7 +194,6 @@ def select_event_with_button_homepage(n_clicks, button_ids, api_sequences, seque
     prevent_initial_call=True,
 )
 def select_event_with_button_history(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-
     return select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display, logger)
 
 
@@ -214,7 +213,6 @@ def select_event_with_button_history(n_clicks, button_ids, api_sequences, sequen
     prevent_initial_call=True,
 )
 def update_image_and_bbox_homepage(slider_value, sequence_on_display, sequence_list, lang):
-
     return update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang)
 
 
@@ -234,7 +232,6 @@ def update_image_and_bbox_homepage(slider_value, sequence_on_display, sequence_l
     prevent_initial_call=True,
 )
 def update_image_and_bbox_history(slider_value, sequence_on_display, sequence_list, lang):
-
     return update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, id_suffix="_history")
 
 
@@ -248,7 +245,6 @@ def update_image_and_bbox_history(slider_value, sequence_on_display, sequence_li
     prevent_initial_call=True,
 )
 def toggle_bbox_visibility_homepage(n_clicks, button_style):
-
     return toggle_bbox_visibility(n_clicks, button_style, logger)
 
 
@@ -262,7 +258,6 @@ def toggle_bbox_visibility_homepage(n_clicks, button_style):
     prevent_initial_call=True,
 )
 def toggle_bbox_visibility_history(n_clicks, button_style):
-
     return toggle_bbox_visibility(n_clicks, button_style, logger)
 
 
@@ -277,7 +272,6 @@ def toggle_bbox_visibility_history(n_clicks, button_style):
     prevent_initial_call=True,
 )
 def toggle_auto_move_homepage(n_clicks, data, button_style):
-
     return toggle_auto_move(n_clicks, data, button_style, logger)
 
 
@@ -292,7 +286,6 @@ def toggle_auto_move_homepage(n_clicks, data, button_style):
     prevent_initial_call=True,
 )
 def toggle_auto_move_history(n_clicks, data, button_style):
-
     return toggle_auto_move(n_clicks, data, button_style, logger)
 
 
@@ -308,7 +301,6 @@ def toggle_auto_move_history(n_clicks, data, button_style):
     prevent_initial_call=True,
 )
 def auto_move_slider_homepage(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
-
     return auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list)
 
 
@@ -367,7 +359,6 @@ def update_download_link_history(slider_value, sequence_on_display):
     prevent_initial_call=True,
 )
 def update_map_and_alert_info_homepage(sequence_on_display, cameras):
-
     return update_map_and_alert_info(sequence_on_display, cameras, logger)
 
 
@@ -390,7 +381,6 @@ def update_map_and_alert_info_homepage(sequence_on_display, cameras):
     prevent_initial_call=True,
 )
 def update_map_and_alert_info_history(sequence_on_display, cameras):
-
     return update_map_and_alert_info(sequence_on_display, cameras, logger)
 
 
