@@ -4,9 +4,16 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
+import json
+from io import StringIO
 from typing import List
 
+import dash
 import pandas as pd
+from dash import callback_context
+from dash.exceptions import PreventUpdate
+
+from services import api_client
 
 
 def process_bbox(input_str):
@@ -112,3 +119,70 @@ def assign_event_ids(df, time_threshold=30 * 60):
     # Add the event_id column to the DataFrame
     df["event_id"] = event_ids
     return df
+
+
+def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded, id_suffix=""):
+
+    # Deserialize data
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+
+    if api_sequences.empty:
+        return dash.no_update, dash.no_update, dash.no_update
+
+    sequence_id_on_display = str(sequence_id_on_display)
+    are_detections_loaded = json.loads(are_detections_loaded)
+    api_detections = json.loads(api_detections)
+
+    # Initialize sequence_on_display
+    sequence_on_display = pd.DataFrame().to_json(orient="split")
+
+    # Identify which input triggered the callback
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    triggered_input = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if triggered_input == f"sequence_id_on_display{id_suffix}":
+        # If the displayed sequence changes, load its detections if not already loaded
+        if sequence_id_on_display not in api_detections:
+            response = api_client.fetch_sequences_detections(sequence_id_on_display)
+            detections = pd.DataFrame(response.json())
+            if not detections.empty and "bboxes" in detections.columns:
+                detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
+            api_detections[sequence_id_on_display] = detections.to_json(orient="split")
+
+        sequence_on_display = api_detections[sequence_id_on_display]
+        last_seen_at = api_sequences.loc[
+            api_sequences["id"].astype("str") == sequence_id_on_display, "last_seen_at"
+        ].iloc[0]
+
+        # Ensure last_seen_at is stored as a string
+        are_detections_loaded[sequence_id_on_display] = str(last_seen_at)
+
+    else:
+        # If no specific sequence is triggered, load detections for the first missing sequence
+        for _, row in api_sequences.iterrows():
+            sequence_id = str(row["id"])
+            last_seen_at = row["last_seen_at"]
+
+            if sequence_id not in are_detections_loaded or are_detections_loaded[sequence_id] != str(last_seen_at):
+                response = api_client.fetch_sequences_detections(sequence_id)
+                detections = pd.DataFrame(response.json())
+
+                if not detections.empty and "bboxes" in detections.columns:
+                    detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
+                api_detections[sequence_id] = detections.to_json(orient="split")
+                are_detections_loaded[sequence_id] = str(last_seen_at)
+                sequence_on_display = api_detections[sequence_id]
+
+                break
+
+        # Clean up old sequences that are no longer in api_sequences
+        sequences_in_api = api_sequences["id"].astype("str").values
+        to_drop = [key for key in are_detections_loaded if key not in sequences_in_api]
+        for key in to_drop:
+            are_detections_loaded.pop(key, None)
+
+    # Serialize and return data
+    return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)

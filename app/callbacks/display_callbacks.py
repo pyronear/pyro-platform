@@ -3,8 +3,6 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-import ast
-import json
 import urllib
 from io import StringIO
 
@@ -12,33 +10,39 @@ import dash
 import logging_config
 import pandas as pd
 from dash.dependencies import ALL, Input, Output, State
-from dash.exceptions import PreventUpdate
 from main import app
 
 import config as cfg
 from services import api_client
-from utils.display import build_vision_polygon, convert_dt_to_local_tz, create_event_list_from_alerts
+from utils.display import (
+    auto_move_slider,
+    create_event_list_from_alerts,
+    select_event_with_button,
+    toggle_auto_move,
+    toggle_bbox_visibility,
+    update_download_link,
+    update_image_and_bbox,
+    update_map_and_alert_info,
+)
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
-@app.callback(Output("camera_status_button_text", "children"), Input("url", "search"))
+@app.callback(
+    [Output("camera_status_button_text", "children"), Output("history_button_text", "children")], Input("url", "search")
+)
 def update_nav_bar_language(search):
 
     translate = {
-        "fr": {
-            "camera_status": "Statut des Caméras",
-        },
-        "es": {
-            "camera_status": "Estado de las Cámaras",
-        },
+        "fr": {"camera_status": "Statut des Caméras", "history": "Historique"},
+        "es": {"camera_status": "Estado de las Cámaras", "history": "Histórico"},
     }
 
     params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
 
     lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
 
-    return [translate[lang]["camera_status"]]
+    return [[translate[lang]["camera_status"]], [translate[lang]["history"]]]
 
 
 @app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
@@ -57,6 +61,54 @@ def update_language_url(fr_clicks, es_clicks):
         return "?lang=es"
 
     return ""
+
+
+# Create history event list
+@app.callback(
+    [
+        Output("api_sequences_history", "data"),
+        Output("sequence-list-container-history", "children"),
+    ],
+    Input("my-date-picker-single", "date"),
+    [State("api_cameras", "data"), State("user_token", "data")],
+)
+def load_history_sequence_list(selected_date, cameras, user_token):
+    """
+    Fetches and displays the event list for a selected date.
+
+    This callback retrieves historical sequences from the API based on the selected date
+    and updates the event list display.
+
+    Parameters:
+        selected_date (str): The date selected in the date picker.
+        cameras (str): JSON string containing camera data.
+        user_token (str): Authentication token for the API.
+
+    Returns:
+        list for related callbacks outputs api_sequences_history & sequence-list-container-history
+    """
+    if selected_date is None:
+        return [
+            pd.DataFrame().to_json(orient="split"),
+            create_event_list_from_alerts(pd.DataFrame(), cameras, "-history"),
+        ]
+
+    logger.info("Start Fetching History Sequences")
+
+    api_client.token = user_token
+
+    # Fetch history Sequences
+    response = api_client.fetch_sequences_from_date(selected_date)
+
+    response_json = response.json()
+    if len(response_json) == 0:
+        api_sequences = pd.DataFrame()
+    else:
+        api_sequences = pd.DataFrame(response_json)
+
+    cameras = pd.read_json(StringIO(cameras), orient="split")
+
+    return [api_sequences.to_json(orient="split"), create_event_list_from_alerts(api_sequences, cameras, "-history")]
 
 
 # Create event list
@@ -91,13 +143,21 @@ def update_event_list(api_sequences, to_acknowledge, cameras):
     return create_event_list_from_alerts(api_sequences, cameras)
 
 
+@app.callback(
+    Output("date-picker-is-empty-info", "children"), Input("my-date-picker-single", "date"), State("language", "data")
+)
+def is_datepicker_empty(date_value, lang):
+    if date_value is None:
+        return cfg.TRANSLATION["history"][lang]["pick_date_msg"]
+
+
 # Select the event id
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
         Output("sequence_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
-        Output("custom_js_trigger", "title"),
+        Output("custom_js_trigger", "title", allow_duplicate=True),
     ],
     [
         Input({"type": "event-button", "index": ALL}, "n_clicks"),
@@ -109,53 +169,32 @@ def update_event_list(api_sequences, to_acknowledge, cameras):
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-    """
-    Handles event selection through button clicks.
+def select_event_with_button_homepage(n_clicks, button_ids, api_sequences, sequence_id_on_display):
 
-    Parameters:
-    - n_clicks (list): List of click counts for each event button.
-    - button_ids (list): List of button IDs corresponding to events.
-    - local_alerts (json): JSON formatted data containing current alert information.
-    - sequence_id_on_display (int): Currently displayed event ID.
+    return select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display, logger)
 
-    Returns:
-    - list: List of styles for event buttons.
-    - int: ID of the event to display.
-    - int: Number of clicks for the auto-move button reset.
-    """
-    logger.info("select_event_with_button")
-    ctx = dash.callback_context
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    if api_sequences.empty:
-        return [[], 0, 1, "reset_zoom"]
+# Select the event id
+@app.callback(
+    [
+        Output({"type": "event-button-history", "index": ALL}, "style"),
+        Output("sequence_id_on_display_history", "data"),
+        Output("auto-move-button-history", "n_clicks"),
+        Output("custom_js_trigger", "title", allow_duplicate=True),
+    ],
+    [
+        Input({"type": "event-button-history", "index": ALL}, "n_clicks"),
+    ],
+    [
+        State({"type": "event-button-history", "index": ALL}, "id"),
+        State("api_sequences_history", "data"),
+        State("sequence_id_on_display_history", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def select_event_with_button_history(n_clicks, button_ids, api_sequences, sequence_id_on_display):
 
-    # Extracting the index of the clicked button
-    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if button_id:
-        button_index = json.loads(button_id)["index"]
-    else:
-        if len(button_ids):
-            button_index = button_ids[0]["index"]
-        else:
-            button_index = 0
-
-    # Highlight the button
-    styles = []
-    for button in button_ids:
-        if button["index"] == button_index:
-            styles.append(
-                {
-                    "backgroundColor": "#feba6a",
-                },
-            )  # Highlight style
-        else:
-            styles.append(
-                {},
-            )  # Default style
-
-    return [styles, button_index, 1, "reset_zoom"]
+    return select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display, logger)
 
 
 @app.callback(
@@ -173,54 +212,29 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang):
-    """
-    Updates the image and bounding box display based on the slider value.
-    """
-    img_src = ""
-    no_alert_image_src = "./assets/images/no-alert-default.png"
-    if lang == "es":
-        no_alert_image_src = "./assets/images/no-alert-default-es.png"
+def update_image_and_bbox_homepage(slider_value, sequence_on_display, sequence_list, lang):
 
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    return update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang)
 
-    if sequence_on_display.empty:
-        raise PreventUpdate
 
-    if len(sequence_list) == 0:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+@app.callback(
+    [
+        Output("main-image-history", "src"),
+        Output("bbox-0-history", "style"),
+        Output("bbox-1-history", "style"),
+        Output("bbox-2-history", "style"),
+        Output("image-slider-history", "max"),
+    ],
+    [Input("image-slider-history", "value"), Input("sequence_on_display_history", "data")],
+    [
+        State("sequence-list-container-history", "children"),
+        State("language", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_image_and_bbox_history(slider_value, sequence_on_display, sequence_list, lang):
 
-    # Filter images with non-empty URLs
-    images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
-    )
-
-    if not images:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
-
-    # Ensure slider_value is within the range of available images
-    slider_value = slider_value % len(images)
-    img_src = images[slider_value]
-    images_bbox_list = boxes[slider_value]
-
-    # Create styles for each bbox (default hidden)
-    bbox_styles = [{"display": "none"} for _ in range(3)]
-
-    # Update styles for available bounding boxes
-    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
-        bbox_styles[i] = {
-            "position": "absolute",
-            "left": f"{x0}%",
-            "top": f"{y0}%",
-            "width": f"{width}%",
-            "height": f"{height}%",
-            "border": "2px solid red",
-            "box-sizing": "border-box",
-            "zIndex": "10",
-            "display": "block",
-        }
-
-    return [img_src, *bbox_styles, len(images) - 1]
+    return update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, id_suffix="_history")
 
 
 @app.callback(
@@ -232,27 +246,23 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     [State("hide-bbox-button", "style")],  # Get the current style of the button
     prevent_initial_call=True,
 )
-def toggle_bbox_visibility(n_clicks, button_style):
-    """
-    Toggles the visibility of the bounding box and updates the button style accordingly.
+def toggle_bbox_visibility_homepage(n_clicks, button_style):
 
-    Parameters:
-    - n_clicks (int): Number of clicks on the hide/show button.
-    - button_style (dict): Current style of the hide/show button.
+    return toggle_bbox_visibility(n_clicks, button_style, logger)
 
-    Returns:
-    - dict: Updated style for the bounding box.
-    - dict: Updated style for the hide/show button.
-    """
-    logger.info("toggle_bbox_visibility")
-    if n_clicks % 2 == 0:
-        bbox_style = {"display": "block"}  # Show the bounding box
-        button_style["background-color"] = "#054546"  # Original button color
-    else:
-        bbox_style = {"display": "none"}  # Hide the bounding box
-        button_style["background-color"] = "#098386"  # Darker color for the button
 
-    return bbox_style, button_style
+@app.callback(
+    [
+        Output("bbox-container-history", "style"),  # Update the style of the bounding box
+        Output("hide-bbox-button-history", "style"),  # Update the style of the button
+    ],
+    [Input("hide-bbox-button-history", "n_clicks")],
+    [State("hide-bbox-button-history", "style")],  # Get the current style of the button
+    prevent_initial_call=True,
+)
+def toggle_bbox_visibility_history(n_clicks, button_style):
+
+    return toggle_bbox_visibility(n_clicks, button_style, logger)
 
 
 @app.callback(
@@ -265,25 +275,24 @@ def toggle_bbox_visibility(n_clicks, button_style):
     State("auto-move-button", "style"),  # Get the current style of the button
     prevent_initial_call=True,
 )
-def toggle_auto_move(n_clicks, data, button_style):
-    """
-    Toggles the automatic movement of the image slider based on button clicks.
+def toggle_auto_move_homepage(n_clicks, data, button_style):
 
-    Parameters:
-    - n_clicks (int): Number of clicks on the auto-move button.
-    - data (dict): Data about the current auto-move state.
+    return toggle_auto_move(n_clicks, data, button_style, logger)
 
-    Returns:
-    - dict: Updated auto-move state data.
-    """
-    if n_clicks % 2 == 0:  # Toggle between on and off states
-        data["active"] = False
-        button_style["background-color"] = "#098386"  # Darker color for the button
 
-    else:
-        data["active"] = True
-        button_style["background-color"] = "#054546"  # Original button color
-    return data, button_style
+@app.callback(
+    [
+        Output("auto-move-state-history", "data"),
+        Output("auto-move-button-history", "style"),  # Update the style of the button
+    ],
+    Input("auto-move-button-history", "n_clicks"),
+    State("auto-move-state-history", "data"),
+    State("auto-move-button-history", "style"),  # Get the current style of the button
+    prevent_initial_call=True,
+)
+def toggle_auto_move_history(n_clicks, data, button_style):
+
+    return toggle_auto_move(n_clicks, data, button_style, logger)
 
 
 @app.callback(
@@ -297,24 +306,25 @@ def toggle_auto_move(n_clicks, data, button_style):
     ],
     prevent_initial_call=True,
 )
-def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
-    """
-    Automatically moves the image slider based on a regular interval and the current auto-move state.
+def auto_move_slider_homepage(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
 
-    Parameters:
-    - n_intervals (int): Number of intervals passed since the start of the auto-move.
-    - current_value (int): Current value of the image slider.
-    - max_value (int): Maximum value of the image slider.
-    - auto_move_clicks (int): Number of clicks on the auto-move button.
-    - sequence_list (list): List of ongoing alerts.
+    return auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list)
 
-    Returns:
-    - int: Updated value for the image slider.
-    """
-    if auto_move_clicks % 2 != 0 and len(sequence_list):  # Auto-move is active and there is ongoing alerts
-        return (current_value + 1) % (max_value + 1)
-    else:
-        raise PreventUpdate
+
+@app.callback(
+    Output("image-slider-history", "value"),
+    [Input("auto-slider-update-history", "n_intervals")],
+    [
+        State("image-slider-history", "value"),
+        State("image-slider-history", "max"),
+        State("auto-move-button-history", "n_clicks"),
+        State("sequence-list-container-history", "children"),
+    ],
+    prevent_initial_call=True,
+)
+def auto_move_slider_history(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
+
+    return auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list)
 
 
 @app.callback(
@@ -323,26 +333,18 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
     [State("sequence_on_display", "data")],
     prevent_initial_call=True,
 )
-def update_download_link(slider_value, sequence_on_display):
-    """
-    Updates the download link for the currently displayed image.
+def update_download_link_homepage(slider_value, sequence_on_display):
+    return update_download_link(slider_value, sequence_on_display, logger)
 
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
 
-    Returns:
-    - str: URL for downloading the current image.
-    """
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    if len(sequence_on_display):
-        try:
-            return sequence_on_display["url"].values[slider_value]
-        except Exception as e:
-            logger.info(e)
-            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
-
-    return ""  # Return empty string if no image URL is available
+@app.callback(
+    Output("download-link-history", "href"),
+    [Input("image-slider-history", "value")],
+    [State("sequence_on_display_history", "data")],
+    prevent_initial_call=True,
+)
+def update_download_link_history(slider_value, sequence_on_display):
+    return update_download_link(slider_value, sequence_on_display, logger)
 
 
 # Map
@@ -363,88 +365,32 @@ def update_download_link(slider_value, sequence_on_display):
     State("api_cameras", "data"),
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_on_display, cameras):
-    """
-    Updates the map's vision polygons, center, and alert information based on the current alert data.
+def update_map_and_alert_info_homepage(sequence_on_display, cameras):
 
-    Parameters:
-    - alert_data (json): JSON formatted data for the selected event.
+    return update_map_and_alert_info(sequence_on_display, cameras, logger)
 
-    Returns:
-    - list: List of vision polygon elements to be displayed on the map.
-    - list: New center coordinates for the map.
-    - list: List of vision polygon elements to be displayed on the modal map.
-    - list: New center coordinates for the modal map.
-    - str: Camera information for the alert.
-    - str: Camera location for the alert.
-    - str: Detection angle for the alert.
-    - str: Date of the alert.
-    - dict: Style settings for alert information.
-    - dict: Style settings for the slider container.
-    """
-    logger.info("update_map_and_alert_info")
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
 
-    if not sequence_on_display.empty:
-        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
-        sequence_on_display["bboxes"] = sequence_on_display["bboxes"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-        )
+# Map
+@app.callback(
+    [
+        Output("vision_polygons-history", "children"),
+        Output("map-history", "center"),
+        Output("vision_polygons-md-history", "children"),
+        Output("map-md-history", "center"),
+        Output("alert-camera-value-history", "children"),
+        Output("camera-location-value-history", "children"),
+        Output("alert-azimuth-value-history", "children"),
+        Output("alert-date-value-history", "children"),
+        Output("alert-information-history", "style"),
+        Output("slider-container-history", "style"),
+    ],
+    Input("sequence_on_display_history", "data"),
+    State("api_cameras", "data"),
+    prevent_initial_call=True,
+)
+def update_map_and_alert_info_history(sequence_on_display, cameras):
 
-        # Filter out rows where 'bboxes' is not empty and get the last one.
-        # If all are empty, then simply get the last row of the DataFrame.
-        row_with_bboxes = (
-            sequence_on_display[sequence_on_display["bboxes"].astype(bool)].iloc[-1]
-            if not sequence_on_display[sequence_on_display["bboxes"].astype(bool)].empty
-            else sequence_on_display.iloc[-1]
-        )
-
-        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
-        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
-
-        polygon, detection_azimuth = build_vision_polygon(
-            site_lat=lat,
-            site_lon=lon,
-            azimuth=row_with_bboxes["azimuth"],
-            opening_angle=cfg.CAM_OPENING_ANGLE,
-            dist_km=cfg.CAM_RANGE_KM,
-            bboxes=row_with_bboxes["processed_bboxes"],
-        )
-
-        date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])
-        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
-
-        camera_info = f"{cam_name}"
-        location_info = f"{lat:.4f}, {lon:.4f}"
-        angle_info = f"{detection_azimuth}°"
-        date_info = f"{date_val}"
-
-        return (
-            polygon,
-            [lat, lon],
-            polygon,
-            [lat, lon],
-            camera_info,
-            location_info,
-            angle_info,
-            date_info,
-            {"display": "block"},
-            {"display": "block"},
-        )
-
-    return (
-        [],
-        dash.no_update,
-        [],
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        {"display": "none"},
-        {"display": "none"},
-    )
+    return update_map_and_alert_info(sequence_on_display, cameras, logger)
 
 
 @app.callback(

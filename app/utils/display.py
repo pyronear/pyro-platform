@@ -3,15 +3,18 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-
+import ast
+import json
 from datetime import datetime
 from io import StringIO
 
+import dash
 import dash_leaflet as dl
 import pandas as pd
 import pytz
 import requests
 from dash import html
+from dash.exceptions import PreventUpdate
 from geopy import Point
 from geopy.distance import geodesic
 from timezonefinder import TimezoneFinder
@@ -138,7 +141,6 @@ def build_sites_markers(api_cameras):
                 ],
             )
         )
-
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
     return markers, client_sites
 
@@ -212,7 +214,7 @@ def build_alerts_map(api_cameras, id_suffix=""):
     return map_object
 
 
-def create_event_list_from_alerts(api_events, cameras):
+def create_event_list_from_alerts(api_events, cameras, id_suffix=""):
     """
     This function build the list of events on the left based on event data
     """
@@ -223,7 +225,7 @@ def create_event_list_from_alerts(api_events, cameras):
 
     return [
         html.Button(
-            id={"type": "event-button", "index": event["id"]},
+            id={"type": f"event-button{id_suffix}", "index": event["id"]},
             children=[
                 html.Div(
                     (
@@ -245,3 +247,272 @@ def create_event_list_from_alerts(api_events, cameras):
         )
         for _, event in filtered_events.iterrows()
     ]
+
+
+def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display, logger):
+    """
+    Handles event selection through button clicks.
+
+    Parameters:
+    - n_clicks (list): List of click counts for each event button.
+    - button_ids (list): List of button IDs corresponding to events.
+    - local_alerts (json): JSON formatted data containing current alert information.
+    - sequence_id_on_display (int): Currently displayed event ID.
+
+    Returns:
+    - list: List of styles for event buttons.
+    - int: ID of the event to display.
+    - int: Number of clicks for the auto-move button reset.
+    """
+    logger.info("select_event_with_button")
+    ctx = dash.callback_context
+
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if api_sequences.empty:
+        return [[], 0, 1, "reset_zoom"]
+
+    # Extracting the index of the clicked button
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if button_id:
+        button_index = json.loads(button_id)["index"]
+    else:
+        if len(button_ids):
+            button_index = button_ids[0]["index"]
+        else:
+            button_index = 0
+
+    # Highlight the button
+    styles = []
+    for button in button_ids:
+        if button["index"] == button_index:
+            styles.append(
+                {
+                    "backgroundColor": "#feba6a",
+                },
+            )  # Highlight style
+        else:
+            styles.append(
+                {},
+            )  # Default style
+
+    return [styles, button_index, 1, "reset_zoom"]
+
+
+def toggle_bbox_visibility(n_clicks, button_style, logger):
+    """
+    Toggles the visibility of the bounding box and updates the button style accordingly.
+
+    Parameters:
+    - n_clicks (int): Number of clicks on the hide/show button.
+    - button_style (dict): Current style of the hide/show button.
+
+    Returns:
+    - dict: Updated style for the bounding box.
+    - dict: Updated style for the hide/show button.
+    """
+    logger.info("toggle_bbox_visibility")
+    if n_clicks % 2 == 0:
+        bbox_style = {"display": "block"}  # Show the bounding box
+        button_style["background-color"] = "#054546"  # Original button color
+    else:
+        bbox_style = {"display": "none"}  # Hide the bounding box
+        button_style["background-color"] = "#098386"  # Darker color for the button
+
+    return bbox_style, button_style
+
+
+def toggle_auto_move(n_clicks, data, button_style, logger):
+    """
+    Toggles the automatic movement of the image slider based on button clicks.
+
+    Parameters:
+    - n_clicks (int): Number of clicks on the auto-move button.
+    - data (dict): Data about the current auto-move state.
+
+    Returns:
+    - dict: Updated auto-move state data.
+    """
+    if n_clicks % 2 == 0:  # Toggle between on and off states
+        data["active"] = False
+        button_style["background-color"] = "#098386"  # Darker color for the button
+
+    else:
+        data["active"] = True
+        button_style["background-color"] = "#054546"  # Original button color
+    return data, button_style
+
+
+def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
+    """
+    Automatically moves the image slider based on a regular interval and the current auto-move state.
+
+    Parameters:
+    - n_intervals (int): Number of intervals passed since the start of the auto-move.
+    - current_value (int): Current value of the image slider.
+    - max_value (int): Maximum value of the image slider.
+    - auto_move_clicks (int): Number of clicks on the auto-move button.
+    - sequence_list (list): List of ongoing alerts.
+
+    Returns:
+    - int: Updated value for the image slider.
+    """
+    if auto_move_clicks % 2 != 0 and len(sequence_list):  # Auto-move is active and there is ongoing alerts
+        return (current_value + 1) % (max_value + 1)
+    else:
+        raise PreventUpdate
+
+
+def update_download_link(slider_value, sequence_on_display, logger):
+    """
+    Updates the download link for the currently displayed image.
+
+    Parameters:
+    - slider_value (int): Current value of the image slider.
+    - alert_data (json): JSON formatted data for the selected event.
+
+    Returns:
+    - str: URL for downloading the current image.
+    """
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    if len(sequence_on_display):
+        try:
+            return sequence_on_display["url"].values[slider_value]
+        except Exception as e:
+            logger.info(e)
+            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
+
+    return ""  # Return empty string if no image URL is available
+
+
+def update_map_and_alert_info(sequence_on_display, cameras, logger):
+    """
+    Updates the map's vision polygons, center, and alert information based on the current alert data.
+
+    Parameters:
+    - alert_data (json): JSON formatted data for the selected event.
+
+    Returns:
+    - list: List of vision polygon elements to be displayed on the map.
+    - list: New center coordinates for the map.
+    - list: List of vision polygon elements to be displayed on the modal map.
+    - list: New center coordinates for the modal map.
+    - str: Camera information for the alert.
+    - str: Camera location for the alert.
+    - str: Detection angle for the alert.
+    - str: Date of the alert.
+    - dict: Style settings for alert information.
+    - dict: Style settings for the slider container.
+    """
+    logger.info("update_map_and_alert_info")
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    cameras = pd.read_json(StringIO(cameras), orient="split")
+
+    if not sequence_on_display.empty:
+        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
+        sequence_on_display["bboxes"] = sequence_on_display["bboxes"].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
+        )
+
+        # Filter out rows where 'bboxes' is not empty and get the last one.
+        # If all are empty, then simply get the last row of the DataFrame.
+        row_with_bboxes = (
+            sequence_on_display[sequence_on_display["bboxes"].astype(bool)].iloc[-1]
+            if not sequence_on_display[sequence_on_display["bboxes"].astype(bool)].empty
+            else sequence_on_display.iloc[-1]
+        )
+
+        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
+        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
+
+        polygon, detection_azimuth = build_vision_polygon(
+            site_lat=lat,
+            site_lon=lon,
+            azimuth=row_with_bboxes["azimuth"],
+            opening_angle=cfg.CAM_OPENING_ANGLE,
+            dist_km=cfg.CAM_RANGE_KM,
+            bboxes=row_with_bboxes["processed_bboxes"],
+        )
+
+        date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])
+        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
+
+        camera_info = f"{cam_name}"
+        location_info = f"{lat:.4f}, {lon:.4f}"
+        angle_info = f"{detection_azimuth}°"
+        date_info = f"{date_val}"
+
+        return (
+            polygon,
+            [lat, lon],
+            polygon,
+            [lat, lon],
+            camera_info,
+            location_info,
+            angle_info,
+            date_info,
+            {"display": "block"},
+            {"display": "block"},
+        )
+
+    return (
+        [],
+        dash.no_update,
+        [],
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        {"display": "none"},
+        {"display": "none"},
+    )
+
+
+def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, id_suffix=""):
+    """
+    Updates the image and bounding box display based on the slider value.
+    """
+    img_src = ""
+    no_alert_image_src = "./assets/images/no-alert-default.png"
+    if lang == "es":
+        no_alert_image_src = "./assets/images/no-alert-default-es.png"
+
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+
+    if sequence_on_display.empty:
+        raise PreventUpdate
+
+    if len(sequence_list) == 0:
+        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+
+    # Filter images with non-empty URLs
+    images, boxes = zip(
+        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
+    )
+
+    if not images:
+        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+
+    # Ensure slider_value is within the range of available images
+    slider_value = slider_value % len(images)
+    img_src = images[slider_value]
+    images_bbox_list = boxes[slider_value]
+
+    # Create styles for each bbox (default hidden)
+    bbox_styles = [{"display": "none"} for _ in range(3)]
+
+    # Update styles for available bounding boxes
+    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
+        bbox_styles[i] = {
+            "position": "absolute",
+            "left": f"{x0}%",
+            "top": f"{y0}%",
+            "width": f"{width}%",
+            "height": f"{height}%",
+            "border": "2px solid red",
+            "box-sizing": "border-box",
+            "zIndex": "10",
+            "display": "block",
+        }
+
+    return [img_src, *bbox_styles, len(images) - 1]
