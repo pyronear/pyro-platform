@@ -5,16 +5,16 @@
 
 
 from datetime import date
-from dateutil.relativedelta import relativedelta
+
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from dateutil.relativedelta import relativedelta
 
-from components.alerts import create_event_list, alert_layout
 import config as cfg
+from components.alerts import alert_layout
 
 
 def history_layout(api_cameras, lang="fr"):
-
 
     translate = cfg.TRANSLATION["alert_default"]
     translate["fr"]["no_alert_default_image"] = cfg.TRANSLATION["history"]["fr"]["no_alert_history_image"]
@@ -23,7 +23,6 @@ def history_layout(api_cameras, lang="fr"):
     return dbc.Container(
         [
             dbc.Breadcrumb(
-
                 items=[
                     {"label": "Homepage", "href": "/", "external_link": False},
                     {"label": cfg.TRANSLATION["history"][lang]["breadcrumb"], "active": True},
@@ -31,20 +30,22 @@ def history_layout(api_cameras, lang="fr"):
             ),
             dbc.Row(
                 [
-                html.H1(cfg.TRANSLATION["history"][lang]["page_title"], style={"font-size": "2rem"}),
-                html.Div([
+                    html.H1(cfg.TRANSLATION["history"][lang]["page_title"], style={"font-size": "2rem"}),
+                    html.Div(
+                        [
                             dcc.DatePickerSingle(
-                                id='my-date-picker-single',
-                                min_date_allowed= date.today() - relativedelta(months=cfg.ALERTS_HISTORICAL_DEPTH_MONTHS),
+                                id="my-date-picker-single",
+                                min_date_allowed=date.today()
+                                - relativedelta(months=cfg.ALERTS_HISTORICAL_DEPTH_MONTHS),
                                 max_date_allowed=date.today(),
                                 initial_visible_month=date.today(),
-                            )]), 
-                        
-                ],            
+                            )
+                        ]
+                    ),
+                ],
             ),
-            html.Div(id='date-picker-is-empty-info', style={"margin-bottom": "5px"}),
-
-            alert_layout(api_cameras, translate, lang, id_suffix="-history")
+            html.Div(id="date-picker-is-empty-info", style={"margin-bottom": "5px"}),
+            alert_layout(api_cameras, translate, lang, id_suffix="-history"),
         ],
         fluid=True,
-        )
+    )
