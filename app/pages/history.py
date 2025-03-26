@@ -15,7 +15,6 @@ from components.alerts import alert_layout
 
 
 def history_layout(api_cameras, lang="fr"):
-
     translate = cfg.TRANSLATION["alert_default"]
     translate["fr"]["no_alert_default_image"] = cfg.TRANSLATION["history"]["fr"]["no_alert_history_image"]
     translate["es"]["no_alert_default_image"] = cfg.TRANSLATION["history"]["es"]["no_alert_history_image"]
