@@ -33,3 +33,57 @@ SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
 MAX_ALERTS_PER_EVENT = 10
 CAM_OPENING_ANGLE = 87
 CAM_RANGE_KM = 15
+
+# Translation
+TRANSLATION = {
+    "alert_default": {
+        "fr": {
+            "show_hide_prediction": "Afficher / Cacher la prédiction",
+            "download_image": "Télécharger l'image",
+            "acknowledge_alert": "Acquitter l'alerte",
+            "confirmation_modal_title": "Est-ce une fumée suspecte ?",
+            "confirmation_modal_yes": "Oui, c'est une fumée",
+            "confirmation_modal_no": "Non, c'est un faux positif",
+            "confirmation_modal_cancel": "Annuler",
+            "enlarge_map": "Agrandir la carte",
+            "alert_information": "Information Alerte",
+            "camera": "Caméra: ",
+            "camera_location": "Position caméra: ",
+            "detection_azimuth": "Azimuth de detection: ",
+            "date": "Date: ",
+            "map": "Carte",
+            "no_alert_default_image": "./assets/images/no-alert-default.png",
+        },
+        "es": {
+            "show_hide_prediction": "Mostrar / Ocultar la predicción",
+            "download_image": "Descargar la imagen",
+            "acknowledge_alert": "Descartar la alerta",
+            "confirmation_modal_title": "¿Es un humo sospechoso?",
+            "confirmation_modal_yes": "Sí, es un humo",
+            "confirmation_modal_no": "No, es un falso positivo",
+            "confirmation_modal_cancel": "Cancelar",
+            "enlarge_map": "Ampliar el mapa",
+            "alert_information": "Información sobre alerta",
+            "camera": "Cámara: ",
+            "camera_location": "Ubicación cámara: ",
+            "detection_azimuth": "Azimut de detección: ",
+            "date": "Fecha: ",
+            "map": "Mapa",
+            "no_alert_default_image": "./assets/images/no-alert-default-es.png",
+        },
+    },
+    "history": {
+        "fr": {
+            "pick_date_msg": "Sélectionnez une date pour afficher l'historique des alertes",
+            "breadcrumb": "Historique des alertes",
+            "page_title": "Historique des alertes",
+            "no_alert_history_image": "./assets/images/no-alert-history-fr.png",
+        },
+        "es": {
+            "pick_date_msg": "Seleccione una fecha para visualizar el historial de alertas",
+            "breadcrumb": "Histórico de las alertas",
+            "page_title": "Histórico de las alertas",
+            "no_alert_history_image": "./assets/images/no-alert-history-es.png",
+        },
+    },
+}
