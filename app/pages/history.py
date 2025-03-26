@@ -35,7 +35,7 @@ def history_layout(api_cameras, lang="fr"):
                 html.Div([
                             dcc.DatePickerSingle(
                                 id='my-date-picker-single',
-                                min_date_allowed= date.today() - relativedelta(months=3),
+                                min_date_allowed= date.today() - relativedelta(months=cfg.ALERTS_HISTORICAL_DEPTH_MONTHS),
                                 max_date_allowed=date.today(),
                                 initial_visible_month=date.today(),
                             )]), 

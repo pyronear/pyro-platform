@@ -22,6 +22,7 @@ GEOJSON_FILE: str = "https://github.com/pyronear/pyro-risks/releases/download/v0
 AVAILABLE_LANGS: List[str] = ["fr", "es"]
 DEFAULT_LANGUAGE: str = "fr"
 CAMERA_INACTIVITY_THRESHOLD_MINUTES: int = 30
+ALERTS_HISTORICAL_DEPTH_MONTHS = 3
 # Sentry
 SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
 SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
