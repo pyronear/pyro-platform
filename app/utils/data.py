@@ -122,7 +122,6 @@ def assign_event_ids(df, time_threshold=30 * 60):
 
 
 def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded, id_suffix=""):
-
     # Deserialize data
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
 

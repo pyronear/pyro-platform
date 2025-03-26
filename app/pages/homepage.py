@@ -15,5 +15,4 @@ app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_token, api_cameras, lang="fr"):
-
     return alert_layout(api_cameras, cfg.TRANSLATION["alert_default"], lang)

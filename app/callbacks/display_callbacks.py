@@ -33,7 +33,6 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
     [Output("camera_status_button_text", "children"), Output("history_button_text", "children")], Input("url", "search")
 )
 def update_nav_bar_language(search):
-
     translate = {
         "fr": {"camera_status": "Statut des Caméras", "history": "Historique"},
         "es": {"camera_status": "Estado de las Cámaras", "history": "Histórico"},
@@ -171,7 +170,6 @@ def is_datepicker_empty(date_value, lang):
     prevent_initial_call=True,
 )
 def select_event_with_button_homepage(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-
     return select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display, logger)
 
 
@@ -316,7 +314,6 @@ def auto_move_slider_homepage(n_intervals, current_value, max_value, auto_move_c
     prevent_initial_call=True,
 )
 def auto_move_slider_history(n_intervals, current_value, max_value, auto_move_clicks, sequence_list):
-
     return auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, sequence_list)
 
 
