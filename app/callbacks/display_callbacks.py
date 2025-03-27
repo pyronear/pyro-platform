@@ -59,6 +59,14 @@ def update_language_url(fr_clicks, es_clicks):
     return ""
 
 
+@app.callback(Output("main_navbar", "className"), Input("url", "pathname"))
+def update_navbar_spacing(pathname):
+    if pathname == "/blinking-alarm":
+        return "special-navbar"
+    else:
+        return "navbar"
+
+
 # Create event list
 @app.callback(
     Output("sequence-list-container", "children"),
