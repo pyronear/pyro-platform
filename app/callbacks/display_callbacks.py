@@ -547,3 +547,28 @@ def reset_zoom(n_clicks):
     if n_clicks:
         return 10  # Reset zoom level to 10
     return dash.no_update
+
+
+@app.callback(
+    [Output("blinking-image", "src"), Output("blinking-image-container", "style")],
+    Input("blinking-alarm-interval", "n_intervals"),
+    Input("api_sequences", "data"),
+)
+def blink_image(n_intervals, api_sequences):
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+
+    container_style = {
+        "display": "flex",
+        "justify-content": "center", # Center horizontaly
+        "align-items": "center",  # Center verticaly 
+        "height": "100vh",
+        "width": "100vw",
+    }
+    if api_sequences.empty:
+        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        container_style["background-color"] = "#044448"
+    else:
+        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
+
+    return [image_path, container_style]
