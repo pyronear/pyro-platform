@@ -96,3 +96,11 @@ a.no-underline {
   border: 1px solid white;
   background-color: #03383c;
 }
+
+.navbar {
+    margin-bottom: 2rem;
+}
+
+.special-navbar {
+    margin-bottom: 0;
+}
