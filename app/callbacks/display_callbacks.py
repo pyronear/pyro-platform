@@ -24,7 +24,6 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 @app.callback(Output("camera_status_button_text", "children"), Input("url", "search"))
 def update_nav_bar_language(search):
-
     translate = {
         "fr": {
             "camera_status": "Statut des Caméras",
@@ -567,8 +566,8 @@ def blink_image(n_intervals, api_sequences):
 
     container_style = {
         "display": "flex",
-        "justify-content": "center", # Center horizontaly
-        "align-items": "center",  # Center verticaly 
+        "justify-content": "center",  # Center horizontaly
+        "align-items": "center",  # Center verticaly
         "height": "100vh",
         "width": "100vw",
     }
