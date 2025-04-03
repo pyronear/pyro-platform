@@ -45,7 +45,7 @@ jobs:
       - name: Resolve dependencies
         run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Cache python modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-python-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
