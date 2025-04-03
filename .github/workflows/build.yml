@@ -58,7 +58,9 @@ jobs:
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
-          docker network create web || true
           docker compose up -d --build --wait
+          echo "Waiting for app..."
+          sleep 10
           docker compose logs
-          curl --fail http://platform.localhost:8050/
+          curl --retry 5 --retry-delay 3 --fail http://localhost:8050/
+      
