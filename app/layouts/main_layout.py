@@ -20,55 +20,51 @@ else:
 
 
 def get_main_layout():
-    return html.Div(
-        [
-            dcc.Location(id="url", refresh=False),
-            html.Div(
-                id="custom_js_trigger",
-                className="custom_js_trigger",
-                title="none",
-                style={"display": "none"},
-            ),
-            html.Div(
-                [
-                    Navbar(),  # This includes the navbar at the top of the page
-                    html.Div(id="page-content"),
-                ]
-            ),
-            dcc.Interval(id="main_api_fetch_interval", interval=30 * 1000),
-            dcc.Store(
-                id="api_sequences",
-                storage_type="session",
-                data=pd.DataFrame().to_json(orient="split"),
-            ),
-            dcc.Store(
-                id="api_detections",
-                storage_type="session",
-                data=json.dumps({}),
-            ),
-            dcc.Store(
-                id="are_detections_loaded",
-                storage_type="session",
-                data=json.dumps({}),
-            ),
-            dcc.Store(
-                id="api_cameras",
-                storage_type="session",
-                data=pd.DataFrame().to_json(orient="split"),
-            ),
-            dcc.Store(
-                id="sequence_on_display",
-                storage_type="session",
-                data=pd.DataFrame().to_json(orient="split"),
-            ),
-            dcc.Store(id="sequence_id_on_display", data=0),
-            dcc.Store(id="auto-move-state", data={"active": True}),
-            # Add this to your app.layout
-            dcc.Store(id="bbox_visibility", data={"visible": True}),
-            # Storage components saving the user's headers and credentials
-            dcc.Store(id="user_token", storage_type="session", data=user_token),
-            # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
-            dcc.Store(id="to_acknowledge", data=0),
-            dcc.Store(id="trigger_no_detections", data=False),
-        ]
-    )
+    return html.Div([
+        dcc.Location(id="url", refresh=False),
+        html.Div(
+            id="custom_js_trigger",
+            className="custom_js_trigger",
+            title="none",
+            style={"display": "none"},
+        ),
+        html.Div([
+            Navbar(),  # This includes the navbar at the top of the page
+            html.Div(id="page-content"),
+        ]),
+        dcc.Interval(id="main_api_fetch_interval", interval=30 * 1000),
+        dcc.Store(
+            id="api_sequences",
+            storage_type="session",
+            data=pd.DataFrame().to_json(orient="split"),
+        ),
+        dcc.Store(
+            id="api_detections",
+            storage_type="session",
+            data=json.dumps({}),
+        ),
+        dcc.Store(
+            id="are_detections_loaded",
+            storage_type="session",
+            data=json.dumps({}),
+        ),
+        dcc.Store(
+            id="api_cameras",
+            storage_type="session",
+            data=pd.DataFrame().to_json(orient="split"),
+        ),
+        dcc.Store(
+            id="sequence_on_display",
+            storage_type="session",
+            data=pd.DataFrame().to_json(orient="split"),
+        ),
+        dcc.Store(id="sequence_id_on_display", data=0),
+        dcc.Store(id="auto-move-state", data={"active": True}),
+        # Add this to your app.layout
+        dcc.Store(id="bbox_visibility", data={"visible": True}),
+        # Storage components saving the user's headers and credentials
+        dcc.Store(id="user_token", storage_type="session", data=user_token),
+        # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
+        dcc.Store(id="to_acknowledge", data=0),
+        dcc.Store(id="trigger_no_detections", data=False),
+    ])
