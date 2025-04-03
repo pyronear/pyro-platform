@@ -14,6 +14,7 @@ from layouts.main_layout import get_main_layout
 from main import app
 
 import config as cfg
+from pages.blinking_alarm import blinking_alarm_layout
 from pages.cameras_status import cameras_status_layout
 from pages.homepage import homepage_layout
 from pages.login import login_layout
@@ -51,6 +52,8 @@ def display_page(pathname, api_cameras, search, user_token):
         return homepage_layout(user_token, api_cameras, lang=lang)
     if pathname == "/cameras-status":
         return cameras_status_layout(user_token, api_cameras, lang=lang)
+    if pathname == "/blinking-alarm":
+        return blinking_alarm_layout(user_token, api_cameras, lang=lang)
     else:
         logger.warning("Unable to find page for pathname: %s", pathname)
         return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])

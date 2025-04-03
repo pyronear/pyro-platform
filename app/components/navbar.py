@@ -52,7 +52,6 @@ def Navbar(lang="fr"):
         id="main_navbar",
         color="#044448",
         dark=True,
-        className="mb-4",
         style={"display": "flex", "justify-content": "space-between"},
     )
 
