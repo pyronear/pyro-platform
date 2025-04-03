@@ -11,7 +11,7 @@ license = "Apache-2.0"
 
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 dash = ">=2.14.0"
 dash-bootstrap-components = ">=1.5.0"
 dash-leaflet = "^0.1.4"
@@ -64,7 +64,7 @@ ignore = [
 ]
 exclude = [".git"]
 line-length = 120
-target-version = "py39"
+target-version = "py311"
 preview = true
 
 [tool.ruff.per-file-ignores]
@@ -75,7 +75,7 @@ preview = true
 known-first-party = ["config", "pages", "components", "utils", "services"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 mypy_path = "app/"
 files = "app/"
 show_error_codes = true
@@ -103,7 +103,7 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 120
-target-version = ['py39']
+target-version = ['py311']
 
 [tool.bandit]
 exclude_dirs = []
