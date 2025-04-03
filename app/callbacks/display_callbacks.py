@@ -199,7 +199,8 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
 
     # Filter images with non-empty URLs
     images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
+        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"]),
+        strict=False,
     )
 
     if not images:

@@ -72,4 +72,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Starting Pyronear web-app on host: %s, port: %d", args.host, args.port)
-    app.run_server(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
+    app.run(host=args.host, port=args.port, debug=cfg.DEBUG, dev_tools_hot_reload=cfg.DEBUG)
