@@ -41,7 +41,7 @@ jobs:
           architecture: x64
       - uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "2.2.2"
+          poetry-version: "1.8.3"
       - name: Resolve dependencies
         run: poetry export -f requirements.txt --without-hashes --output requirements.txt
       - name: Cache python modules
