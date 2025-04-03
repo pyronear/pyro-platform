@@ -129,10 +129,12 @@ def build_sites_markers(api_cameras):
                 icon=icon,
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup([
-                        html.H2(f"Site {site_name}"),
-                        html.P(f"Coordonnées : ({lat}, {lon})"),
-                    ]),
+                    dl.Popup(
+                        [
+                            html.H2(f"Site {site_name}"),
+                            html.P(f"Coordonnées : ({lat}, {lon})"),
+                        ]
+                    ),
                 ],
             )
         )
