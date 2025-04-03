@@ -44,6 +44,21 @@ def Navbar(lang="fr"):
                         outline=True,
                         className="navbar-button",
                     ),
+                    dbc.Button(
+                        html.Div(
+                            [
+                                html.Img(
+                                    src="assets/images/history.svg",
+                                    style={"width": "20px", "height": "20px", "marginRight": "5px"},
+                                ),
+                                html.P(children=[], style={"margin": "0"}, id="history_button_text"),
+                            ],
+                            style={"display": "flex", "alignItems": "center"},
+                        ),
+                        href="/history",
+                        outline=True,
+                        className="navbar-button",
+                    ),
                     dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
                     dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
                 ],

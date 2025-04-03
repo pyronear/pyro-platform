@@ -70,5 +70,27 @@ def get_main_layout():
             # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
             dcc.Store(id="to_acknowledge", data=0),
             dcc.Store(id="trigger_no_detections", data=False),
+            dcc.Store(
+                id="api_sequences_history",
+                storage_type="session",
+                data=pd.DataFrame().to_json(orient="split"),
+            ),
+            dcc.Store(
+                id="api_detections_history",
+                storage_type="session",
+                data=json.dumps({}),
+            ),
+            dcc.Store(
+                id="are_detections_loaded_history",
+                storage_type="session",
+                data=json.dumps({}),
+            ),
+            dcc.Store(
+                id="sequence_on_display_history",
+                storage_type="session",
+                data=pd.DataFrame().to_json(orient="split"),
+            ),
+            dcc.Store(id="sequence_id_on_display_history", data=0),
+            dcc.Store(id="auto-move-state-history", data={"active": True}),
         ]
     )
