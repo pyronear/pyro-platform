@@ -13,12 +13,10 @@ from utils.display import convert_dt_to_local_tz
 
 
 def display_cam_cards(cameras):
-
     no_cam_img_url = "assets/images/no-image.svg"
 
     cards = []
     for _, row in cameras.iterrows():
-
         clock_image_src_issue = "assets/images/clock-error.svg"
         last_active_at_style_issue = {"margin": "0", "color": "#f44336"}
 

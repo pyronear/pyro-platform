@@ -157,7 +157,6 @@ def get_cameras(user_token):
     State("user_token", "data"),
 )
 def api_cameras_watcher(n_intervals, api_cameras, user_token):
-
     logger.info("Get cameras data")
     if user_token is not None:
         api_client.token = user_token

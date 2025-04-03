@@ -1,13 +1,11 @@
-# this target runs checks on all files
+# This target runs checks on all files
 quality:
 	ruff check .
 	mypy
-	black --check .
-	bandit -r . -c pyproject.toml
 
-# this target runs checks on all files and potentially modifies some of them
+# This target auto-fixes lint issues where possible
 style:
-	black .
+	ruff format .
 	ruff check --fix .
 
 # Build the docker

@@ -24,7 +24,6 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 @app.callback(Output("camera_status_button_text", "children"), Input("url", "search"))
 def update_nav_bar_language(search):
-
     translate = {
         "fr": {
             "camera_status": "Statut des Caméras",
@@ -192,7 +191,8 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
 
     # Filter images with non-empty URLs
     images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
+        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"]),
+        strict=False,
     )
 
     if not images:
