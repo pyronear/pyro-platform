@@ -40,6 +40,24 @@ def update_nav_bar_language(search):
     return [translate[lang]["camera_status"]]
 
 
+@app.callback(Output("blinking_alarm_button_text", "children"), Input("url", "search"))
+def update_blinking_alarm_language(search):
+    translate = {
+        "fr": {
+            "blinking_alarm": "Page d'Alarme",
+        },
+        "es": {
+            "blinking_alarm": "Página de Alarma",
+        },
+    }
+
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+
+    return [translate[lang]["blinking_alarm"]]
+
+
 @app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
 def update_language_url(fr_clicks, es_clicks):
     # Check which button has been clicked
@@ -56,6 +74,14 @@ def update_language_url(fr_clicks, es_clicks):
         return "?lang=es"
 
     return ""
+
+
+@app.callback(Output("main_navbar", "className"), Input("url", "pathname"))
+def update_navbar_spacing(pathname):
+    if pathname == "/blinking-alarm":
+        return "special-navbar"
+    else:
+        return "navbar"
 
 
 # Create event list
@@ -547,3 +573,28 @@ def reset_zoom(n_clicks):
     if n_clicks:
         return 10  # Reset zoom level to 10
     return dash.no_update
+
+
+@app.callback(
+    [Output("blinking-image", "src"), Output("blinking-image-container", "style")],
+    Input("blinking-alarm-interval", "n_intervals"),
+    Input("api_sequences", "data"),
+)
+def blink_image(n_intervals, api_sequences):
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+
+    container_style = {
+        "display": "flex",
+        "justify-content": "center",  # Center horizontaly
+        "align-items": "center",  # Center verticaly
+        "height": "100vh",
+        "width": "100vw",
+    }
+    if api_sequences.empty:
+        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        container_style["background-color"] = "#044448"
+    else:
+        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
+
+    return [image_path, container_style]

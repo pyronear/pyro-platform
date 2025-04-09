@@ -3,7 +3,6 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-
 import dash_bootstrap_components as dbc
 from dash import html
 
@@ -29,6 +28,7 @@ def Navbar(lang="fr"):
                 className="ml-auto",
                 style={"display": "flex", "flexDirection": "row", "gap": "10px", "marginRight": "10px"},
                 children=[
+                    # Camera Status Button
                     dbc.Button(
                         html.Div(
                             [
@@ -44,6 +44,23 @@ def Navbar(lang="fr"):
                         outline=True,
                         className="navbar-button",
                     ),
+                    # Blinking Alarm Button
+                    dbc.Button(
+                        html.Div(
+                            [
+                                html.Img(
+                                    src="assets/images/alarm.svg",
+                                    style={"width": "20px", "height": "20px", "marginRight": "5px"},
+                                ),
+                                html.P(children=[], style={"margin": "0"}, id="blinking_alarm_button_text"),
+                            ],
+                            style={"display": "flex", "alignItems": "center"},
+                        ),
+                        href="/blinking-alarm",
+                        outline=True,
+                        className="navbar-button",
+                    ),
+                    # Language Buttons
                     dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
                     dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
                 ],
@@ -52,7 +69,6 @@ def Navbar(lang="fr"):
         id="main_navbar",
         color="#044448",
         dark=True,
-        className="mb-4",
         style={"display": "flex", "justify-content": "space-between"},
     )
 
