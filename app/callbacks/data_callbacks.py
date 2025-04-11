@@ -170,52 +170,68 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
 
 @app.callback(
     Output("api_sequences", "data"),
-    [Input("main_api_fetch_interval", "n_intervals"), Input("api_cameras", "data")],
+    [
+        Input("main_api_fetch_interval", "n_intervals"),
+        Input("api_cameras", "data"),
+        Input("my-date-picker-single", "date"),  # NEW: date picker input
+    ],
     [
         State("api_sequences", "data"),
         State("user_token", "data"),
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, api_cameras, local_sequences, user_token):
+def api_watcher(n_intervals, api_cameras, selected_date, local_sequences, user_token):
     """
-    Callback to periodically fetch alerts data from the API.
+    Callback to periodically fetch alerts data from the API or after date change.
 
     Parameters:
-        n_intervals (int): Number of times the interval has been triggered.
-        local_alerts (dict or None): Locally stored alerts data, serialized as JSON.
-        user_token (dict or None): Current user headers containing authentication details.
-
-    This function is triggered at specified intervals and when user credentials are updated.
-    It retrieves unacknowledged events from the API, processes the data, and stores it locally.
-    If the local data matches the API data, no updates are made.
+        n_intervals (int): Interval trigger.
+        api_cameras (dict): Camera data.
+        selected_date (str): Selected date from DatePicker.
+        local_sequences (str): Cached sequences in JSON format.
+        user_token (dict): Auth headers.
 
     Returns:
-        dash.dependencies.Output: Serialized JSON data of alerts and a flag indicating if data is loaded.
+        JSON string of filtered sequence data.
     """
     if user_token is None:
         raise PreventUpdate
 
     logger.info("Start Fetching Sequences")
-    # Fetch Sequences
-    response = api_client.fetch_latest_sequences()
-    api_sequences = pd.DataFrame(response.json())
 
-    local_sequences = pd.read_json(StringIO(local_sequences), orient="split")
-    if len(api_sequences) == 0:
-        return pd.DataFrame().to_json(orient="split")
+    try:
+        # Use selected_date if provided
+        if selected_date:
+            response = api_client.fetch_sequences_from_date(selected_date)
+        else:
+            response = api_client.fetch_latest_sequences()
 
-    else:
-        # Filter alerts before today
-        started_at = pd.to_datetime(api_sequences["started_at"])
-        today = pd.Timestamp.today().normalize()
-        api_sequences = api_sequences[started_at > today]
-        if not local_sequences.empty:
-            aligned_api_sequences, aligned_local_sequences = api_sequences["id"].align(local_sequences["id"])
-            if all(aligned_api_sequences == aligned_local_sequences):
+        api_sequences = pd.DataFrame(response.json())
+
+        if not api_sequences.empty:
+            started_at = pd.to_datetime(api_sequences["started_at"])
+            if not selected_date:
+                today = pd.Timestamp.today().normalize()
+                api_sequences = api_sequences[started_at > today]
+
+        # Load local sequences safely
+        if local_sequences:
+            local_sequences_df = pd.read_json(StringIO(local_sequences), orient="split")
+        else:
+            local_sequences_df = pd.DataFrame()
+
+        # Skip update if nothing changed
+        if not local_sequences_df.empty and not api_sequences.empty:
+            aligned_api, aligned_local = api_sequences["id"].align(local_sequences_df["id"])
+            if all(aligned_api == aligned_local):
                 return dash.no_update
 
         return api_sequences.to_json(orient="split")
+
+    except Exception as e:
+        logger.error(f"Failed to fetch sequences: {e}")
+        return pd.DataFrame().to_json(orient="split")
 
 
 @app.callback(
