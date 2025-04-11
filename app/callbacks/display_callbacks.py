@@ -598,3 +598,24 @@ def blink_image(n_intervals, api_sequences):
         container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
 
     return [image_path, container_style]
+
+
+@app.callback(
+    Output("datepicker-modal", "is_open"),
+    [Input("open-datepicker-modal", "n_clicks"), Input("close-datepicker-modal", "n_clicks")],
+    [State("datepicker-modal", "is_open")],
+)
+def toggle_datepicker_modal(open_click, close_click, is_open):
+    if open_click or close_click:
+        return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("open-datepicker-modal", "children"),
+    Input("my-date-picker-single", "date"),
+)
+def update_datepicker_button(selected_date):
+    if selected_date:
+        return f"📅 {selected_date}"
+    return "📅"
