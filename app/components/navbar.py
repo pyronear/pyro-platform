@@ -8,7 +8,7 @@ from datetime import date
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore
 
 pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
