@@ -1,6 +1,13 @@
+# Copyright (C) 2020-2025, Pyronear.
+
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
+
+
+from datetime import date
+
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from datetime import date
 from dateutil.relativedelta import relativedelta
 
 pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
@@ -25,48 +32,30 @@ def Navbar(lang="fr"):
                 className="ml-auto",
                 style={"display": "flex", "flexDirection": "row", "gap": "10px", "marginRight": "10px"},
                 children=[
-                    # DatePicker Button
-                    # Replace the existing datepicker button with this:
+                    # 📅 Date Picker Button
                     dbc.Button(
                         id="open-datepicker-modal",
-                        children="📅",  # Will be updated with the selected date
+                        children=["📅 ", html.Span(id="datepicker_button_text")],
                         color="light",
                         style={"fontSize": "16px"},
                     ),
-
-                    # Camera Status Button
+                    # 📷 Camera Status Button
                     dbc.Button(
-                        html.Div(
-                            [
-                                html.Img(
-                                    src="assets/images/camera.svg",
-                                    style={"width": "20px", "height": "20px", "marginRight": "5px"},
-                                ),
-                                html.P(children=[], style={"margin": "0"}, id="camera_status_button_text"),
-                            ],
-                            style={"display": "flex", "alignItems": "center"},
-                        ),
+                        id="camera-status-button",
+                        children=["📷 ", html.Span(id="camera_status_button_text")],
                         href="/cameras-status",
-                        outline=True,
-                        className="navbar-button",
+                        color="light",
+                        style={"fontSize": "16px"},
                     ),
-                    # Blinking Alarm Button
+                    # 🚨 Alarm Button
                     dbc.Button(
-                        html.Div(
-                            [
-                                html.Img(
-                                    src="assets/images/alarm.svg",
-                                    style={"width": "20px", "height": "20px", "marginRight": "5px"},
-                                ),
-                                html.P(children=[], style={"margin": "0"}, id="blinking_alarm_button_text"),
-                            ],
-                            style={"display": "flex", "alignItems": "center"},
-                        ),
+                        id="alarm-status-button",
+                        children=["🚨 ", html.Span(id="blinking_alarm_button_text")],
                         href="/blinking-alarm",
-                        outline=True,
-                        className="navbar-button",
+                        color="light",
+                        style={"fontSize": "16px"},
                     ),
-                    # Language Buttons
+                    # 🌐 Language Buttons
                     dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
                     dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
                 ],
@@ -78,7 +67,7 @@ def Navbar(lang="fr"):
         style={"display": "flex", "justify-content": "space-between"},
     )
 
-    # Modal that contains the DatePicker
+    # Modal with DatePicker
     datepicker_modal = dbc.Modal(
         [
             dbc.ModalHeader("Sélectionnez une date" if lang == "fr" else "Select a date"),
