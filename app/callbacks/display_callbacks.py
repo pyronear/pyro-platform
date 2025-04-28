@@ -14,7 +14,7 @@ import logging_config
 import pandas as pd
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
 
 import config as cfg
@@ -611,11 +611,6 @@ def toggle_datepicker_modal(open_click, close_click, is_open):
         return not is_open
     return is_open
 
-
-import dash
-from dash import callback_context
-from datetime import date
-from dateutil.relativedelta import relativedelta
 
 @app.callback(
     Output("my-date-picker-single", "min_date_allowed"),
