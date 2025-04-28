@@ -488,7 +488,7 @@ def update_map_and_alert_info(sequence_on_display, cameras):
 def acknowledge_event(
     acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
 ):
-    ctx = dash.dash.no_update
+    ctx = dash.no_update
 
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
