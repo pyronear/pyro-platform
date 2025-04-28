@@ -4,11 +4,8 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
-from datetime import date
-
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from dateutil.relativedelta import relativedelta  # type: ignore
 
 pyro_logo = "https://pyronear.org/img/logo_letters_orange.png"
 
@@ -74,9 +71,6 @@ def Navbar(lang="fr"):
             dbc.ModalBody(
                 dcc.DatePickerSingle(
                     id="my-date-picker-single",
-                    min_date_allowed=date.today() - relativedelta(months=3),
-                    max_date_allowed=date.today(),
-                    initial_visible_month=date.today(),
                 )
             ),
             dbc.ModalFooter(
