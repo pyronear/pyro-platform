@@ -612,6 +612,11 @@ def toggle_datepicker_modal(open_click, close_click, is_open):
     return is_open
 
 
+import dash
+from dash import callback_context
+from datetime import date
+from dateutil.relativedelta import relativedelta
+
 @app.callback(
     Output("my-date-picker-single", "min_date_allowed"),
     Output("my-date-picker-single", "max_date_allowed"),
@@ -619,30 +624,17 @@ def toggle_datepicker_modal(open_click, close_click, is_open):
     Output("datepicker_button_text", "children"),
     Input("open-datepicker-modal", "n_clicks"),
     Input("my-date-picker-single", "date"),
-    Input("url", "search"),
     prevent_initial_call=True,
 )
-def update_datepicker_and_language(open_clicks, selected_date, search):
+def update_datepicker(open_clicks, selected_date):
     ctx = dash.callback_context
     triggered_id = ctx.triggered_id
     today = date.today()
     min_date = today - relativedelta(months=3)
 
-    # Handle language change via URL
-    if triggered_id == "url":
-        translate = {
-            "fr": "Historique",
-            "es": "Historial",
-        }
-        params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-        lang = params.get("lang", "fr")  # default to "fr" if missing
-        return dash.no_update, dash.no_update, dash.no_update, translate.get(lang, "Select Date")
-
-    # Handle when user clicks 📅 button
     if triggered_id == "open-datepicker-modal":
         return min_date, today, today, f"📅 {today.strftime('%Y-%m-%d')}"
 
-    # Handle when user selects a date
     if triggered_id == "my-date-picker-single":
         if selected_date:
             return dash.no_update, dash.no_update, dash.no_update, f"📅 {selected_date}"
