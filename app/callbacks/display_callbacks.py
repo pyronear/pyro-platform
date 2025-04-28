@@ -488,7 +488,7 @@ def update_map_and_alert_info(sequence_on_display, cameras):
 def acknowledge_event(
     acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
 ):
-    ctx = dash.no_update
+    ctx = dash.callback_context
 
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
@@ -628,12 +628,12 @@ def update_datepicker(open_clicks, selected_date):
     min_date = today - relativedelta(months=3)
 
     if triggered_id == "open-datepicker-modal":
-        return min_date, today, today, f"📅 {today.strftime('%Y-%m-%d')}"
+        return min_date, today, today, dash.no_update
 
     if triggered_id == "my-date-picker-single":
         if selected_date:
-            return dash.no_update, dash.no_update, dash.no_update, f"📅 {selected_date}"
+            return dash.no_update, dash.no_update, dash.no_update, f"{selected_date}"
         else:
-            return dash.no_update, dash.no_update, dash.no_update, "📅"
+            return dash.no_update, dash.no_update, dash.no_update, ""
 
     return dash.no_update, dash.no_update, dash.no_update, dash.no_update
