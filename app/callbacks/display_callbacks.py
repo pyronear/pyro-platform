@@ -6,6 +6,7 @@
 import ast
 import json
 import urllib
+from datetime import date
 from io import StringIO
 
 import dash
@@ -13,6 +14,7 @@ import logging_config
 import pandas as pd
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
+from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
 
 import config as cfg
@@ -56,23 +58,6 @@ def update_blinking_alarm_language(search):
     lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
 
     return [translate[lang]["blinking_alarm"]]
-
-
-@app.callback(Output("datepicker_button_text", "children"), Input("url", "search"))
-def update_datepicker_language(search):
-    translate = {
-        "fr": {
-            "select_date": "Historique",
-        },
-        "es": {
-            "select_date": "Historial",
-        },
-    }
-
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-
-    return translate.get(lang, {}).get("select_date", "Select Date")
 
 
 @app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
@@ -168,7 +153,6 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     """
     logger.info("select_event_with_button")
     ctx = dash.callback_context
-
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
         return [[], 0, 1, "reset_zoom"]
@@ -629,10 +613,27 @@ def toggle_datepicker_modal(open_click, close_click, is_open):
 
 
 @app.callback(
-    Output("open-datepicker-modal", "children"),
+    Output("my-date-picker-single", "min_date_allowed"),
+    Output("my-date-picker-single", "max_date_allowed"),
+    Output("my-date-picker-single", "initial_visible_month"),
+    Output("datepicker_button_text", "children"),
+    Input("open-datepicker-modal", "n_clicks"),
     Input("my-date-picker-single", "date"),
+    prevent_initial_call=True,
 )
-def update_datepicker_button(selected_date):
-    if selected_date:
-        return f"📅 {selected_date}"
-    return "📅"
+def update_datepicker(open_clicks, selected_date):
+    ctx = dash.callback_context
+    triggered_id = ctx.triggered_id
+    today = date.today()
+    min_date = today - relativedelta(months=3)
+
+    if triggered_id == "open-datepicker-modal":
+        return min_date, today, today, dash.no_update
+
+    if triggered_id == "my-date-picker-single":
+        if selected_date:
+            return dash.no_update, dash.no_update, dash.no_update, f"{selected_date}"
+        else:
+            return dash.no_update, dash.no_update, dash.no_update, ""
+
+    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
