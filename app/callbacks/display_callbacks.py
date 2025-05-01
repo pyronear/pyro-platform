@@ -60,6 +60,35 @@ def update_blinking_alarm_language(search):
     return [translate[lang]["blinking_alarm"]]
 
 
+import urllib.parse
+
+from dash import Input, Output
+
+import config as cfg
+
+
+@app.callback(Output("home_button_text", "children"), Input("url", "search"))
+def update_home_button_language(search):
+    translate = {
+        "fr": {"home": "Alertes"},
+        "es": {"home": "Alertas"},
+    }
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+    return [translate.get(lang, translate["fr"])["home"]]
+
+
+@app.callback(Output("live_stream_button_text", "children"), Input("url", "search"))
+def update_live_stream_button_language(search):
+    translate = {
+        "fr": {"live_stream": "Levée de doute"},
+        "es": {"live_stream": "Transmisión en Vivo"},
+    }
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+    return [translate.get(lang, translate["fr"])["live_stream"]]
+
+
 @app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
 def update_language_url(fr_clicks, es_clicks):
     # Check which button has been clicked

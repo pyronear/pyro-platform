@@ -27,16 +27,37 @@ def Navbar(lang="fr"):
             ),
             html.Div(
                 className="ml-auto",
-                style={"display": "flex", "flexDirection": "row", "gap": "10px", "marginRight": "10px"},
+                style={
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "gap": "10px",
+                    "marginRight": "10px",
+                },
                 children=[
-                    # 📅 Date Picker Button
+                    # 🔔 Home Alerte
+                    dbc.Button(
+                        id="home-button",
+                        children=["🔔 ", html.Span(id="home_button_text")],
+                        href="/",
+                        color="light",
+                        style={"fontSize": "16px"},
+                    ),
+                    # 🎥 Live Stream
+                    dbc.Button(
+                        id="live-stream-button",
+                        children=["🎥 ", html.Span(id="live_stream_button_text")],
+                        href="/live-stream",
+                        color="light",
+                        style={"fontSize": "16px"},
+                    ),
+                    # 📅 Date Picker
                     dbc.Button(
                         id="open-datepicker-modal",
                         children=["📅 ", html.Span(id="datepicker_button_text")],
                         color="light",
                         style={"fontSize": "16px"},
                     ),
-                    # 📷 Camera Status Button
+                    # 📷 Camera Status
                     dbc.Button(
                         id="camera-status-button",
                         children=["📷 ", html.Span(id="camera_status_button_text")],
@@ -44,7 +65,7 @@ def Navbar(lang="fr"):
                         color="light",
                         style={"fontSize": "16px"},
                     ),
-                    # 🚨 Alarm Button
+                    # 🚨 Alarm
                     dbc.Button(
                         id="alarm-status-button",
                         children=["🚨 ", html.Span(id="blinking_alarm_button_text")],
@@ -52,7 +73,7 @@ def Navbar(lang="fr"):
                         color="light",
                         style={"fontSize": "16px"},
                     ),
-                    # 🌐 Language Buttons
+                    # 🌐 Langues
                     dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
                     dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
                 ],
@@ -64,17 +85,12 @@ def Navbar(lang="fr"):
         style={"display": "flex", "justify-content": "space-between"},
     )
 
-    # Modal with DatePicker
     datepicker_modal = dbc.Modal(
         [
-            dbc.ModalHeader("Sélectionnez une date" if lang == "fr" else "Select a date"),
-            dbc.ModalBody(
-                dcc.DatePickerSingle(
-                    id="my-date-picker-single",
-                )
-            ),
+            dbc.ModalHeader("Sélectionnez une date" if lang == "fr" else "Seleccione una fecha"),
+            dbc.ModalBody(dcc.DatePickerSingle(id="my-date-picker-single")),
             dbc.ModalFooter(
-                dbc.Button("Fermer" if lang == "fr" else "Close", id="close-datepicker-modal", className="ml-auto")
+                dbc.Button("Fermer" if lang == "fr" else "Cerrar", id="close-datepicker-modal", className="ml-auto")
             ),
         ],
         id="datepicker-modal",
