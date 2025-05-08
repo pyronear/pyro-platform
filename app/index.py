@@ -9,6 +9,9 @@ import urllib.parse
 
 import dash
 import logging_config
+import callbacks.data_callbacks
+import callbacks.live_callbacks
+import callbacks.display_callbacks  # noqa: F401
 from dash import html
 from dash.dependencies import Input, Output, State
 from layouts.main_layout import get_main_layout
@@ -35,7 +38,7 @@ app.layout = get_main_layout()
         Input("url", "pathname"),
         Input("api_cameras", "data"),
         Input("url", "search"),
-        Input("selected-camera-info", "data"),  # NEW
+        Input("selected-camera-info", "data"), 
     ],
     [State("user_token", "data"), State("available-stream", "data")],
 )
@@ -51,7 +54,10 @@ def display_page(pathname, api_cameras, search, selected_camera_info, user_token
     if lang not in cfg.AVAILABLE_LANGS:
         lang = cfg.DEFAULT_LANGUAGE
 
+        print("display page")
+
     if not isinstance(user_token, str) or not user_token:
+        print("display page login")
         return login_layout(lang=lang)
 
     triggered = dash.ctx.triggered_id
@@ -60,6 +66,7 @@ def display_page(pathname, api_cameras, search, selected_camera_info, user_token
         return live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info, lang=lang)
 
     if pathname == "/" or pathname is None:
+        print("display page main")
         return homepage_layout(user_token, api_cameras, lang=lang)
     if pathname == "/cameras-status":
         return cameras_status_layout(user_token, api_cameras, lang=lang)

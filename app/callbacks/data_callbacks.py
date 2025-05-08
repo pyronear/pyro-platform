@@ -65,6 +65,8 @@ def login_callback(n_clicks, username, password, user_token, lang):
     hide_element_style = {"display": "none"}
     show_spinner_style = {"transform": "scale(4)"}
 
+    print("coucou")
+
     translate = {
         "fr": {
             "missing_password_or_user_name": "Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe.",
@@ -168,7 +170,7 @@ def load_available_stream(user_name):
 
     print(user_streams)
 
-    return user_streams  # Example: { "croix-augas": "192.168.1.28", ... }
+    return user_streams
 
 
 @app.callback(
