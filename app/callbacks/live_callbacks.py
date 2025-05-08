@@ -412,7 +412,6 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
     site_lat = float(row["lat"].values[0])
     site_lon = float(row["lon"].values[0])
     opening_angle = int(row["angle_of_view"].values[0])
-    dist_km = 10  # Default projection distance
 
     poses = camera_info.get("poses", [])
     azimuths = camera_info.get("azimuths", [])
@@ -433,7 +432,7 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
             site_lon=site_lon,
             azimuth=new_azimuth,
             opening_angle=opening_angle,
-            dist_km=dist_km,
+            dist_km=cfg.CAM_RANGE_KM,
         )
         return [cone]
 
