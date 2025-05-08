@@ -74,9 +74,5 @@ def get_main_layout():
             dcc.Store(id="selected-camera-info", storage_type="session"),
             dcc.Store(id="selected-camera-pose", storage_type="session"),
             dcc.Store(id="pi-cameras", storage_type="session"),
-            
-
-
-
         ]
     )

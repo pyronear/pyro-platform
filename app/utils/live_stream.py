@@ -1,7 +1,6 @@
 import requests
 
 
-
 def fetch_cameras(pi_api_url):
     """Fetch camera data from pi
 

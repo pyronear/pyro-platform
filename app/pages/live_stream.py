@@ -96,11 +96,11 @@ STREAM_PAGE_STYLE = {
 }
 
 PICK_STREAM_STYLE = {
-                "width": "200px",
-                "marginRight": "10px",
-                "borderRadius": "6px",
-                "fontWeight": "bold",
-            }
+    "width": "200px",
+    "marginRight": "10px",
+    "borderRadius": "6px",
+    "fontWeight": "bold",
+}
 
 translate = {
     "fr": {
@@ -122,7 +122,6 @@ translate = {
 }
 
 
-
 # --- Layout ---
 def live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info=None, lang="fr"):
     # Default fallback
@@ -139,34 +138,31 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
         [
             # Status bar
             html.Div(
-    [
-            html.Div(id="stream-status", style=STREAM_STATUS_STYLE),
-
-            html.Div(
-                [  # GROUPED RIGHT SECTION
-                    dcc.Dropdown(
-                        id="available-stream-dropdown",
-                        placeholder=translate[lang]["select_stream"],
-                        value=default_stream,
-                        options=[
-                            {"label": name, "value": name}
-                            for name in available_stream.keys()
-                        ] if available_stream else [],
-                        style=PICK_STREAM_STYLE,
-                    ),
-                    html.Button(
-                        translate[lang]["close_doubt"],
-                        id="close-doubt",
-                        n_clicks=0,
-                        style=CLOSE_BUTTON_STYLE,
+                [
+                    html.Div(id="stream-status", style=STREAM_STATUS_STYLE),
+                    html.Div(
+                        [  # GROUPED RIGHT SECTION
+                            dcc.Dropdown(
+                                id="available-stream-dropdown",
+                                placeholder=translate[lang]["select_stream"],
+                                value=default_stream,
+                                options=[{"label": name, "value": name} for name in available_stream.keys()]
+                                if available_stream
+                                else [],
+                                style=PICK_STREAM_STYLE,
+                            ),
+                            html.Button(
+                                translate[lang]["close_doubt"],
+                                id="close-doubt",
+                                n_clicks=0,
+                                style=CLOSE_BUTTON_STYLE,
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
                     ),
                 ],
-                style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
+                style=STATUS_BAR_STYLE,
             ),
-        ],
-        style=STATUS_BAR_STYLE,
-    ),
-
             # Main layout: stream + map
             dbc.Row(
                 [
@@ -377,7 +373,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             # Hidden components
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0, disabled=True),
             dcc.Store(id="detection-status", data="stopped"),
-            html.Div(id="dummy-output", style={"display": "none"})
+            html.Div(id="dummy-output", style={"display": "none"}),
         ],
         style=STREAM_PAGE_STYLE,
     )

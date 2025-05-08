@@ -337,7 +337,6 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     },
                                 ),
                             ),
-                            
                             html.Div(
                                 dbc.Button(
                                     translate[lang]["enlarge_map"],
@@ -346,14 +345,8 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     id="map-button",
                                 ),
                             ),
-                            dbc.Button(
-                                "Start Live Stream",
-                                id="start-live-stream",
-                                color="primary",
-                                className="mb-3"
-                            ),
-                            
-                                        ],
+                            dbc.Button("Start Live Stream", id="start-live-stream", color="primary", className="mb-3"),
+                        ],
                         width=2,
                         style={
                             "display": "flex",
@@ -377,8 +370,6 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 is_open=False,
             ),
             dcc.Store(id="language", data=lang),
-            
-
         ],
         fluid=True,
     )

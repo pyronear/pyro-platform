@@ -660,9 +660,6 @@ def update_datepicker(open_clicks, selected_date):
     return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
-
-
-
 @app.callback(
     Output("selected-camera-info", "data"),
     Input("start-live-stream", "n_clicks"),
@@ -702,5 +699,3 @@ def pick_live_stream_camera(n_clicks, sequence_data, cameras_data):
     print((cam_name, azimuth))
 
     return (cam_name, azimuth)
-
-

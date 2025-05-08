@@ -1,16 +1,15 @@
-from main import app
-import requests
-from dash import Input, Output, State, dcc, html, callback_context, no_update, ctx
 import datetime
-from dash.dependencies import ALL
-from utils.display import build_vision_polygon
-import json
-from dash import Input, Output, State, exceptions
-from utils.live_stream import fetch_cameras, find_closest_camera_pose  # replace with actual import
-import pandas as pd
 from io import StringIO
-from dash import Input, Output, State, callback_context
+
+import pandas as pd
+import requests
+from dash import Input, Output, State, callback_context, ctx, exceptions, html, no_update
+from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
+from main import app
+
+from utils.display import build_vision_polygon
+from utils.live_stream import fetch_cameras, find_closest_camera_pose  # replace with actual import
 
 
 # API Communication
@@ -22,9 +21,8 @@ def send_api_request(FASTAPI_URL, endpoint: str):
         return "Error: Could not reach API server."
 
 
-
 @app.callback(
-    Output("dummy-output", "children"), 
+    Output("dummy-output", "children"),
     Input("start-stream", "n_clicks"),
     Input("stop-stream", "n_clicks"),
     Input("move-up", "n_clicks"),
@@ -35,7 +33,7 @@ def send_api_request(FASTAPI_URL, endpoint: str):
     Input("zoom-input", "value"),
     State("camera-select", "value"),
     State("speed-input", "value"),
-    State("selected-camera-pose", "data"),  
+    State("selected-camera-pose", "data"),
     prevent_initial_call=True,
 )
 def control_camera(
@@ -66,7 +64,6 @@ def control_camera(
     if not pi_ip:
         raise PreventUpdate
 
-
     direction_map = {
         "move-up": "Up",
         "move-down": "Down",
@@ -85,31 +82,17 @@ def control_camera(
         direction = direction_map[button_id]
         if direction != "Stop":
             true_speed = int(move_speed / 10) + 1
-            print("mooooove to ",
-                f"http://{pi_ip}:8081",
-                f"/move/{camera_id}?direction={direction}&speed={true_speed}"
-            )
-            send_api_request(
-                f"http://{pi_ip}:8081",
-                f"/move/{camera_id}?direction={direction}&speed={true_speed}"
-            )
+            print("mooooove to ", f"http://{pi_ip}:8081", f"/move/{camera_id}?direction={direction}&speed={true_speed}")
+            send_api_request(f"http://{pi_ip}:8081", f"/move/{camera_id}?direction={direction}&speed={true_speed}")
         else:
             send_api_request(f"http://{pi_ip}:8081", f"/stop/{camera_id}")
 
     elif button_id == "zoom-input":
         if zoom_level is not None:
             true_zoom = int(zoom_level * 64 / 100)  # because backend expects 0–64
-            send_api_request(
-                f"http://{pi_ip}:8081",
-                f"/zoom/{camera_id}/{true_zoom}"
-            )
-
-
+            send_api_request(f"http://{pi_ip}:8081", f"/zoom/{camera_id}/{true_zoom}")
 
     return no_update
-
-
-
 
 
 start_time = None
@@ -145,7 +128,6 @@ def control_detection(start_clicks, stop_clicks):
     prevent_initial_call=True,
 )
 def update_status(n, detection_status):
-
     if detection_status == "running" and start_time:
         elapsed = datetime.datetime.now() - start_time
         minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
@@ -163,9 +145,7 @@ def update_status(n, detection_status):
                         "fontWeight": "bold",
                     },
                 ),
-                html.Span(
-                    f"Levée de doute en cours, la détection n'est plus active depuis {timer_text}"
-                ),
+                html.Span(f"Levée de doute en cours, la détection n'est plus active depuis {timer_text}"),
             ]
         )
     else:
@@ -248,11 +228,6 @@ def move_to_pose(n_clicks_list, camera_name, pi_cameras):
         raise PreventUpdate
 
 
-
-
-
-
-
 @app.callback(
     Output("vision-layer", "children"),
     Input("camera-select", "value"),
@@ -299,7 +274,6 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
             pose_id = int(triggered["index"])
             pose_index = poses.index(pose_id)
 
-
         new_azimuth = azimuths[pose_index]
         cone, _ = build_vision_polygon(
             site_lat=site_lat,
@@ -313,7 +287,8 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
     except Exception as e:
         print(f"Error building vision cone: {e}")
         return no_update
-   
+
+
 @app.callback(
     Output("available-stream-dropdown", "value"),
     Input("selected-camera-info", "data"),
@@ -396,13 +371,9 @@ def get_pi_camera_from_dropdown(site_name, available_stream, camera_info):
     return pose_with_pi_ip, pi_cameras, cam_options, first_cam_name
 
 
-
-
-
 @app.callback(
     Output("video-stream", "src"),
     Input("selected-camera-pose", "data"),
-   
 )
 def update_stream_url(camera_pose):
     if not camera_pose:
@@ -410,5 +381,3 @@ def update_stream_url(camera_pose):
     ip = camera_pose["ip"]
     stream_url = f"http://{ip}:8889/stream"  # Adjust if needed
     return stream_url
-
-

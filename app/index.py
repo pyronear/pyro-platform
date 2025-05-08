@@ -7,15 +7,12 @@
 import argparse
 import urllib.parse
 
-import callbacks.data_callbacks
-import callbacks.live_callbacks
-import callbacks.display_callbacks  # noqa: F401
+import dash
 import logging_config
 from dash import html
 from dash.dependencies import Input, Output, State
 from layouts.main_layout import get_main_layout
 from main import app
-import dash
 
 import config as cfg
 from pages.blinking_alarm import blinking_alarm_layout

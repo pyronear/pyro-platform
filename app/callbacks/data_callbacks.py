@@ -158,14 +158,14 @@ def load_available_stream(user_name):
     except FileNotFoundError:
         print("available_stream.json not found.")
         raise PreventUpdate
-    
+
     print(full_data)
 
     user_streams = full_data.get(user_name)
     if not user_streams:
         print(f"No stream config found for user '{user_name}'")
         raise PreventUpdate
-    
+
     print(user_streams)
 
     return user_streams  # Example: { "croix-augas": "192.168.1.28", ... }
@@ -183,7 +183,6 @@ def get_cameras(user_token):
     cameras = pd.DataFrame(api_client.fetch_cameras().json())
 
     return cameras.to_json(orient="split")
-
 
 
 @app.callback(
