@@ -7,6 +7,9 @@
 import argparse
 import urllib.parse
 
+import callbacks.data_callbacks
+import callbacks.display_callbacks
+import callbacks.live_callbacks
 import dash
 import logging_config
 from dash import html
