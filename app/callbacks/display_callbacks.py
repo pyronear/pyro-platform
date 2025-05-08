@@ -107,14 +107,6 @@ def update_language_url(fr_clicks, es_clicks):
     return ""
 
 
-@app.callback(Output("main_navbar", "className"), Input("url", "pathname"))
-def update_navbar_spacing(pathname):
-    if pathname == "/blinking-alarm":
-        return "special-navbar"
-    else:
-        return "navbar"
-
-
 # Create event list
 @app.callback(
     Output("sequence-list-container", "children"),
@@ -666,3 +658,49 @@ def update_datepicker(open_clicks, selected_date):
             return dash.no_update, dash.no_update, dash.no_update, ""
 
     return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+
+
+
+
+@app.callback(
+    Output("selected-camera-info", "data"),
+    Input("start-live-stream", "n_clicks"),
+    State("sequence_on_display", "data"),
+    State("api_cameras", "data"),
+    prevent_initial_call=True,
+)
+def pick_live_stream_camera(n_clicks, sequence_data, cameras_data):
+    """
+    Selects the camera and azimuth associated with the currently displayed sequence.
+
+    Returns:
+    - tuple: (camera_name, azimuth) or None
+    """
+    logger.info("pick_live_stream_camera")
+
+    if not sequence_data or not cameras_data:
+        raise PreventUpdate
+
+    df_seq = pd.read_json(StringIO(sequence_data), orient="split")
+    df_cams = pd.read_json(StringIO(cameras_data), orient="split")
+
+    if df_seq.empty or df_cams.empty:
+        raise PreventUpdate
+
+    # Take the last event in the sequence
+    last_event = df_seq.iloc[-1]
+    cam_id = last_event["camera_id"]
+
+    cam_row = df_cams[df_cams["id"] == cam_id]
+    if cam_row.empty:
+        raise PreventUpdate
+
+    cam_name = cam_row["name"].values[0]
+    azimuth = int(last_event.get("azimuth", 0))
+
+    print((cam_name, azimuth))
+
+    return (cam_name, azimuth)
+
+

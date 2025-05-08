@@ -16,13 +16,6 @@ azimuth = 0
 opening_angle = 54
 dist_km = 15
 
-FASTAPI_URL = "http://<your_api_host>:8081"
-STREAM_URL = "http://<your_media_server>:8889/<your_stream_name>"
-
-CAMERAS = {
-    "Camera 1": {"ip": "192.168.1.10", "poses": [0, 1], "azimuths": [0, 90]},
-}
-
 # --- Styles ---
 STATUS_BAR_STYLE = {
     "backgroundColor": "black",
@@ -102,6 +95,13 @@ STREAM_PAGE_STYLE = {
     "height": "100%",
 }
 
+PICK_STREAM_STYLE = {
+                "width": "200px",
+                "marginRight": "10px",
+                "borderRadius": "6px",
+                "fontWeight": "bold",
+            }
+
 translate = {
     "fr": {
         "close_doubt": "Fermer la levée de doute",
@@ -109,6 +109,7 @@ translate = {
         "zoom_level": "Niveau de zoom",
         "start": "▶️ Démarrer",
         "stop": "⏹️ Arrêter",
+        "select_stream": "🎥 Sélectionner un flux",
     },
     "es": {
         "close_doubt": "Cerrar verificación visual",
@@ -116,22 +117,56 @@ translate = {
         "zoom_level": "Nivel de zoom",
         "start": "▶️ Iniciar",
         "stop": "⏹️ Detener",
+        "select_stream": "🎥 Seleccionar flujo",
     },
 }
 
 
+
 # --- Layout ---
-def live_stream_layout(user_token, api_cameras, lang="fr"):
+def live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info=None, lang="fr"):
+    # Default fallback
+    default_stream = list(available_stream.keys())[0] if available_stream else None
+
+    # Try to derive stream from selected camera info
+    if selected_camera_info and available_stream:
+        cam_name, _ = selected_camera_info
+        site_name = cam_name[:-3].strip().lower()
+        if site_name in available_stream:
+            default_stream = site_name
+
     return html.Div(
         [
             # Status bar
             html.Div(
-                [
-                    html.Div(id="stream-status", style=STREAM_STATUS_STYLE),
-                    html.Button(translate[lang]["close_doubt"], id="close-doubt", n_clicks=0, style=CLOSE_BUTTON_STYLE),
+    [
+            html.Div(id="stream-status", style=STREAM_STATUS_STYLE),
+
+            html.Div(
+                [  # GROUPED RIGHT SECTION
+                    dcc.Dropdown(
+                        id="available-stream-dropdown",
+                        placeholder=translate[lang]["select_stream"],
+                        value=default_stream,
+                        options=[
+                            {"label": name, "value": name}
+                            for name in available_stream.keys()
+                        ] if available_stream else [],
+                        style=PICK_STREAM_STYLE,
+                    ),
+                    html.Button(
+                        translate[lang]["close_doubt"],
+                        id="close-doubt",
+                        n_clicks=0,
+                        style=CLOSE_BUTTON_STYLE,
+                    ),
                 ],
-                style=STATUS_BAR_STYLE,
+                style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
             ),
+        ],
+        style=STATUS_BAR_STYLE,
+    ),
+
             # Main layout: stream + map
             dbc.Row(
                 [
@@ -142,7 +177,7 @@ def live_stream_layout(user_token, api_cameras, lang="fr"):
                                 [
                                     html.Iframe(
                                         id="video-stream",
-                                        src=STREAM_URL,
+                                        src="",
                                         style={
                                             "width": "100%",
                                             "height": "500px",
@@ -267,8 +302,8 @@ def live_stream_layout(user_token, api_cameras, lang="fr"):
                             html.Div(
                                 dcc.Dropdown(
                                     id="camera-select",
-                                    options=[{"label": name, "value": name} for name in CAMERAS],
-                                    value=list(CAMERAS)[0] if CAMERAS else None,
+                                    options=[],
+                                    value=None,
                                     clearable=False,
                                     className="mb-2",
                                     style=DROPDOWN_STYLE,
@@ -342,6 +377,7 @@ def live_stream_layout(user_token, api_cameras, lang="fr"):
             # Hidden components
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0, disabled=True),
             dcc.Store(id="detection-status", data="stopped"),
+            html.Div(id="dummy-output", style={"display": "none"})
         ],
         style=STREAM_PAGE_STYLE,
     )
