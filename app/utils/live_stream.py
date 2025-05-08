@@ -7,6 +7,15 @@
 import requests
 
 
+# API Communication
+def send_api_request(FASTAPI_URL, endpoint: str):
+    try:
+        response = requests.post(f"{FASTAPI_URL}{endpoint}")
+        return response.json().get("message", "Unknown response")
+    except requests.exceptions.RequestException:
+        return "Error: Could not reach API server."
+
+
 def fetch_cameras(pi_api_url):
     """Fetch camera data from pi
 
