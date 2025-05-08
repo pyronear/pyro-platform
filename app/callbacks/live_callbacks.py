@@ -1,3 +1,9 @@
+# Copyright (C) 2020-2025, Pyronear.
+
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
+
+
 import datetime
 from io import StringIO
 
@@ -90,7 +96,7 @@ def control_camera(
 
     elif button_id == "zoom-input":
         if zoom_level is not None:
-            true_zoom = int(zoom_level * 64 / 100)  # because backend expects 0–64
+            true_zoom = int(zoom_level * 64 / 100)  # because backend expects 0-64
             send_api_request(f"http://{pi_ip}:8081", f"/zoom/{camera_id}/{true_zoom}")
 
     return no_update
@@ -173,7 +179,7 @@ def update_pose_buttons(camera_name, pi_cameras):
     poses = camera_info.get("poses", [])
     azimuths = camera_info.get("azimuths", [])
 
-    for pose_id, az in zip(poses, azimuths):
+    for pose_id, az in zip(poses, azimuths, strict=True):
         buttons.append(
             html.Button(
                 f"{az}°",
@@ -198,9 +204,11 @@ def update_pose_buttons(camera_name, pi_cameras):
     Input({"type": "pose-button", "camera": ALL, "index": ALL}, "n_clicks"),
     State("camera-select", "value"),
     State("pi-cameras", "data"),
+    State("available-stream-dropdown", "value"),
+    State("available-stream", "data"),
     prevent_initial_call=True,
 )
-def move_to_pose(n_clicks_list, camera_name, pi_cameras):
+def move_to_pose(n_clicks_list, camera_name, pi_cameras, site_name, available_stream):
     print("[move_to_pose] Triggered with args:", locals())
 
     triggered = ctx.triggered_id
@@ -219,10 +227,15 @@ def move_to_pose(n_clicks_list, camera_name, pi_cameras):
         raise PreventUpdate
 
     camera_ip = camera_info["ip"]
-    fastapi_url = f"http://{camera_ip}:8081"
+    pi_ip = available_stream.get(site_name)
+    if not pi_ip:
+        print(f"No Pi IP found for {site_name}")
+        raise PreventUpdate
+
+    pi_api_url = f"http://{pi_ip}:8081"
 
     try:
-        response = requests.post(f"{fastapi_url}/move/{camera_ip}?pose_id={pose_id}&speed=50")
+        response = requests.post(f"{pi_api_url}/move/{camera_ip}?pose_id={pose_id}&speed=50")
         print("Move to pose response:", response.json())
     except Exception as e:
         print(f"Move to pose error: {e}")
@@ -348,7 +361,7 @@ def get_pi_camera_from_dropdown(site_name, available_stream, camera_info):
         print("No cameras found")
         raise PreventUpdate
 
-    first_cam_name = list(pi_cameras.keys())[0]
+    first_cam_name = next(iter(pi_cameras.keys()))
     cam_info = pi_cameras[first_cam_name]
     azimuths = cam_info.get("azimuths", [])
     poses = cam_info.get("poses", [])

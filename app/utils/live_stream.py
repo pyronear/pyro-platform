@@ -1,3 +1,9 @@
+# Copyright (C) 2020-2025, Pyronear.
+
+# This program is licensed under the Apache License 2.0.
+# See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
+
+
 import requests
 
 
@@ -32,7 +38,7 @@ def find_closest_camera_pose(target_azimuth, pi_cameras):
 
     for cam_name, cam_data in pi_cameras.items():
         ip = cam_data["ip"]
-        for pose_id, az in zip(cam_data["poses"], cam_data["azimuths"]):
+        for pose_id, az in zip(cam_data["poses"], cam_data["azimuths"], strict=True):
             diff = min(abs(az - target_azimuth), 360 - abs(az - target_azimuth))  # circular difference
             if diff < min_diff:
                 min_diff = diff

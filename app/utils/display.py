@@ -143,11 +143,11 @@ def build_sites_markers(api_cameras):
     return markers, client_sites
 
 
-def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=[]):
+def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=None):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
     """
-    if len(bboxes):
+    if bboxes is not None:
         azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, bboxes[0])
 
     # The center corresponds the point from which the vision angle "starts"

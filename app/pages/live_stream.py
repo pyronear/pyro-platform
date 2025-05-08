@@ -125,7 +125,7 @@ translate = {
 # --- Layout ---
 def live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info=None, lang="fr"):
     # Default fallback
-    default_stream = list(available_stream.keys())[0] if available_stream else None
+    default_stream = next(iter(available_stream.keys()))[0] if available_stream else None
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:

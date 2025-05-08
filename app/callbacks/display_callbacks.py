@@ -6,6 +6,7 @@
 import ast
 import json
 import urllib
+import urllib.parse
 from datetime import date
 from io import StringIO
 
@@ -58,13 +59,6 @@ def update_blinking_alarm_language(search):
     lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
 
     return [translate[lang]["blinking_alarm"]]
-
-
-import urllib.parse
-
-from dash import Input, Output
-
-import config as cfg
 
 
 @app.callback(Output("home_button_text", "children"), Input("url", "search"))
