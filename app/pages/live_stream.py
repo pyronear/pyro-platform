@@ -4,17 +4,9 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import dash_bootstrap_components as dbc
-import dash_leaflet as dl
 from dash import dcc, html
 
-from utils.display import build_vision_polygon
-
-# Constants
-site_lat = 48.426746125557
-site_lon = 2.71087590966019
-azimuth = 0
-opening_angle = 54
-dist_km = 15
+from utils.display import build_alerts_map
 
 # --- Styles ---
 STATUS_BAR_STYLE = {
@@ -22,6 +14,7 @@ STATUS_BAR_STYLE = {
     "height": "50px",
     "width": "100%",
     "marginBottom": "8px",
+    "marginTop": "0",
     "padding": "0",
     "display": "flex",
     "justifyContent": "space-between",
@@ -348,20 +341,18 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                             # Pose buttons
                             html.Div(id="pose-buttons", style=POSE_BUTTONS_STYLE),
                             # Map
-                            dl.Map(
-                                center=[site_lat, site_lon],
-                                zoom=10,
-                                children=[
-                                    dl.TileLayer(),
-                                    dl.LayerGroup(
-                                        id="vision-layer",
-                                        children=[
-                                            build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km)[0]
-                                        ],
-                                    ),
-                                    dl.Marker(position=[site_lat, site_lon]),
-                                ],
-                                style={"width": "100%", "height": "350px", "borderRadius": "10px"},
+                            html.Div(
+                                dbc.Col(
+                                    build_alerts_map(api_cameras, id_suffix="-stream"),
+                                    className="common-style",
+                                    style={
+                                        "position": "relative",
+                                        "width": "100%",
+                                        "height": "400px",
+                                        "borderRadius": "10px",
+                                        "overflow": "hidden",
+                                    },
+                                )
                             ),
                         ],
                         md=4,

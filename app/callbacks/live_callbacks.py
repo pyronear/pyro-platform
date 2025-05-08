@@ -357,17 +357,21 @@ def move_to_pose(n_clicks_list, camera_name, pi_cameras, site_name, available_st
         raise PreventUpdate
 
 
+from dash import Output
+
+
 @app.callback(
-    Output("vision-layer", "children"),
+    Output("vision_polygons-stream", "children"),
+    Output("map-stream", "center"),
     Input("camera-select", "value"),
     Input({"type": "pose-button", "camera": ALL, "index": ALL}, "n_clicks"),
     State("pi-cameras", "data"),
     State("api_cameras", "data"),
     prevent_initial_call=True,
 )
-def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
+def update_cone_and_center(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
     """
-    Callback to update the camera vision cone overlay when the camera or pose changes.
+    Callback to update the vision cone and recenter the map on the selected camera.
 
     Parameters
     ----------
@@ -378,35 +382,36 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
     pi_cameras : dict
         Local camera configuration data (IP, azimuths, poses, etc.).
     api_cameras_data : str
-        JSON string of camera metadata from the API (e.g. location, opening angle).
+        JSON string of camera metadata from the API.
 
     Returns
     -------
-    List[Component] or no_update
-        The vision cone polygon overlay, or no update if conditions are invalid.
+    Tuple[List[Component], List[float]] or Tuple[no_update, no_update]
+        - List containing vision cone element
+        - New center for the map
     """
-    logger.debug("[update_cone] Triggered with camera_name='%s'", camera_name)
+    logger.debug("[update_cone_and_center] Triggered with camera_name='%s'", camera_name)
 
     triggered = ctx.triggered_id
 
     if not triggered or not camera_name or not pi_cameras or not api_cameras_data:
-        logger.debug("[update_cone] Missing required data")
+        logger.debug("[update_cone_and_center] Missing required data")
         raise PreventUpdate
 
     camera_info = pi_cameras.get(camera_name)
     if not camera_info:
-        logger.warning("[update_cone] Camera '%s' not found in pi_cameras", camera_name)
+        logger.warning("[update_cone_and_center] Camera '%s' not found in pi_cameras", camera_name)
         raise PreventUpdate
 
     try:
         df_cams = pd.read_json(StringIO(api_cameras_data), orient="split")
         row = df_cams[df_cams["name"] == camera_name]
     except Exception as e:
-        logger.error("[update_cone] Failed to parse API camera data: %s", e)
+        logger.error("[update_cone_and_center] Failed to parse API camera data: %s", e)
         raise PreventUpdate
 
     if row.empty:
-        logger.warning("[update_cone] Camera '%s' not found in API metadata", camera_name)
+        logger.warning("[update_cone_and_center] Camera '%s' not found in API metadata", camera_name)
         raise PreventUpdate
 
     site_lat = float(row["lat"].values[0])
@@ -417,7 +422,6 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
     azimuths = camera_info.get("azimuths", [])
 
     try:
-        # Case 1: camera just selected
         if triggered == "camera-select":
             pose_index = 0
         else:
@@ -425,7 +429,7 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
             pose_index = poses.index(pose_id)
 
         new_azimuth = azimuths[pose_index]
-        logger.info("[update_cone] Building cone for camera='%s' at azimuth=%d°", camera_name, new_azimuth)
+        logger.info("[update_cone_and_center] Building cone for camera='%s' at azimuth=%d°", camera_name, new_azimuth)
 
         cone, _ = build_vision_polygon(
             site_lat=site_lat,
@@ -434,11 +438,12 @@ def update_cone(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
             opening_angle=opening_angle,
             dist_km=cfg.CAM_RANGE_KM,
         )
-        return [cone]
+
+        return [cone], [site_lat, site_lon]
 
     except Exception as e:
-        logger.error("[update_cone] Error building vision cone: %s", e)
-        return no_update
+        logger.error("[update_cone_and_center] Error building vision cone: %s", e)
+        return no_update, no_update
 
 
 @app.callback(
