@@ -8,6 +8,7 @@ from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from main import app
 
+import config as cfg
 from utils.display import build_vision_polygon
 from utils.live_stream import fetch_cameras, find_closest_camera_pose  # replace with actual import
 
@@ -373,11 +374,10 @@ def get_pi_camera_from_dropdown(site_name, available_stream, camera_info):
 
 @app.callback(
     Output("video-stream", "src"),
-    Input("selected-camera-pose", "data"),
+    Input("available-stream-dropdown", "value"),
 )
-def update_stream_url(camera_pose):
-    if not camera_pose:
+def update_stream_url(site_name):
+    if not site_name:
         raise PreventUpdate
-    ip = camera_pose["ip"]
-    stream_url = f"http://{ip}:8889/stream"  # Adjust if needed
+    stream_url = f"{cfg.MEDIAMTX_SERVER_IP}:8889/{site_name}"
     return stream_url
