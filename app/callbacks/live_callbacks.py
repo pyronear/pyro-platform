@@ -4,14 +4,16 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+import base64
 import datetime
+import io
+import time
 from io import StringIO
 
 import logging_config
 import pandas as pd
 import requests
-from dash import Input, Output, State, ctx, exceptions, html, no_update
-from dash.dependencies import ALL
+from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
 
@@ -23,506 +25,33 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
 start_time = None
+last_command_time = time.time()  # Track the last command time
 
 
 @app.callback(
-    Output("dummy-output", "children"),
-    Input("start-stream", "n_clicks"),
-    Input("stop-stream", "n_clicks"),
-    Input("move-up", "n_clicks"),
-    Input("move-down", "n_clicks"),
-    Input("move-left", "n_clicks"),
-    Input("move-right", "n_clicks"),
-    Input("stop-move", "n_clicks"),
-    Input("zoom-input", "value"),
-    State("camera-select", "value"),
-    State("speed-input", "value"),
-    State("selected-camera-pose", "data"),
+    Output("available-stream-sites-dropdown", "value"),
+    Input({"type": "site-marker", "index": ALL}, "n_clicks"),
     prevent_initial_call=True,
 )
-def control_camera(
-    start_stream,
-    stop_stream,
-    up,
-    down,
-    left,
-    right,
-    stop,
-    zoom_level,
-    camera_id,
-    move_speed,
-    selected_camera,
-):
-    """
-    Callback to control camera actions (stream, movement, zoom) based on UI input.
-
-    Parameters
-    ----------
-    start_stream : int
-        Click count for start-stream button.
-    stop_stream : int
-        Click count for stop-stream button.
-    up, down, left, right, stop : int
-        Click counts for movement control buttons.
-    zoom_level : float
-        Current zoom level (0-100%).
-    camera_id : str
-        Currently selected camera ID.
-    move_speed : int
-        Speed slider value.
-    selected_camera : dict
-        Selected camera metadata (contains 'camera', 'ip', 'pi_ip', etc.)
-
-    Returns
-    -------
-    no_update
-        Placeholder to satisfy Dash Output without altering the layout.
-    """
-    logger.debug(
-        "[control_camera] Triggered with args: %s",
-        {
-            "start": start_stream,
-            "stop": stop_stream,
-            "zoom": zoom_level,
-            "camera_id": camera_id,
-            "selected_camera": selected_camera,
-        },
-    )
-
-    if not ctx.triggered or not selected_camera:
-        raise PreventUpdate
-
-    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    if selected_camera.get("camera") != camera_id:
-        raise PreventUpdate
-
-    pi_ip = selected_camera.get("pi_ip")
-    camera_ip = selected_camera.get("ip")
-    if not pi_ip or not camera_ip:
-        raise PreventUpdate
-
-    direction_map = {
-        "move-up": "Up",
-        "move-down": "Down",
-        "move-left": "Left",
-        "move-right": "Right",
-        "stop-move": "Stop",
-    }
-
-    try:
-        if button_id == "start-stream":
-            send_api_request(f"http://{pi_ip}:8081", f"/start_stream/{camera_ip}")
-
-        elif button_id == "stop-stream":
-            send_api_request(f"http://{pi_ip}:8081", f"/stop_stream/{camera_ip}")
-
-        elif button_id in direction_map:
-            direction = direction_map[button_id]
-            if direction != "Stop":
-                true_speed = int(move_speed / 10) + 1
-                logger.info("Moving camera %s -> %s at speed %d", camera_ip, direction, true_speed)
-                send_api_request(f"http://{pi_ip}:8081", f"/move/{camera_ip}?direction={direction}&speed={true_speed}")
-            else:
-                logger.info("Stopping movement for camera %s", camera_ip)
-                send_api_request(f"http://{pi_ip}:8081", f"/stop/{camera_ip}")
-
-        elif button_id == "zoom-input":
-            if zoom_level is not None:
-                true_zoom = int(zoom_level * 64 / 100)
-                logger.info("Zooming camera %s to level %d", camera_ip, true_zoom)
-                send_api_request(f"http://{pi_ip}:8081", f"/zoom/{camera_ip}/{true_zoom}")
-
-    except Exception as e:
-        logger.warning("Failed to send command to camera %s via Pi %s: %s", camera_ip, pi_ip, e)
-
+def update_dropdown_on_marker_click(n_clicks_list):
+    triggered = ctx.triggered_id
+    if triggered and isinstance(triggered, dict):
+        return triggered["index"]
     return no_update
 
 
+# Set Camera
 @app.callback(
-    Output("stream-timer", "disabled"),
-    Output("detection-status", "data"),
-    Input("start-stream", "n_clicks"),
-    Input("stop-stream", "n_clicks"),
-    prevent_initial_call=True,
+    Output("pi_api_url", "data"),
+    Output("pi_cameras", "data"),
+    Input("available-stream-sites-dropdown", "value"),
+    State("available-stream-sites", "data"),
 )
-def control_detection(start_clicks, stop_clicks):
-    """
-    Callback to control the stream timer and detection status.
-
-    Triggered by clicks on the start or stop stream buttons.
-    Sets a global start time when streaming begins and disables the timer when stopped.
-
-    Returns
-    -------
-    Tuple[bool, str] or Tuple[no_update, no_update]
-        - Whether the timer should be disabled.
-        - The current detection status ("running", "stopped", or no_update).
-    """
-    global start_time
-    triggered = ctx.triggered_id
-
-    logger.debug("[control_detection] Triggered by: %s", triggered)
-
-    if triggered == "start-stream":
-        start_time = datetime.datetime.now()
-        logger.info("Stream started at %s", start_time)
-        return False, "running"  # Enable timer
-
-    elif triggered == "stop-stream":
-        logger.info("Stream stopped")
-        start_time = None
-        return True, "stopped"  # Disable timer
-
-    return no_update, no_update
-
-
-@app.callback(
-    Output("stream-status", "children"),
-    Input("stream-timer", "n_intervals"),
-    State("detection-status", "data"),
-    prevent_initial_call=True,
-)
-def update_status(n, detection_status):
-    """
-    Callback to update the stream status banner with elapsed time since stream start.
-
-    Triggered periodically by the stream timer. Displays a warning banner if detection is inactive.
-
-    Parameters
-    ----------
-    n : int
-        Number of timer intervals elapsed.
-    detection_status : str
-        Current status of detection ("running", "stopped", etc.).
-
-    Returns
-    -------
-    html.Div or str
-        HTML elements displaying stream status, or empty string if not applicable.
-    """
-    if detection_status == "running" and start_time:
-        elapsed = datetime.datetime.now() - start_time
-        minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
-        timer_text = f"{minutes:02d}:{seconds:02d}"
-
-        logger.debug("[update_status] Detection inactive since %s", timer_text)
-
-        return html.Div(
-            [
-                html.Span(
-                    "🔴 Live stream",
-                    style={
-                        "backgroundColor": "#f99",
-                        "color": "black",
-                        "borderRadius": "6px",
-                        "padding": "4px 8px",
-                        "marginRight": "8px",
-                        "fontWeight": "bold",
-                    },
-                ),
-                html.Span(
-                    f"⚠️ Levée de doute en cours, la détection n'est plus active depuis {timer_text}",
-                    style={"color": "orange", "fontWeight": "bold"},
-                ),
-            ]
-        )
-    else:
-        logger.debug("[update_status] No active stream or start_time missing")
-        return ""
-
-
-@app.callback(
-    Output("pose-buttons", "children"),
-    Input("camera-select", "value"),
-    State("pi-cameras", "data"),
-    prevent_initial_call=True,
-)
-def update_pose_buttons(camera_name, pi_cameras):
-    """
-    Callback to generate pose buttons based on the selected camera.
-
-    Parameters
-    ----------
-    camera_name : str
-        Name of the selected camera.
-    pi_cameras : dict
-        Dictionary of camera configurations retrieved from the Pi.
-
-    Returns
-    -------
-    List[html.Button] or str
-        A list of pose buttons with azimuth labels, or an empty string if camera is not found.
-    """
-    if not camera_name or not pi_cameras:
-        logger.debug("[update_pose_buttons] Missing camera name or pi_cameras")
-        return ""
-
-    camera_info = pi_cameras.get(camera_name)
-    if not camera_info:
-        logger.warning("[update_pose_buttons] Camera '%s' not found in pi_cameras", camera_name)
-        return ""
-
-    poses = camera_info.get("poses", [])
-    azimuths = camera_info.get("azimuths", [])
-
-    if len(poses) != len(azimuths):
-        logger.warning("[update_pose_buttons] Mismatched poses and azimuths for camera '%s'", camera_name)
-        return ""
-
-    logger.debug("[update_pose_buttons] Generating %d pose buttons for camera '%s'", len(poses), camera_name)
-
-    buttons = [
-        html.Button(
-            f"{az}°",
-            id={"type": "pose-button", "camera": camera_name, "index": pose_id},
-            n_clicks=0,
-            style={
-                "background": "none",
-                "border": "2px solid #098386",
-                "borderRadius": "8px",
-                "fontSize": "16px",
-                "cursor": "pointer",
-                "padding": "6px 12px",
-                "color": "#098386",
-            },
-        )
-        for pose_id, az in zip(poses, azimuths, strict=True)
-    ]
-
-    return buttons
-
-
-@app.callback(
-    Input({"type": "pose-button", "camera": ALL, "index": ALL}, "n_clicks"),
-    State("camera-select", "value"),
-    State("pi-cameras", "data"),
-    State("available-stream-dropdown", "value"),
-    State("available-stream", "data"),
-    prevent_initial_call=True,
-)
-def move_to_pose(n_clicks_list, camera_name, pi_cameras, site_name, available_stream):
-    """
-    Callback to move a camera to a specific pose when a pose button is clicked.
-
-    Parameters
-    ----------
-    n_clicks_list : List[int]
-        List of click counts for each pose button.
-    camera_name : str
-        Name of the selected camera.
-    pi_cameras : dict
-        Camera data including IP and pose info.
-    site_name : str
-        Selected site for streaming.
-    available_stream : dict
-        Mapping from site names to their associated Pi IPs.
-
-    Returns
-    -------
-    None
-        This callback has no output; it sends a request to move the camera.
-    """
-    triggered = ctx.triggered_id
-
-    if not triggered or not pi_cameras or not camera_name:
-        logger.debug("[move_to_pose] No valid trigger or data missing")
-        raise PreventUpdate
-
-    triggered_camera = triggered.get("camera")
-    pose_id = triggered.get("index")
-
-    if triggered_camera != camera_name:
-        logger.debug("[move_to_pose] Triggered camera '%s' != selected camera '%s'", triggered_camera, camera_name)
-        raise PreventUpdate
-
-    camera_info = pi_cameras.get(camera_name)
-    if not camera_info:
-        logger.warning("[move_to_pose] Camera info not found for '%s'", camera_name)
-        raise PreventUpdate
-
-    camera_ip = camera_info.get("ip")
-    pi_ip = available_stream.get(site_name)
-    if not pi_ip or not camera_ip:
-        logger.warning("[move_to_pose] Missing IP for site '%s' or camera '%s'", site_name, camera_name)
-        raise PreventUpdate
-
-    pi_api_url = f"http://{pi_ip}:8081"
-
-    try:
-        response = requests.post(f"{pi_api_url}/move/{camera_ip}?pose_id={pose_id}&speed=50")
-        logger.info("[move_to_pose] Moved camera '%s' to pose '%s': %s", camera_name, pose_id, response.json())
-    except Exception as e:
-        logger.error("[move_to_pose] Error moving camera '%s' to pose '%s': %s", camera_name, pose_id, e)
-        raise PreventUpdate
-
-
-from dash import Output
-
-
-@app.callback(
-    Output("vision_polygons-stream", "children"),
-    Output("map-stream", "center"),
-    Input("camera-select", "value"),
-    Input({"type": "pose-button", "camera": ALL, "index": ALL}, "n_clicks"),
-    State("pi-cameras", "data"),
-    State("api_cameras", "data"),
-    prevent_initial_call=True,
-)
-def update_cone_and_center(camera_name, n_clicks_list, pi_cameras, api_cameras_data):
-    """
-    Callback to update the vision cone and recenter the map on the selected camera.
-
-    Parameters
-    ----------
-    camera_name : str
-        Selected camera name.
-    n_clicks_list : List[int]
-        List of click counts from pose buttons.
-    pi_cameras : dict
-        Local camera configuration data (IP, azimuths, poses, etc.).
-    api_cameras_data : str
-        JSON string of camera metadata from the API.
-
-    Returns
-    -------
-    Tuple[List[Component], List[float]] or Tuple[no_update, no_update]
-        - List containing vision cone element
-        - New center for the map
-    """
-    logger.debug("[update_cone_and_center] Triggered with camera_name='%s'", camera_name)
-
-    triggered = ctx.triggered_id
-
-    if not triggered or not camera_name or not pi_cameras or not api_cameras_data:
-        logger.debug("[update_cone_and_center] Missing required data")
-        raise PreventUpdate
-
-    camera_info = pi_cameras.get(camera_name)
-    if not camera_info:
-        logger.warning("[update_cone_and_center] Camera '%s' not found in pi_cameras", camera_name)
-        raise PreventUpdate
-
-    try:
-        df_cams = pd.read_json(StringIO(api_cameras_data), orient="split")
-        row = df_cams[df_cams["name"] == camera_name]
-    except Exception as e:
-        logger.error("[update_cone_and_center] Failed to parse API camera data: %s", e)
-        raise PreventUpdate
-
-    if row.empty:
-        logger.warning("[update_cone_and_center] Camera '%s' not found in API metadata", camera_name)
-        raise PreventUpdate
-
-    site_lat = float(row["lat"].values[0])
-    site_lon = float(row["lon"].values[0])
-    opening_angle = int(row["angle_of_view"].values[0])
-
-    poses = camera_info.get("poses", [])
-    azimuths = camera_info.get("azimuths", [])
-
-    try:
-        if triggered == "camera-select":
-            pose_index = 0
-        else:
-            pose_id = int(triggered["index"])
-            pose_index = poses.index(pose_id)
-
-        new_azimuth = azimuths[pose_index]
-        logger.info("[update_cone_and_center] Building cone for camera='%s' at azimuth=%d°", camera_name, new_azimuth)
-
-        cone, _ = build_vision_polygon(
-            site_lat=site_lat,
-            site_lon=site_lon,
-            azimuth=new_azimuth,
-            opening_angle=opening_angle,
-            dist_km=cfg.CAM_RANGE_KM,
-        )
-
-        return [cone], [site_lat, site_lon]
-
-    except Exception as e:
-        logger.error("[update_cone_and_center] Error building vision cone: %s", e)
-        return no_update, no_update
-
-
-@app.callback(
-    Output("available-stream-dropdown", "value"),
-    Input("selected-camera-info", "data"),
-    State("available-stream", "data"),
-    prevent_initial_call=True,
-)
-def sync_dropdown_from_camera_info(camera_info, available_stream):
-    """
-    Callback to synchronize the stream dropdown value based on the selected camera info.
-
-    Extracts the site name from the selected camera and updates the dropdown if valid.
-
-    Parameters
-    ----------
-    camera_info : Tuple[str, int]
-        Selected camera name and azimuth from the UI.
-    available_stream : dict
-        Mapping of site names to their associated Pi IPs.
-
-    Returns
-    -------
-    str or PreventUpdate
-        The site name to set in the dropdown, or prevent update if not found.
-    """
-    logger.debug("[sync_dropdown_from_camera_info] Triggered with: %s", camera_info)
-
-    if not camera_info or not available_stream:
-        raise exceptions.PreventUpdate
-
-    cam_name, _ = camera_info
-    site_name = cam_name[:-3].strip().lower()
-
-    logger.debug("[sync_dropdown_from_camera_info] Extracted site_name='%s'", site_name)
-
-    if site_name not in available_stream:
-        logger.warning("[sync_dropdown_from_camera_info] Site '%s' not in available_stream", site_name)
-        raise exceptions.PreventUpdate
-
-    logger.info("[sync_dropdown_from_camera_info] Setting stream dropdown to '%s'", site_name)
-    return site_name
-
-
-@app.callback(
-    Output("selected-camera-pose", "data"),
-    Output("pi-cameras", "data"),
-    Output("camera-select", "options"),
-    Output("camera-select", "value"),
-    Input("available-stream-dropdown", "value"),
-    State("available-stream", "data"),
-    State("selected-camera-info", "data"),
-    prevent_initial_call=True,
-)
-def get_pi_camera_from_dropdown(site_name, available_stream, camera_info):
-    """
-    Callback to retrieve Pi camera info and set the default pose and camera selection.
-
-    Parameters
-    ----------
-    site_name : str
-        Selected site from the dropdown.
-    available_stream : dict
-        Mapping from site name to Pi IP.
-    camera_info : Tuple[str, int] or None
-        Previously selected camera and azimuth (optional).
-
-    Returns
-    -------
-    Tuple[dict, dict, List[dict], str]
-        - Pose data with pi_ip,
-        - All cameras retrieved from the Pi,
-        - Options for camera dropdown,
-        - Default selected camera name.
-    """
-    logger.debug("[get_pi_camera_from_dropdown] Triggered with site: %s", site_name)
-
+def fetch_cameras_from_pi(site_name, available_stream):
     if not site_name or not available_stream:
         raise PreventUpdate
+
+    logger.debug(f"[fetch_cameras_from_pi] site_name={site_name}, available_stream={available_stream}")
 
     pi_ip = available_stream.get(site_name)
     if not pi_ip:
@@ -538,54 +67,356 @@ def get_pi_camera_from_dropdown(site_name, available_stream, camera_info):
         logger.error("Error fetching cameras from %s: %s", pi_api_url, e)
         raise PreventUpdate
 
-    if not pi_cameras:
-        logger.warning("No cameras found on Pi at site '%s'", site_name)
+    return pi_api_url, pi_cameras
+
+
+@app.callback(
+    Output("stream-current-azimuth", "value"),
+    Output("trigered_from_alert", "data"),
+    Input("pi_cameras", "data"),
+    State("trigered_from_alert", "data"),
+    State("selected-camera-info", "data"),
+)
+def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
+    if trigered_from_alert:
+        print(selected_camera_info[1], False)
+        return selected_camera_info[1], False
+
+    else:
         raise PreventUpdate
 
-    first_cam_name = next(iter(pi_cameras.keys()))
-    cam_info = pi_cameras[first_cam_name]
-    azimuths = cam_info.get("azimuths", [])
-    poses = cam_info.get("poses", [])
 
-    if not azimuths or not poses:
-        logger.warning("Camera '%s' has no pose or azimuth info", first_cam_name)
+@app.callback(
+    Output("current_camera", "data"),
+    Output("stream-camera-name", "children"),
+    Output("stream-preset-azimuths", "children"),
+    Input("stream-current-azimuth", "value"),
+    State("pi_cameras", "data"),
+    prevent_initial_call=True,
+)
+def set_current_camera(target_azimuth, pi_cameras):
+    if target_azimuth is None or not pi_cameras:
         raise PreventUpdate
 
-    target_azimuth = camera_info[1] if camera_info else azimuths[0]
+    camera, signed_shift = find_closest_camera_pose(target_azimuth, pi_cameras)
+
+    cam_name = camera.get("name")
+    azimuths = pi_cameras.get(cam_name, {}).get("azimuths")
+    az_string = str(azimuths)
+
+    current_camera = {
+        "camera": camera,
+        "pose_shift": signed_shift,
+    }
+
+    return current_camera, cam_name, az_string
+
+
+@app.callback(
+    Output("zoom-input", "value"),
+    Output("speed-input", "value"),
+    Input("current_camera", "data"),
+    prevent_initial_call=True,
+)
+def reset_zoom_and_speed_on_camera_change(current_camera):
+    if not current_camera:
+        raise PreventUpdate
+
+    logger.info(
+        f"[reset_zoom_and_speed] Resetting zoom & speed due to camera change: {current_camera['camera'].get('name')}"
+    )
+
+    return 0, 0  # or any default you prefer, like 10, 50 etc.
+
+
+@app.callback(
+    Output("stream-start-time", "data"),
+    Output("stream-timer", "disabled"),
+    Output("inactivity-modal", "is_open"),
+    Output("hide-stream-flag", "data"),
+    Output("stream-status", "children"),
+    Input("current_camera", "data"),
+    Input("stream-timer", "n_intervals"),
+    State("pi_api_url", "data"),
+    State("stream-start-time", "data"),
+    State("detection-status", "data"),
+    prevent_initial_call=True,
+)
+def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, detection_status):
+    triggered = ctx.triggered_id
+
+    # 🚀 Triggered by selecting a new camera
+    if triggered == "current_camera":
+        if not current_camera or not pi_api_url:
+            raise PreventUpdate
+
+        camera_ip = current_camera.get("camera", {}).get("ip")
+        if not camera_ip:
+            raise PreventUpdate
+
+        logger.info(f"[start_stream] Starting stream for {camera_ip}")
+        send_api_request(pi_api_url, f"/start_stream/{camera_ip}")
+
+        now_iso = datetime.datetime.now().isoformat()
+        return now_iso, False, False, False, ""  # start time, timer enabled, modal closed, flag false, no banner
+
+    # ⏱️ Triggered by timer tick
+    if triggered == "stream-timer":
+        if detection_status != "running" or not stream_start_iso:
+            return no_update, no_update, False, False, ""
+
+        try:
+            start_time = datetime.datetime.fromisoformat(stream_start_iso)
+            elapsed = datetime.datetime.now() - start_time
+            seconds_elapsed = int(elapsed.total_seconds())
+
+            # ⛔ After 120s, hide warning + open modal + disable timer
+            if seconds_elapsed > 120:
+                logger.info("[stream monitor] Inactivity threshold reached.")
+                return no_update, True, True, True, ""
+
+            # ✅ Still under threshold, display status
+            minutes, seconds = divmod(seconds_elapsed, 60)
+            timer_text = f"{minutes:02d}:{seconds:02d}"
+
+            status_banner = html.Div(
+                [
+                    html.Span(
+                        "🔴 Live stream",
+                        style={
+                            "backgroundColor": "#f99",
+                            "color": "black",
+                            "borderRadius": "6px",
+                            "padding": "4px 8px",
+                            "marginRight": "8px",
+                            "fontWeight": "bold",
+                        },
+                    ),
+                    html.Span(
+                        f"⚠️ Levée de doute en cours, la détection n'est plus active depuis {timer_text}",
+                        style={"color": "orange", "fontWeight": "bold"},
+                    ),
+                ]
+            )
+
+            return no_update, no_update, False, False, status_banner
+
+        except Exception as e:
+            logger.warning(f"[stream monitor] Failed to parse time or generate banner: {e}")
+            return no_update, no_update, False, False, ""
+
+    return no_update, no_update, False, False, ""
+
+
+@app.callback(
+    Output("dummy-output", "children"),
+    Input("current_camera", "data"),
+    Input("move-up", "n_clicks"),
+    Input("move-down", "n_clicks"),
+    Input("move-left", "n_clicks"),
+    Input("move-right", "n_clicks"),
+    Input("stop-move", "n_clicks"),
+    Input("zoom-input", "value"),
+    State("speed-input", "value"),
+    State("pi_api_url", "data"),
+    prevent_initial_call=True,
+)
+def control_camera(current_camera, up, down, left, right, stop, zoom_level, move_speed, pi_api_url):
+    if not ctx.triggered or not current_camera:
+        raise PreventUpdate
+
+    logger.debug(f"[control_camera] Triggered by: {ctx.triggered_id}")
+    logger.debug(f"[control_camera] Current camera data: {current_camera}")
+
+    global last_command_time
+    last_command_time = time.time()
+
+    trigger = ctx.triggered_id
+    camera = current_camera.get("camera", {})
+    pose_shift = current_camera.get("pose_shift", 0)
+
+    camera_ip = camera.get("ip")
+    pose_id = camera.get("pose_id")
+
+    if not pi_api_url or not camera_ip:
+        raise PreventUpdate
+
+    direction_map = {
+        "move-up": "Up",
+        "move-down": "Down",
+        "move-left": "Left",
+        "move-right": "Right",
+        "stop-move": "Stop",
+    }
 
     try:
-        pose = find_closest_camera_pose(target_azimuth, pi_cameras)
+        # 🔁 Case 1: Triggered by current_camera
+        if trigger == "current_camera":
+            logger.info(f"[AUTO] Triggered by camera pose change for {camera_ip}")
+
+            # Move to preset pose if defined
+            if pose_id is not None:
+                logger.info(f"[AUTO] Moving {camera_ip} to preset pose {pose_id}")
+                send_api_request(pi_api_url, f"/move/{camera_ip}?pose_id={pose_id}&speed=50")
+                time.sleep(1.5)  # Allow some delay before fine adjustment
+
+            # Apply signed shift
+            if abs(pose_shift) >= 1:
+                direction = "Right" if pose_shift > 0 else "Left"
+                degrees = abs(pose_shift)
+                logger.info(f"[AUTO] Applying fine shift of {degrees:.2f}° to the {direction} for {camera_ip}")
+                send_api_request(pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={degrees:.2f}&speed=4")
+
+        # 🧑‍💻 Case 2: Manual PTZ controls
+        elif trigger in direction_map:
+            direction = direction_map[trigger]
+            true_speed = int(move_speed / 10) + 1
+            if direction != "Stop":
+                logger.info(f"[MANUAL] Moving {camera_ip} -> {direction} at speed {true_speed}")
+                send_api_request(pi_api_url, f"/move/{camera_ip}?direction={direction}&speed={true_speed}")
+            else:
+                logger.info(f"[MANUAL] Stopping movement for {camera_ip}")
+                send_api_request(pi_api_url, f"/stop/{camera_ip}")
+
+        # 🔍 Case 3: Zoom input change
+        elif trigger == "zoom-input":
+            if zoom_level is not None:
+                true_zoom = int(zoom_level * 41 / 100)
+                logger.info(f"[MANUAL] Zooming {camera_ip} to level {true_zoom}")
+                send_api_request(pi_api_url, f"/zoom/{camera_ip}/{true_zoom}")
+
     except Exception as e:
-        logger.error("Error finding closest camera pose: %s", e)
+        logger.warning(f"[ERROR] Failed to control camera {camera_ip} via Pi {pi_api_url}: {e}")
+
+    return no_update
+
+
+@app.callback(
+    Output("vision_polygons-stream", "children"),
+    Output("map-stream", "center"),
+    Input("current_camera", "data"),
+    Input("zoom-input", "value"),
+    State("api_cameras", "data"),
+    prevent_initial_call=True,
+)
+def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_cameras_data):
+    logger.debug("[update_cone_and_center_from_current_camera] Triggered")
+
+    if not current_camera or not api_cameras_data:
         raise PreventUpdate
 
-    pose_with_pi_ip = {**pose, "pi_ip": pi_ip}
-    cam_options = [{"label": name, "value": name} for name in pi_cameras]
+    camera = current_camera.get("camera", {})
+    pose_shift = current_camera.get("pose_shift", 0)
+    cam_name = camera.get("name")
+    pose_id = camera.get("pose_id")
+    azimuths = camera.get("azimuths", [])
+    poses = camera.get("poses", [])
 
-    return pose_with_pi_ip, pi_cameras, cam_options, first_cam_name
+    if cam_name is None or pose_id is None or not azimuths or not poses:
+        logger.warning(f"[update_cone_and_center_from_current_camera] Incomplete camera data: {camera}")
+        raise PreventUpdate
+
+    try:
+        df_cams = pd.read_json(StringIO(api_cameras_data), orient="split")
+        row = df_cams[df_cams["name"] == cam_name]
+    except Exception as e:
+        logger.error(f"[update_cone_and_center_from_current_camera] Failed to parse API camera data: {e}")
+        raise PreventUpdate
+
+    if row.empty:
+        logger.warning(f"[update_cone_and_center_from_current_camera] Camera '{cam_name}' not found in API data")
+        raise PreventUpdate
+
+    try:
+        site_lat = float(row["lat"].values[0])
+        site_lon = float(row["lon"].values[0])
+
+        # FOV based on zoom input
+        def fov_zoom(z):
+            return 55.59044 - 2.00815 * z + 0.01886 * z**2
+
+        zoom_level_converted = int(zoom_level * 41 / 100)
+        opening_angle = int(fov_zoom(zoom_level_converted))
+
+        pose_index = poses.index(pose_id)
+        base_azimuth = azimuths[pose_index]
+        adjusted_azimuth = base_azimuth + pose_shift
+
+        logger.info(
+            f"[update_cone_and_center] Drawing cone for '{cam_name}' at azimuth={adjusted_azimuth:.2f}° (FOV={opening_angle:.2f}°)"
+        )
+
+        cone, _ = build_vision_polygon(
+            site_lat=site_lat,
+            site_lon=site_lon,
+            azimuth=adjusted_azimuth,
+            opening_angle=opening_angle,
+            dist_km=cfg.CAM_RANGE_KM,
+        )
+
+        return [cone], [site_lat, site_lon]
+
+    except Exception as e:
+        logger.error(f"[update_cone_and_center_from_current_camera] Error computing vision cone: {e}")
+        return no_update, no_update
 
 
 @app.callback(
     Output("video-stream", "src"),
-    Input("available-stream-dropdown", "value"),
+    Input("available-stream-sites-dropdown", "value"),
+    Input("hide-stream-flag", "data"),
 )
-def update_stream_url(site_name):
-    """
-    Callback to update the video stream URL based on selected site.
+def update_stream_url(site_name, hide_flag):
+    if hide_flag:
+        logger.info("[update_stream_url] Stream hidden due to inactivity.")
+        return None
 
-    Parameters
-    ----------
-    site_name : str
-        Selected site from dropdown.
-
-    Returns
-    -------
-    str
-        URL to the WEBRTC stream
-    """
     if not site_name:
         raise PreventUpdate
 
-    stream_url = f"{cfg.MEDIAMTX_SERVER_IP}:8889/{site_name}"
-    logger.debug("Stream URL set to: %s", stream_url)
-    return stream_url
+    return f"{cfg.MEDIAMTX_SERVER_IP}:8889/{site_name}"
+
+
+@app.callback(
+    Output("capture-modal", "is_open"),
+    Output("captured-image", "src"),
+    Output("download-captured-image", "href"),
+    Input("capture-image-button", "n_clicks"),
+    State("current_camera", "data"),
+    State("pi_api_url", "data"),
+    prevent_initial_call=True,
+)
+def open_capture_modal(n_clicks, current_camera, api_url):
+    if not current_camera or not api_url:
+        print("Missing camera or API URL")
+        return False, "", ""
+
+    global last_command_time
+    last_command_time = time.time()
+
+    camera_id = current_camera["camera"].get("ip")
+    if not camera_id:
+        print("No IP in current_camera data")
+        return False, "", ""
+
+    try:
+        resp = requests.get(f"{api_url}/capture/{camera_id}", timeout=5)
+        if resp.status_code != 200:
+            print(f"Non-200 response: {resp.status_code}")
+            return False, "", ""
+
+        if not resp.content or len(resp.content) < 100:
+            print(f"Image too small or empty: {len(resp.content)} bytes")
+            return False, "", ""
+
+        # Convert image to base64 for display
+        image_bytes = io.BytesIO(resp.content).getvalue()
+        base64_img = base64.b64encode(image_bytes).decode("utf-8")
+        img_src = f"data:image/jpeg;base64,{base64_img}"
+
+        print("✅ Image capture successful, displaying modal.")
+        return True, img_src, img_src
+
+    except Exception as e:
+        print(f"❌ Exception during image capture: {e}")
+        return False, "", ""

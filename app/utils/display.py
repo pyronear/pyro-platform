@@ -81,7 +81,7 @@ def calculate_new_polygon_parameters(azimuth, opening_angle, bboxes):
     This function compute the vision polygon parameters based on bboxes
     """
     # Assuming bboxes is in the format [x0, y0, x1, y1, confidence]
-    x0, _, width, _ = bboxes
+    x0, _, width, _ = bboxes[:4]
     xc = (x0 + width / 2) / 100
 
     # New azimuth
@@ -118,15 +118,15 @@ def build_sites_markers(api_cameras):
     markers = []
 
     for _, site in client_sites.iterrows():
-        site_id = site["id"]
         lat = round(site["lat"], 4)
         lon = round(site["lon"], 4)
-        site_name = site["name"][:-3].replace("_", " ").title()
+        site_name = site["name"][:-3].replace("_", " ").lower()
         markers.append(
             dl.Marker(
-                id=f"site_{site_id}",  # Necessary to set an id for each marker to receive callbacks
+                id={"type": "site-marker", "index": site_name.lower()},
                 position=(lat, lon),
                 icon=icon,
+                n_clicks=0,  # ✅ allows click tracking
                 children=[
                     dl.Tooltip(site_name),
                     dl.Popup(

@@ -14,7 +14,7 @@ STATUS_BAR_STYLE = {
     "height": "50px",
     "width": "100%",
     "marginBottom": "8px",
-    "marginTop": "0",
+    "marginTop": "-32px",
     "padding": "0",
     "display": "flex",
     "justifyContent": "space-between",
@@ -97,20 +97,18 @@ PICK_STREAM_STYLE = {
 
 translate = {
     "fr": {
-        "close_doubt": "Fermer la levée de doute",
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
         "start": "▶️ Démarrer",
         "stop": "⏹️ Arrêter",
-        "select_stream": "🎥 Sélectionner un flux",
+        "select_stream": "🎥 Sélectionner un site",
     },
     "es": {
-        "close_doubt": "Cerrar verificación visual",
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
         "start": "▶️ Iniciar",
         "stop": "⏹️ Detener",
-        "select_stream": "🎥 Seleccionar flujo",
+        "select_stream": "🎥 Seleccionar un sitio",
     },
 }
 
@@ -123,7 +121,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:
         cam_name, _ = selected_camera_info
-        site_name = cam_name[:-3].strip().lower()
+        site_name = cam_name.lower()
         if site_name in available_stream:
             default_stream = site_name
 
@@ -136,19 +134,13 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                     html.Div(
                         [  # GROUPED RIGHT SECTION
                             dcc.Dropdown(
-                                id="available-stream-dropdown",
+                                id="available-stream-sites-dropdown",
                                 placeholder=translate[lang]["select_stream"],
                                 value=default_stream,
                                 options=[{"label": name, "value": name} for name in available_stream.keys()]
                                 if available_stream
                                 else [],
                                 style=PICK_STREAM_STYLE,
-                            ),
-                            html.Button(
-                                translate[lang]["close_doubt"],
-                                id="close-doubt",
-                                n_clicks=0,
-                                style=CLOSE_BUTTON_STYLE,
                             ),
                         ],
                         style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
@@ -287,59 +279,55 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                     ),
                     # RIGHT COLUMN: Dropdown + map
                     dbc.Col(
-                        [
+                        [  # Panneau affichage des infos caméra
                             html.Div(
-                                dcc.Dropdown(
-                                    id="camera-select",
-                                    options=[],
-                                    value=None,
-                                    clearable=False,
-                                    className="mb-2",
-                                    style=DROPDOWN_STYLE,
-                                ),
-                                style=WRAPPED_DROPDOWN_STYLE,
-                            ),
-                            # Start/Stop
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        html.Button(
-                                            translate[lang]["start"],
-                                            id="start-stream",
-                                            n_clicks=0,
-                                            style={
-                                                **BUTTON_STYLE,
-                                                "border": "2px solid #098386",
-                                                "borderRadius": "8px",
-                                                "fontSize": "18px",
-                                                "width": "100%",
-                                                "color": "#098386",
-                                            },
-                                        ),
-                                        width=6,
+                                id="stream-camera-info-panel",
+                                className="common-style",
+                                style={
+                                    "padding": "12px",
+                                    "marginTop": "0px",
+                                    "marginBottom": "10px",
+                                    "backgroundColor": "#f0f4f7",
+                                    "borderRadius": "8px",
+                                },
+                                children=[
+                                    html.H5(
+                                        "🎥 Informations caméra", style={"textAlign": "center", "marginBottom": "12px"}
                                     ),
-                                    dbc.Col(
-                                        html.Button(
-                                            translate[lang]["stop"],
-                                            id="stop-stream",
-                                            n_clicks=0,
-                                            style={
-                                                **BUTTON_STYLE,
-                                                "border": "2px solid #098386",
-                                                "borderRadius": "8px",
-                                                "fontSize": "18px",
-                                                "width": "100%",
-                                                "color": "#098386",
-                                            },
-                                        ),
-                                        width=6,
+                                    html.Div(
+                                        [
+                                            html.Span("Nom de la caméra : ", className="alert-information-title"),
+                                            html.Span(id="stream-camera-name"),
+                                        ],
+                                        style={"marginBottom": "8px"},
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Span("Azimuth actuel : ", className="alert-information-title"),
+                                            dcc.Input(
+                                                id="stream-current-azimuth",
+                                                type="number",
+                                                min=0,
+                                                max=359,
+                                                step=1,
+                                                placeholder="0-359",
+                                                debounce=True,
+                                                style={"width": "80px", "marginLeft": "8px", "borderRadius": "6px"},
+                                            ),
+                                        ],
+                                        style={"marginBottom": "12px", "display": "flex", "alignItems": "center"},
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Span(
+                                                "Azimuths préenregistrés : ", className="alert-information-title"
+                                            ),
+                                            html.Span(id="stream-preset-azimuths", style={"marginLeft": "8px"}),
+                                        ],
+                                        style={"marginBottom": "8px", "display": "flex", "alignItems": "center"},
                                     ),
                                 ],
-                                justify="center",
-                                className="mb-2",
                             ),
-                            # Pose buttons
-                            html.Div(id="pose-buttons", style=POSE_BUTTONS_STYLE),
                             # Map
                             html.Div(
                                 dbc.Col(
@@ -348,11 +336,20 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                     style={
                                         "position": "relative",
                                         "width": "100%",
-                                        "height": "400px",
+                                        "height": "380px",
                                         "borderRadius": "10px",
                                         "overflow": "hidden",
                                     },
                                 )
+                            ),
+                            html.Div(
+                                html.Button(
+                                    "📸 Capturer une image",
+                                    id="capture-image-button",
+                                    n_clicks=0,
+                                    className="btn btn-primary",
+                                ),
+                                style={"textAlign": "center", "marginTop": "12px"},
                             ),
                         ],
                         md=4,
@@ -362,9 +359,50 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                 className="mb-4",
             ),
             # Hidden components
-            dcc.Interval(id="stream-timer", interval=1000, n_intervals=0, disabled=True),
-            dcc.Store(id="detection-status", data="stopped"),
+            # Modal for image preview
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("📸 Aperçu de l'image capturée")),
+                    dbc.ModalBody(
+                        html.Img(id="captured-image", src="", style={"width": "100%", "borderRadius": "8px"})
+                    ),
+                    dbc.ModalFooter(
+                        html.A(
+                            "⬇️ Télécharger",
+                            id="download-captured-image",
+                            download="capture.jpg",
+                            href="",
+                            target="_blank",
+                            className="btn btn-success",
+                        ),
+                    ),
+                ],
+                id="capture-modal",
+                is_open=False,
+                fullscreen=True,  # 👈 This makes it full-screen
+            ),
+            dcc.Interval(id="stream-timer", interval=1000, n_intervals=0),  # every second
+            dcc.Store(id="stream-start-time"),
+            dcc.Store(id="detection-status", data="running"),  # or "stopped", etc.
             html.Div(id="dummy-output", style={"display": "none"}),
+            dcc.Store(id="pi_api_url"),
+            dcc.Store(id="pi_cameras"),
+            dcc.Store(id="current_camera"),
+            dcc.Store(id="trigered_from_alert", data=True if available_stream else False),
+            dcc.Store(id="hide-stream-flag", data=False),
+            dbc.Modal(
+                id="inactivity-modal",
+                is_open=False,
+                centered=True,
+                children=[
+                    dbc.ModalHeader("⏱️ Fin de diffusion automatique"),
+                    dbc.ModalBody(
+                        "Le flux a été interrompu après 2 minutes sans activité. "
+                        "Vous pouvez sélectionner à nouveau une caméra pour relancer le flux."
+                    ),
+                ],
+            ),
+            dcc.Store(id="hide-stream-flag", data=False),
         ],
         style=STREAM_PAGE_STYLE,
     )

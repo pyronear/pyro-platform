@@ -20,7 +20,11 @@ from main import app
 
 import config as cfg
 from services import api_client
-from utils.display import build_vision_polygon, convert_dt_to_local_tz, create_event_list_from_alerts
+from utils.display import (
+    build_vision_polygon,
+    convert_dt_to_local_tz,
+    create_event_list_from_alerts,
+)
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -657,39 +661,21 @@ def update_datepicker(open_clicks, selected_date):
 @app.callback(
     Output("selected-camera-info", "data"),
     Input("start-live-stream", "n_clicks"),
-    State("sequence_on_display", "data"),
-    State("api_cameras", "data"),
+    State("alert-camera-value", "children"),
+    State("alert-azimuth-value", "children"),
     prevent_initial_call=True,
 )
-def pick_live_stream_camera(n_clicks, sequence_data, cameras_data):
-    """
-    Selects the camera and azimuth associated with the currently displayed sequence.
-
-    Returns:
-    - tuple: (camera_name, azimuth) or None
-    """
+def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
     logger.info("pick_live_stream_camera")
 
-    if not sequence_data or not cameras_data:
+    if not camera_label or not azimuth_label:
+        raise PreventUpdate
+    try:
+        cam_name = camera_label.split(" ")[0]
+        corrected_azimuth = int(azimuth_label.replace("°", "").strip())
+    except Exception as e:
+        logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
         raise PreventUpdate
 
-    df_seq = pd.read_json(StringIO(sequence_data), orient="split")
-    df_cams = pd.read_json(StringIO(cameras_data), orient="split")
-
-    if df_seq.empty or df_cams.empty:
-        raise PreventUpdate
-
-    # Take the last event in the sequence
-    last_event = df_seq.iloc[-1]
-    cam_id = last_event["camera_id"]
-
-    cam_row = df_cams[df_cams["id"] == cam_id]
-    if cam_row.empty:
-        raise PreventUpdate
-
-    cam_name = cam_row["name"].values[0]
-    azimuth = int(last_event.get("azimuth", 0))
-
-    print((cam_name, azimuth))
-
-    return (cam_name, azimuth)
+    logger.info(f"Selected camera={cam_name}, azimuth={corrected_azimuth}")
+    return (cam_name, corrected_azimuth)

@@ -43,19 +43,28 @@ def fetch_cameras(pi_api_url):
 
 def find_closest_camera_pose(target_azimuth, pi_cameras):
     closest_info = None
-    min_diff = float("inf")
+    min_abs_diff = float("inf")
+    signed_shift = 0
 
     for cam_name, cam_data in pi_cameras.items():
         ip = cam_data["ip"]
-        for pose_id, az in zip(cam_data["poses"], cam_data["azimuths"], strict=True):
-            diff = min(abs(az - target_azimuth), 360 - abs(az - target_azimuth))  # circular difference
-            if diff < min_diff:
-                min_diff = diff
+        azimuths = cam_data["azimuths"]
+        poses = cam_data["poses"]
+
+        for pose_id, az in zip(poses, azimuths, strict=True):
+            raw_diff = (target_azimuth - az + 540) % 360 - 180
+            abs_diff = abs(raw_diff)
+
+            if abs_diff < min_abs_diff:
+                min_abs_diff = abs_diff
+                signed_shift = raw_diff
                 closest_info = {
-                    "camera": cam_name,
+                    "name": cam_name,
                     "ip": ip,
                     "azimuth": az,
-                    "pose": pose_id,
+                    "pose_id": pose_id,
+                    "azimuths": azimuths,
+                    "poses": poses,
                 }
 
-    return closest_info
+    return closest_info, signed_shift

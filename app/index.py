@@ -40,7 +40,7 @@ app.layout = get_main_layout()
         Input("url", "search"),
         Input("selected-camera-info", "data"),
     ],
-    [State("user_token", "data"), State("available-stream", "data")],
+    [State("user_token", "data"), State("available-stream-sites", "data")],
 )
 def display_page(pathname, api_cameras, search, selected_camera_info, user_token, available_stream):
     logger.debug(
