@@ -11,6 +11,7 @@ import logging_config
 import pandas as pd
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
+from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
 from main import app
 
@@ -90,7 +91,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
     if n_clicks:
         # We instantiate the form feedback output
-        form_feedback = [dcc.Markdown("---")]
+        form_feedback: list[Component] = [dcc.Markdown("---")]
         # First check verifies whether both a username and a password have been provided
         if username is None or password is None or len(username) == 0 or len(password) == 0:
             # If either the username or the password is missing, the condition is verified
