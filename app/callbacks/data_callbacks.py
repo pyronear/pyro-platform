@@ -153,9 +153,9 @@ def load_available_stream(user_name):
     try:
         with open("available_stream.json", "r") as f:
             full_data = json.load(f)
-    except FileNotFoundError:
-        logger.info("available_stream.json not found.")
-        raise PreventUpdate
+    except (FileNotFoundError, IsADirectoryError, json.JSONDecodeError):
+        logger.warning("available_stream.json not found or invalid. Using empty dict.")
+        full_data = {}
 
     user_streams = full_data.get(user_name)
     if not user_streams:

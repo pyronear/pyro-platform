@@ -30,6 +30,7 @@ services:
       - 8050
     volumes:
       - ./app/:/usr/src/app/
+      - available_stream.json:/usr/src/app/available_stream.json
     environment:
       - API_URL=${API_URL}
       - API_LOGIN=${API_LOGIN}
