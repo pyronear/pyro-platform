@@ -8,6 +8,12 @@ from dash import dcc, html
 from dash_extensions import EventListener  # type: ignore
 
 from utils.display import build_alerts_map
+from typing import TypedDict, List
+
+class Option(TypedDict):
+    label: str
+    value: str
+
 
 # --- Styles ---
 STATUS_BAR_STYLE = {
@@ -118,6 +124,8 @@ translate = {
 def live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info=None, lang="fr"):
     # Default fallback
     default_stream = next(iter(available_stream.keys()))[0] if available_stream else None
+    dropdown_options: List[Option] = [{"label": name, "value": name} for name in available_stream.keys()]
+
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:
@@ -138,7 +146,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                 id="available-stream-sites-dropdown",
                                 placeholder=translate[lang]["select_stream"],
                                 value=default_stream,
-                                options=[{"label": name, "value": name} for name in available_stream.keys()]
+                                options=dropdown_options
                                 if available_stream
                                 else [],
                                 style=PICK_STREAM_STYLE,
