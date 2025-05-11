@@ -257,7 +257,7 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
         # 🔁 Case 1: Triggered by current_camera
         if trigger == "current_camera":
             logger.info(f"[AUTO] Triggered by camera pose change for {camera_ip}")
-            time.sleep(1) # let stream start first
+            time.sleep(1)  # let stream start first
 
             # Move to preset pose if defined
             if pose_id is not None:

@@ -5,7 +5,7 @@
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from dash_extensions import EventListener
+from dash_extensions import EventListener # type: ignore
 
 from utils.display import build_alerts_map
 
