@@ -5,6 +5,7 @@
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from dash_extensions import EventListener
 
 from utils.display import build_alerts_map
 
@@ -142,206 +143,6 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                 else [],
                                 style=PICK_STREAM_STYLE,
                             ),
-                        ],
-                        style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
-                    ),
-                ],
-                style=STATUS_BAR_STYLE,
-            ),
-            # Main layout: stream + map
-            dbc.Row(
-                [
-                    # LEFT COLUMN: Stream + Controls
-                    dbc.Col(
-                        [
-                            html.Div(
-                                [
-                                    html.Iframe(
-                                        id="video-stream",
-                                        src="",
-                                        style={
-                                            "width": "100%",
-                                            "height": "500px",
-                                            "border": "none",
-                                            "borderRadius": "10px",
-                                        },
-                                    ),
-                                    # Joystick
-                                    html.Div(
-                                        [
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(),
-                                                    dbc.Col(
-                                                        html.Button("⬆️", id="move-up", n_clicks=0, style=BUTTON_STYLE)
-                                                    ),
-                                                    dbc.Col(),
-                                                ],
-                                                justify="center",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        html.Button("⬅️", id="move-left", n_clicks=0, style=BUTTON_STYLE)
-                                                    ),
-                                                    dbc.Col(
-                                                        html.Button(
-                                                            "🛑", id="stop-move", n_clicks=0, style=BUTTON_STYLE
-                                                        )
-                                                    ),
-                                                    dbc.Col(
-                                                        html.Button(
-                                                            "➡️", id="move-right", n_clicks=0, style=BUTTON_STYLE
-                                                        )
-                                                    ),
-                                                ],
-                                                justify="center",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(),
-                                                    dbc.Col(
-                                                        html.Button("⬇️", id="move-down", n_clicks=0, style=BUTTON_STYLE)
-                                                    ),
-                                                    dbc.Col(),
-                                                ],
-                                                justify="center",
-                                            ),
-                                        ],
-                                        style={
-                                            "position": "absolute",
-                                            "bottom": "10px",
-                                            "right": "10px",
-                                            "padding": "5px",
-                                            "borderRadius": "8px",
-                                        },
-                                    ),
-                                ],
-                                style={"position": "relative"},
-                            ),
-                            # Sliders
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Div(
-                                                    translate[lang]["move_speed"],
-                                                    style={
-                                                        "textAlign": "center",
-                                                        "fontWeight": "bold",
-                                                        "marginBottom": "8px",
-                                                    },
-                                                ),
-                                                dcc.Slider(
-                                                    id="speed-input",
-                                                    min=0,
-                                                    max=100,
-                                                    step=10,
-                                                    value=0,
-                                                    marks={i: str(i) for i in range(0, 101, 10)},
-                                                ),
-                                            ],
-                                            style=SLIDER_BOX_STYLE,
-                                        ),
-                                        width=6,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Div(
-                                                    translate[lang]["zoom_level"],
-                                                    style={
-                                                        "textAlign": "center",
-                                                        "fontWeight": "bold",
-                                                        "marginBottom": "8px",
-                                                    },
-                                                ),
-                                                dcc.Slider(
-                                                    id="zoom-input",
-                                                    min=0,
-                                                    max=100,
-                                                    step=10,
-                                                    value=0,
-                                                    marks={i: str(i) for i in range(0, 101, 10)},
-                                                ),
-                                            ],
-                                            style=SLIDER_BOX_STYLE,
-                                        ),
-                                        width=6,
-                                    ),
-                                ],
-                                className="mt-3",
-                            ),
-                        ],
-                        md=8,
-                        style={"padding": "0"},
-                    ),
-                    # RIGHT COLUMN: Dropdown + map
-                    dbc.Col(
-                        [  # Panneau affichage des infos caméra
-                            html.Div(
-                                id="stream-camera-info-panel",
-                                className="common-style",
-                                style={
-                                    "padding": "12px",
-                                    "marginTop": "0px",
-                                    "marginBottom": "10px",
-                                    "backgroundColor": "#f0f4f7",
-                                    "borderRadius": "8px",
-                                },
-                                children=[
-                                    html.H5(
-                                        "🎥 Informations caméra", style={"textAlign": "center", "marginBottom": "12px"}
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Span("Nom de la caméra : ", className="alert-information-title"),
-                                            html.Span(id="stream-camera-name"),
-                                        ],
-                                        style={"marginBottom": "8px"},
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Span("Azimuth actuel : ", className="alert-information-title"),
-                                            dcc.Input(
-                                                id="stream-current-azimuth",
-                                                type="number",
-                                                min=0,
-                                                max=359,
-                                                step=1,
-                                                placeholder="0-359",
-                                                debounce=True,
-                                                style={"width": "80px", "marginLeft": "8px", "borderRadius": "6px"},
-                                            ),
-                                        ],
-                                        style={"marginBottom": "12px", "display": "flex", "alignItems": "center"},
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Span(
-                                                "Azimuths préenregistrés : ", className="alert-information-title"
-                                            ),
-                                            html.Span(id="stream-preset-azimuths", style={"marginLeft": "8px"}),
-                                        ],
-                                        style={"marginBottom": "8px", "display": "flex", "alignItems": "center"},
-                                    ),
-                                ],
-                            ),
-                            # Map
-                            html.Div(
-                                dbc.Col(
-                                    build_alerts_map(api_cameras, id_suffix="-stream"),
-                                    className="common-style",
-                                    style={
-                                        "position": "relative",
-                                        "width": "100%",
-                                        "height": "380px",
-                                        "borderRadius": "10px",
-                                        "overflow": "hidden",
-                                    },
-                                )
-                            ),
                             html.Div(
                                 html.Button(
                                     "📸 Capturer une image",
@@ -349,14 +150,286 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                     n_clicks=0,
                                     className="btn btn-primary",
                                 ),
-                                style={"textAlign": "center", "marginTop": "12px"},
+                                style={"textAlign": "center"},
                             ),
                         ],
-                        md=4,
-                        style={"padding": "0", "paddingLeft": "16px"},
+                        style={"display": "flex", "alignItems": "center", "gap": "8px", "marginRight": "16px"},
                     ),
                 ],
-                className="mb-4",
+                style=STATUS_BAR_STYLE,
+            ),
+            # Main layout: stream + map
+            html.Div(
+                dbc.Row(
+                    [
+                        # LEFT COLUMN: Stream + Controls
+                        dbc.Col(
+                            [
+                                html.Div(
+                                    [
+                                        html.Div(
+                                            [
+                                                html.Iframe(
+                                                    id="video-stream",
+                                                    src="",
+                                                    style={
+                                                        "position": "absolute",
+                                                        "top": "0",
+                                                        "left": "0",
+                                                        "width": "100%",
+                                                        "height": "100%",
+                                                        "border": "none",
+                                                        "borderRadius": "10px",
+                                                    },
+                                                ),
+                                                EventListener(
+                                                    id="click-listener",
+                                                    children=html.Div(
+                                                        id="click-overlay",
+                                                        n_clicks=0,
+                                                        style={
+                                                            "position": "absolute",
+                                                            "top": 0,
+                                                            "left": 0,
+                                                            "width": "100%",
+                                                            "height": "100%",
+                                                            "zIndex": 2,
+                                                            "cursor": "crosshair",
+                                                            "backgroundColor": "rgba(255, 255, 255, 0.01)",
+                                                        },
+                                                    ),
+                                                    events=[{"event": "pointerdown"}],
+                                                ),
+                                                html.Div(
+                                                    [
+                                                        dbc.Row(
+                                                            [
+                                                                dbc.Col(),
+                                                                dbc.Col(
+                                                                    html.Button(
+                                                                        "⬆️",
+                                                                        id="move-up",
+                                                                        n_clicks=0,
+                                                                        style=BUTTON_STYLE,
+                                                                    )
+                                                                ),
+                                                                dbc.Col(),
+                                                            ],
+                                                            justify="center",
+                                                        ),
+                                                        dbc.Row(
+                                                            [
+                                                                dbc.Col(
+                                                                    html.Button(
+                                                                        "⬅️",
+                                                                        id="move-left",
+                                                                        n_clicks=0,
+                                                                        style=BUTTON_STYLE,
+                                                                    )
+                                                                ),
+                                                                dbc.Col(
+                                                                    html.Button(
+                                                                        "🛑",
+                                                                        id="stop-move",
+                                                                        n_clicks=0,
+                                                                        style=BUTTON_STYLE,
+                                                                    )
+                                                                ),
+                                                                dbc.Col(
+                                                                    html.Button(
+                                                                        "➡️",
+                                                                        id="move-right",
+                                                                        n_clicks=0,
+                                                                        style=BUTTON_STYLE,
+                                                                    )
+                                                                ),
+                                                            ],
+                                                            justify="center",
+                                                        ),
+                                                        dbc.Row(
+                                                            [
+                                                                dbc.Col(),
+                                                                dbc.Col(
+                                                                    html.Button(
+                                                                        "⬇️",
+                                                                        id="move-down",
+                                                                        n_clicks=0,
+                                                                        style=BUTTON_STYLE,
+                                                                    )
+                                                                ),
+                                                                dbc.Col(),
+                                                            ],
+                                                            justify="center",
+                                                        ),
+                                                    ],
+                                                    style={
+                                                        "position": "absolute",
+                                                        "bottom": "10px",
+                                                        "right": "10px",
+                                                        "padding": "5px",
+                                                        "borderRadius": "8px",
+                                                        "zIndex": 3,
+                                                    },
+                                                ),
+                                            ],
+                                            style={
+                                                "position": "relative",
+                                                "width": "100%",
+                                                "paddingBottom": "56.25%",  # 16:9 aspect ratio
+                                                "borderRadius": "10px",
+                                                "boxShadow": "0 0 8px rgba(0,0,0,0.2)",
+                                                "overflow": "hidden",
+                                            },
+                                        ),
+                                    ],
+                                    style={
+                                        "width": "100%",
+                                        "maxWidth": "1000px",  # Optional: limit max width for large screens
+                                        "margin": "auto",
+                                    },
+                                ),
+                                # Sliders
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Div(
+                                                        translate[lang]["move_speed"],
+                                                        style={
+                                                            "textAlign": "center",
+                                                            "fontWeight": "bold",
+                                                            "marginBottom": "8px",
+                                                        },
+                                                    ),
+                                                    dcc.Slider(
+                                                        id="speed-input",
+                                                        min=0,
+                                                        max=100,
+                                                        step=10,
+                                                        value=0,
+                                                        marks={i: str(i) for i in range(0, 101, 10)},
+                                                    ),
+                                                ],
+                                                style=SLIDER_BOX_STYLE,
+                                            ),
+                                            width=6,
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Div(
+                                                        translate[lang]["zoom_level"],
+                                                        style={
+                                                            "textAlign": "center",
+                                                            "fontWeight": "bold",
+                                                            "marginBottom": "8px",
+                                                        },
+                                                    ),
+                                                    dcc.Slider(
+                                                        id="zoom-input",
+                                                        min=0,
+                                                        max=100,
+                                                        step=10,
+                                                        value=0,
+                                                        marks={i: str(i) for i in range(0, 101, 10)},
+                                                    ),
+                                                ],
+                                                style=SLIDER_BOX_STYLE,
+                                            ),
+                                            width=6,
+                                        ),
+                                    ],
+                                    className="mt-3",
+                                ),
+                            ],
+                            md=8,
+                            style={"padding": "0"},
+                        ),
+                        # RIGHT COLUMN: Dropdown + map
+                        dbc.Col(
+                            [  # Panneau affichage des infos caméra
+                                html.Div(
+                                    id="stream-camera-info-panel",
+                                    className="common-style",
+                                    style={
+                                        "padding": "12px",
+                                        "marginTop": "0px",
+                                        "marginBottom": "10px",
+                                        "backgroundColor": "#f0f4f7",
+                                        "borderRadius": "8px",
+                                    },
+                                    children=[
+                                        html.H5(
+                                            "🎥 Informations caméra",
+                                            style={"textAlign": "center", "marginBottom": "12px"},
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Span("Nom de la caméra : ", className="alert-information-title"),
+                                                html.Span(id="stream-camera-name"),
+                                            ],
+                                            style={"marginBottom": "8px"},
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Span("Azimuth actuel : ", className="alert-information-title"),
+                                                dcc.Input(
+                                                    id="stream-current-azimuth",
+                                                    type="number",
+                                                    min=0,
+                                                    max=359,
+                                                    step=1,
+                                                    placeholder="0-359",
+                                                    debounce=True,
+                                                    style={"width": "80px", "marginLeft": "8px", "borderRadius": "6px"},
+                                                ),
+                                            ],
+                                            style={"marginBottom": "12px", "display": "flex", "alignItems": "center"},
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Span(
+                                                    "Azimuths préenregistrés : ", className="alert-information-title"
+                                                ),
+                                                html.Span(id="stream-preset-azimuths", style={"marginLeft": "8px"}),
+                                            ],
+                                            style={"marginBottom": "8px", "display": "flex", "alignItems": "center"},
+                                        ),
+                                    ],
+                                ),
+                                # Map
+                                html.Div(
+                                    [
+                                        html.Div(
+                                            build_alerts_map(api_cameras, id_suffix="-stream"),
+                                            style={
+                                                "position": "absolute",
+                                                "top": "0",
+                                                "left": "0",
+                                                "width": "100%",
+                                                "height": "100%",
+                                            },
+                                        )
+                                    ],
+                                    style={
+                                        "position": "relative",
+                                        "width": "100%",
+                                        "paddingBottom": "100%",
+                                        "borderRadius": "10px",
+                                        "overflow": "hidden",
+                                        "boxShadow": "0 0 8px rgba(0,0,0,0.2)",
+                                    },
+                                    className="common-style",
+                                ),
+                            ],
+                            md=4,
+                            style={"padding": "0", "paddingLeft": "16px"},
+                        ),
+                    ],
+                    className="mb-4",
+                ),
+                style={"paddingLeft": "20px", "paddingRight": "20px"},
             ),
             # Hidden components
             # Modal for image preview
@@ -379,17 +452,20 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                 ],
                 id="capture-modal",
                 is_open=False,
-                fullscreen=True,  # 👈 This makes it full-screen
+                fullscreen=True,
             ),
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0),  # every second
             dcc.Store(id="stream-start-time"),
             dcc.Store(id="detection-status", data="running"),  # or "stopped", etc.
             html.Div(id="dummy-output", style={"display": "none"}),
+            html.Div(id="dummy-output2", style={"display": "none"}),
             dcc.Store(id="pi_api_url"),
             dcc.Store(id="pi_cameras"),
             dcc.Store(id="current_camera"),
             dcc.Store(id="trigered_from_alert", data=True if available_stream else False),
             dcc.Store(id="hide-stream-flag", data=False),
+            dcc.Store(id="click-coords"),
+            dcc.Store(id="click-coords2"),
             dbc.Modal(
                 id="inactivity-modal",
                 is_open=False,

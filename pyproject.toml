@@ -14,6 +14,7 @@ python = "^3.11"
 dash = ">=2.14.0"
 dash-bootstrap-components = ">=1.5.0"
 dash-leaflet = "^0.1.4"
+dash-extensions= ">=2.0.4"
 pandas = ">=2.1.4"
 pyroclient = { git = "https://github.com/pyronear/pyro-api.git", branch = "main", subdirectory = "client" }
 python-dotenv = ">=1.0.0"

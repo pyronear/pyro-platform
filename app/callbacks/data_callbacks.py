@@ -147,8 +147,6 @@ def login_callback(n_clicks, username, password, user_token, lang):
     Input("user_name", "data"),
 )
 def load_available_stream(user_name):
-    print("[load_available_stream] Triggered with user_name:", user_name)
-
     if not user_name:
         raise PreventUpdate
 
@@ -156,17 +154,13 @@ def load_available_stream(user_name):
         with open("available_stream.json", "r") as f:
             full_data = json.load(f)
     except FileNotFoundError:
-        print("available_stream.json not found.")
+        logger.info("available_stream.json not found.")
         raise PreventUpdate
-
-    print(full_data)
 
     user_streams = full_data.get(user_name)
     if not user_streams:
-        print(f"No stream config found for user '{user_name}'")
+        logger.info(f"No stream config found for user '{user_name}'")
         raise PreventUpdate
-
-    print(user_streams)
 
     return user_streams
 

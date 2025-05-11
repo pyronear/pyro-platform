@@ -7,6 +7,13 @@
 import requests
 
 
+# FOV based on zoom input
+def fov_zoom(z):
+    if z == 0:
+        return 54.2
+    return 55.59044 - 2.00815 * z + 0.01886 * z**2
+
+
 # API Communication
 def send_api_request(FASTAPI_URL, endpoint: str):
     try:

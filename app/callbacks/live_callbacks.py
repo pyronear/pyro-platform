@@ -19,7 +19,7 @@ from main import app
 
 import config as cfg
 from utils.display import build_vision_polygon
-from utils.live_stream import fetch_cameras, find_closest_camera_pose, send_api_request
+from utils.live_stream import fetch_cameras, find_closest_camera_pose, fov_zoom, send_api_request
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -78,7 +78,7 @@ def fetch_cameras_from_pi(site_name, available_stream):
     State("selected-camera-info", "data"),
 )
 def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
-    if trigered_from_alert:
+    if trigered_from_alert and selected_camera_info:
         print(selected_camera_info[1], False)
         return selected_camera_info[1], False
 
@@ -166,18 +166,22 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
             return no_update, no_update, False, False, ""
 
         try:
-            start_time = datetime.datetime.fromisoformat(stream_start_iso)
-            elapsed = datetime.datetime.now() - start_time
-            seconds_elapsed = int(elapsed.total_seconds())
+            now = time.time()
+            seconds_since_command = int(now - last_command_time)
 
-            # ⛔ After 120s, hide warning + open modal + disable timer
-            if seconds_elapsed > 120:
+            # Format time since last command
+            minutes, seconds = divmod(seconds_since_command, 60)
+            timer_text = f"{minutes:02d}:{seconds:02d}"
+
+            # Total stream time
+            stream_start = datetime.datetime.fromisoformat(stream_start_iso)
+            total_elapsed = datetime.datetime.now() - stream_start
+            total_minutes, total_seconds = divmod(int(total_elapsed.total_seconds()), 60)
+            total_timer_text = f"{total_minutes:02d}:{total_seconds:02d}"
+
+            if seconds_since_command > 120:
                 logger.info("[stream monitor] Inactivity threshold reached.")
                 return no_update, True, True, True, ""
-
-            # ✅ Still under threshold, display status
-            minutes, seconds = divmod(seconds_elapsed, 60)
-            timer_text = f"{minutes:02d}:{seconds:02d}"
 
             status_banner = html.Div(
                 [
@@ -193,7 +197,7 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
                         },
                     ),
                     html.Span(
-                        f"⚠️ Levée de doute en cours, la détection n'est plus active depuis {timer_text}",
+                        f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
                         style={"color": "orange", "fontWeight": "bold"},
                     ),
                 ]
@@ -202,7 +206,7 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
             return no_update, no_update, False, False, status_banner
 
         except Exception as e:
-            logger.warning(f"[stream monitor] Failed to parse time or generate banner: {e}")
+            logger.warning(f"[stream monitor] Failed to track last command time: {e}")
             return no_update, no_update, False, False, ""
 
     return no_update, no_update, False, False, ""
@@ -292,6 +296,66 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
 
 
 @app.callback(
+    Output("dummy-output2", "children"),
+    Input("click-coords", "data"),
+    State("current_camera", "data"),
+    State("zoom-input", "value"),
+    State("pi_api_url", "data"),
+    prevent_initial_call=True,
+)
+def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
+    if not click_data or not current_camera:
+        raise PreventUpdate
+
+    camera = current_camera.get("camera", {})
+    camera_ip = camera.get("ip")
+    if not camera_ip or not pi_api_url:
+        raise PreventUpdate
+
+    global last_command_time
+    last_command_time = time.time()
+
+    # --- 1. Extract click position ---
+    x_percent = round((click_data["offsetX"] / click_data["width"]) * 100, 2)
+    y_percent = round((click_data["offsetY"] / click_data["height"]) * 100, 2)
+
+    # --- 2. Compute deviation from center ---
+    dx = x_percent - 50  # positive = right
+    dy = y_percent - 50  # positive = down
+
+    # --- 3. Convert to degrees ---
+    true_zoom = int(zoom_value * 41 / 100)
+    fov_horizontal = fov_zoom(true_zoom)  # use your existing function
+    fov_vertical = fov_horizontal * 41.7 / 54.2
+
+    delta_azimuth = dx / 100 * fov_horizontal
+    delta_tilt = dy / 100 * fov_vertical
+
+    print(dx, fov_horizontal)
+
+    print(f"[CLICK] x={x_percent}%, y={y_percent}% => Δaz={delta_azimuth:.2f}°, Δtilt={delta_tilt:.2f}°")
+
+    try:
+        # --- 4. Send commands to API ---
+        if abs(delta_azimuth) >= 0.5:
+            direction = "Right" if delta_azimuth > 0 else "Left"
+            send_api_request(
+                pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={abs(delta_azimuth):.2f}&speed=3"
+            )
+
+        if abs(delta_tilt) >= 0.5:
+            direction = "Down" if delta_tilt > 0 else "Up"
+            send_api_request(
+                pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={abs(delta_tilt):.2f}&speed=2"
+            )
+
+    except Exception as e:
+        logger.warning(f"[ERROR] Click-to-move failed: {e}")
+
+    return no_update
+
+
+@app.callback(
     Output("vision_polygons-stream", "children"),
     Output("map-stream", "center"),
     Input("current_camera", "data"),
@@ -330,10 +394,6 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
     try:
         site_lat = float(row["lat"].values[0])
         site_lon = float(row["lon"].values[0])
-
-        # FOV based on zoom input
-        def fov_zoom(z):
-            return 55.59044 - 2.00815 * z + 0.01886 * z**2
 
         zoom_level_converted = int(zoom_level * 41 / 100)
         opening_angle = int(fov_zoom(zoom_level_converted))
@@ -420,3 +480,48 @@ def open_capture_modal(n_clicks, current_camera, api_url):
     except Exception as e:
         print(f"❌ Exception during image capture: {e}")
         return False, "", ""
+
+
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (!n_clicks) return window.dash_clientside.no_update;
+        return window.lastClick || null;
+    }
+    """,
+    Output("click-coords", "data"),
+    Input("click-overlay", "n_clicks"),
+)
+
+app.index_string = """
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>Clickable Stream</title>
+        {%favicon%}
+        {%css%}
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                document.body.addEventListener("click", function (e) {
+                    const rect = e.target.getBoundingClientRect();
+                    window.lastClick = {
+                        offsetX: Math.round(e.clientX - rect.left),
+                        offsetY: Math.round(e.clientY - rect.top),
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height)
+                    };
+                });
+            });
+        </script>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+"""
