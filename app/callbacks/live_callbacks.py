@@ -23,9 +23,9 @@ from utils.live_stream import fetch_cameras, find_closest_camera_pose, fov_zoom,
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
-
+INACTIVITY_TIMEOUT = 120
 start_time = None
-last_command_time = time.time()  # Track the last command time
+last_command_time = time.time()
 
 
 @app.callback(
@@ -79,7 +79,7 @@ def fetch_cameras_from_pi(site_name, available_stream):
 )
 def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
     if trigered_from_alert and selected_camera_info:
-        print(selected_camera_info[1], False)
+        logger.debug(f"[set_azimuth] Setting from alert: azimuth={selected_camera_info[1]}")
         return selected_camera_info[1], False
 
     else:
@@ -179,7 +179,7 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
             total_minutes, total_seconds = divmod(int(total_elapsed.total_seconds()), 60)
             total_timer_text = f"{total_minutes:02d}:{total_seconds:02d}"
 
-            if seconds_since_command > 120:
+            if seconds_since_command > INACTIVITY_TIMEOUT:
                 logger.info("[stream monitor] Inactivity threshold reached.")
                 return no_update, True, True, True, ""
 
@@ -332,10 +332,6 @@ def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
     delta_azimuth = dx / 100 * fov_horizontal
     delta_tilt = dy / 100 * fov_vertical
 
-    print(dx, fov_horizontal)
-
-    print(f"[CLICK] x={x_percent}%, y={y_percent}% => Δaz={delta_azimuth:.2f}°, Δtilt={delta_tilt:.2f}°")
-
     try:
         # --- 4. Send commands to API ---
         if abs(delta_azimuth) >= 0.5:
@@ -449,7 +445,7 @@ def update_stream_url(site_name, hide_flag):
 )
 def open_capture_modal(n_clicks, current_camera, api_url):
     if not current_camera or not api_url:
-        print("Missing camera or API URL")
+        logger.error("Missing camera or API URL")
         return False, "", ""
 
     global last_command_time
@@ -457,17 +453,17 @@ def open_capture_modal(n_clicks, current_camera, api_url):
 
     camera_id = current_camera["camera"].get("ip")
     if not camera_id:
-        print("No IP in current_camera data")
+        logger.error("No IP in current_camera data")
         return False, "", ""
 
     try:
         resp = requests.get(f"{api_url}/capture/{camera_id}", timeout=5)
         if resp.status_code != 200:
-            print(f"Non-200 response: {resp.status_code}")
+            logger.error(f"Non-200 response: {resp.status_code}")
             return False, "", ""
 
         if not resp.content or len(resp.content) < 100:
-            print(f"Image too small or empty: {len(resp.content)} bytes")
+            logger.error(f"Image too small or empty: {len(resp.content)} bytes")
             return False, "", ""
 
         # Convert image to base64 for display
@@ -475,11 +471,11 @@ def open_capture_modal(n_clicks, current_camera, api_url):
         base64_img = base64.b64encode(image_bytes).decode("utf-8")
         img_src = f"data:image/jpeg;base64,{base64_img}"
 
-        print("✅ Image capture successful, displaying modal.")
+        logger.info("✅ Image capture successful, displaying modal.")
         return True, img_src, img_src
 
     except Exception as e:
-        print(f"❌ Exception during image capture: {e}")
+        logger.error(f"❌ Exception during image capture: {e}")
         return False, "", ""
 
 
