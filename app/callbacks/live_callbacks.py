@@ -91,7 +91,7 @@ def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
     Output("stream-camera-name", "children"),
     Output("stream-preset-azimuths", "children"),
     Input("stream-current-azimuth", "value"),
-    State("pi_cameras", "data"),
+    Input("pi_cameras", "data"),
     prevent_initial_call=True,
 )
 def set_current_camera(target_azimuth, pi_cameras):
@@ -257,6 +257,7 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
         # 🔁 Case 1: Triggered by current_camera
         if trigger == "current_camera":
             logger.info(f"[AUTO] Triggered by camera pose change for {camera_ip}")
+            time.sleep(1) # let stream start first
 
             # Move to preset pose if defined
             if pose_id is not None:

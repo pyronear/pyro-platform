@@ -672,6 +672,7 @@ def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
         raise PreventUpdate
     try:
         cam_name, _, azimuth_camera = camera_label.split(" ")
+        azimuth_camera = int(azimuth_camera.replace("°",""))
         # detection_azimuth = int(azimuth_label.replace("°", "").strip()) Need azimuth refine first
     except Exception as e:
         logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
