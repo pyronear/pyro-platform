@@ -126,7 +126,10 @@ translate = {
 def live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info=None, lang="fr"):
     # Default fallback
     default_stream = next(iter(available_stream.keys()))[0] if available_stream else None
-    dropdown_options: List[Option] = [{"label": name, "value": name} for name in available_stream.keys()]
+
+    dropdown_options: List[dict[str, str]] = (
+        [{"label": name, "value": name} for name in available_stream.keys()] if available_stream else []
+    )
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:
