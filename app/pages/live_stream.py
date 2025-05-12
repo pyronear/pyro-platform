@@ -3,7 +3,7 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-from typing import List, TypedDict
+from typing import List, Dict
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
@@ -11,10 +11,6 @@ from dash_extensions import EventListener  # type: ignore
 
 from utils.display import build_alerts_map
 
-
-class Option(TypedDict):
-    label: str
-    value: str
 
 
 # --- Styles ---
@@ -127,9 +123,11 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
     # Default fallback
     default_stream = next(iter(available_stream.keys()))[0] if available_stream else None
 
-    dropdown_options: List[Option] = []
+    # Change the type hint here
+    dropdown_options: List[Dict[str, str]] = [] # <--- MODIFIED LINE
 
     if available_stream:
+        # This list comprehension already creates List[Dict[str, str]], which is fine
         dropdown_options = [{"label": name, "value": name} for name in available_stream.keys()]
 
     # Try to derive stream from selected camera info
