@@ -431,7 +431,7 @@ def update_stream_url(site_name, hide_flag):
     if not site_name:
         raise PreventUpdate
 
-    return f"{cfg.MEDIAMTX_SERVER_IP}:8889/{site_name}"
+    return f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
 
 
 @app.callback(
