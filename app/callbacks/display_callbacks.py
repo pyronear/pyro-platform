@@ -6,6 +6,7 @@
 import ast
 import json
 import urllib
+import urllib.parse
 from datetime import date
 from io import StringIO
 
@@ -19,7 +20,11 @@ from main import app
 
 import config as cfg
 from services import api_client
-from utils.display import build_vision_polygon, convert_dt_to_local_tz, create_event_list_from_alerts
+from utils.display import (
+    build_vision_polygon,
+    convert_dt_to_local_tz,
+    create_event_list_from_alerts,
+)
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -60,6 +65,28 @@ def update_blinking_alarm_language(search):
     return [translate[lang]["blinking_alarm"]]
 
 
+@app.callback(Output("home_button_text", "children"), Input("url", "search"))
+def update_home_button_language(search):
+    translate = {
+        "fr": {"home": "Alertes"},
+        "es": {"home": "Alertas"},
+    }
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+    return [translate.get(lang, translate["fr"])["home"]]
+
+
+@app.callback(Output("live_stream_button_text", "children"), Input("url", "search"))
+def update_live_stream_button_language(search):
+    translate = {
+        "fr": {"live_stream": "Levée de doute"},
+        "es": {"live_stream": "Transmisión en Vivo"},
+    }
+    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
+    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
+    return [translate.get(lang, translate["fr"])["live_stream"]]
+
+
 @app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
 def update_language_url(fr_clicks, es_clicks):
     # Check which button has been clicked
@@ -76,14 +103,6 @@ def update_language_url(fr_clicks, es_clicks):
         return "?lang=es"
 
     return ""
-
-
-@app.callback(Output("main_navbar", "className"), Input("url", "pathname"))
-def update_navbar_spacing(pathname):
-    if pathname == "/blinking-alarm":
-        return "special-navbar"
-    else:
-        return "navbar"
 
 
 # Create event list
@@ -637,3 +656,27 @@ def update_datepicker(open_clicks, selected_date):
             return dash.no_update, dash.no_update, dash.no_update, ""
 
     return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+
+@app.callback(
+    Output("selected-camera-info", "data"),
+    Input("start-live-stream", "n_clicks"),
+    State("alert-camera-value", "children"),
+    State("alert-azimuth-value", "children"),
+    prevent_initial_call=True,
+)
+def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
+    logger.info("pick_live_stream_camera")
+
+    if not camera_label or not azimuth_label:
+        raise PreventUpdate
+    try:
+        cam_name, _, azimuth_camera = camera_label.split(" ")
+        azimuth_camera = int(azimuth_camera.replace("°", ""))
+        # detection_azimuth = int(azimuth_label.replace("°", "").strip()) Need azimuth refine first
+    except Exception as e:
+        logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
+        raise PreventUpdate
+
+    logger.info(f"Selected camera={cam_name}, azimuth={azimuth_camera}")
+    return (cam_name, azimuth_camera)

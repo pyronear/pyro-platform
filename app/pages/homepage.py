@@ -345,6 +345,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     id="map-button",
                                 ),
                             ),
+                            dbc.Button("Start Live Stream", id="start-live-stream", color="primary", className="mb-3"),
                         ],
                         width=2,
                         style={

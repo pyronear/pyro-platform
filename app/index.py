@@ -2,11 +2,15 @@
 
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
+
+
 import argparse
 import urllib.parse
 
 import callbacks.data_callbacks
-import callbacks.display_callbacks  # noqa: F401
+import callbacks.display_callbacks
+import callbacks.live_callbacks
+import dash
 import logging_config
 from dash import html
 from dash.dependencies import Input, Output, State
@@ -17,6 +21,7 @@ import config as cfg
 from pages.blinking_alarm import blinking_alarm_layout
 from pages.cameras_status import cameras_status_layout
 from pages.homepage import homepage_layout
+from pages.live_stream import live_stream_layout
 from pages.login import login_layout
 
 # Configure logging
@@ -29,10 +34,15 @@ app.layout = get_main_layout()
 # Manage Pages
 @app.callback(
     Output("page-content", "children"),
-    [Input("url", "pathname"), Input("api_cameras", "data"), Input("url", "search")],
-    State("user_token", "data"),
+    [
+        Input("url", "pathname"),
+        Input("api_cameras", "data"),
+        Input("url", "search"),
+        Input("selected-camera-info", "data"),
+    ],
+    [State("user_token", "data"), State("available-stream-sites", "data")],
 )
-def display_page(pathname, api_cameras, search, user_token):
+def display_page(pathname, api_cameras, search, selected_camera_info, user_token, available_stream):
     logger.debug(
         "display_page called with pathname: %s, user_token: %s",
         pathname,
@@ -40,23 +50,29 @@ def display_page(pathname, api_cameras, search, user_token):
     )
 
     params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-
     lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-
     if lang not in cfg.AVAILABLE_LANGS:
         lang = cfg.DEFAULT_LANGUAGE
 
     if not isinstance(user_token, str) or not user_token:
         return login_layout(lang=lang)
+
+    triggered = dash.ctx.triggered_id
+
+    if triggered == "selected-camera-info" and selected_camera_info:
+        return live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info, lang=lang)
+
     if pathname == "/" or pathname is None:
         return homepage_layout(user_token, api_cameras, lang=lang)
     if pathname == "/cameras-status":
         return cameras_status_layout(user_token, api_cameras, lang=lang)
     if pathname == "/blinking-alarm":
         return blinking_alarm_layout(user_token, api_cameras, lang=lang)
-    else:
-        logger.warning("Unable to find page for pathname: %s", pathname)
-        return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
+    if pathname == "/live-stream":
+        return live_stream_layout(user_token, api_cameras, available_stream, lang=lang)
+
+    logger.warning("Unable to find page for pathname: %s", pathname)
+    return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])
 
 
 # ----------------------------------------------------------------------------------------------------------------------

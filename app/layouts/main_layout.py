@@ -67,8 +67,10 @@ def get_main_layout():
             dcc.Store(id="bbox_visibility", data={"visible": True}),
             # Storage components saving the user's headers and credentials
             dcc.Store(id="user_token", storage_type="session", data=user_token),
-            # [TEMPORARY FIX] Storing the user's credentials to refresh the token when needed
+            dcc.Store(id="user_name", storage_type="session"),
             dcc.Store(id="to_acknowledge", data=0),
             dcc.Store(id="trigger_no_detections", data=False),
+            dcc.Store(id="available-stream-sites", storage_type="session"),
+            dcc.Store(id="selected-camera-info", storage_type="session"),
         ]
     )

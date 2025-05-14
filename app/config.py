@@ -29,6 +29,9 @@ SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
 # Safeguards
 SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
 
+# Stream server
+MEDIAMTX_SERVER_IP = os.environ.get("MEDIAMTX_SERVER_IP", "")
+
 # App config variables
 MAX_ALERTS_PER_EVENT = 10
 CAM_OPENING_ANGLE = 87

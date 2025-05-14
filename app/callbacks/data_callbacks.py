@@ -11,6 +11,7 @@ import logging_config
 import pandas as pd
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
+from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
 from main import app
 
@@ -25,6 +26,7 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 @app.callback(
     [
         Output("user_token", "data"),
+        Output("user_name", "data"),
         Output("form_feedback_area", "children"),
         Output("username_input", "style"),
         Output("password_input", "style"),
@@ -79,6 +81,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
         return (
             dash.no_update,
             dash.no_update,
+            dash.no_update,
             input_style_unchanged,
             input_style_unchanged,
             empty_style_unchanged,
@@ -88,7 +91,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
     if n_clicks:
         # We instantiate the form feedback output
-        form_feedback = [dcc.Markdown("---")]
+        form_feedback: list[Component] = [dcc.Markdown("---")]
         # First check verifies whether both a username and a password have been provided
         if username is None or password is None or len(username) == 0 or len(password) == 0:
             # If either the username or the password is missing, the condition is verified
@@ -98,6 +101,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
             # The login modal remains open; other outputs are updated with arbitrary values
             return (
+                dash.no_update,
                 dash.no_update,
                 form_feedback,
                 input_style_unchanged,
@@ -113,6 +117,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
                 return (
                     user_token,
+                    username,
                     dash.no_update,
                     hide_element_style,
                     hide_element_style,
@@ -126,6 +131,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
                 return (
                     dash.no_update,
+                    dash.no_update,
                     form_feedback,
                     input_style_unchanged,
                     input_style_unchanged,
@@ -135,6 +141,29 @@ def login_callback(n_clicks, username, password, user_token, lang):
                 )
 
     raise PreventUpdate
+
+
+@app.callback(
+    Output("available-stream-sites", "data"),
+    Input("user_name", "data"),
+)
+def load_available_stream(user_name):
+    if not user_name:
+        raise PreventUpdate
+
+    try:
+        with open("available_stream.json", "r") as f:
+            full_data = json.load(f)
+    except (FileNotFoundError, IsADirectoryError, json.JSONDecodeError):
+        logger.warning("available_stream.json not found or invalid. Using empty dict.")
+        full_data = {}
+
+    user_streams = full_data.get(user_name)
+    if not user_streams:
+        logger.info(f"No stream config found for user '{user_name}'")
+        raise PreventUpdate
+
+    return user_streams
 
 
 @app.callback(

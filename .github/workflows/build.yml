@@ -58,6 +58,7 @@ jobs:
           API_LOGIN: ${{ secrets.API_LOGIN }}
           API_PWD: ${{ secrets.API_PWD }}
         run: |
+          echo '{}' > available_stream.json
           docker network create web || true
           docker compose up -d --build --wait
           echo "Waiting for app..."
