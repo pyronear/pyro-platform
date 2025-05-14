@@ -30,7 +30,7 @@ SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
 SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
 
 # Stream server
-MEDIAMTX_SERVER_IP = os.environ.get("MEDIAMTX_SERVER_IP", "")
+MEDIAMTX_SERVER_URL = os.environ.get("MEDIAMTX_SERVER_URL", "")
 
 # App config variables
 MAX_ALERTS_PER_EVENT = 10
