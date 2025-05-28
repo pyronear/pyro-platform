@@ -35,6 +35,7 @@ translate_dict = {
         "map": "Carte",
         "no_alert_default_image": "./assets/images/no-alert-default.png",
         "start_live_stream_button": "Démarrer le flux en direct",
+        "create_occlusion_mask": "Ajouter au masque d'occlusion",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -85,6 +86,7 @@ translate_dict = {
         "map": "Mapa",
         "no_alert_default_image": "./assets/images/no-alert-default-es.png",
         "start_live_stream_button": "Iniciar transmisión en vivo",
+        "create_occlusion_mask": "Añadir a la máscara de oclusión",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -134,6 +136,7 @@ translate_dict = {
         "date": "Date: ",
         "map": "Map",
         "no_alert_default_image": "./assets/images/no-alert-default-en.png",
+        "create_occlusion_mask": "Add to occlusion mask",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",

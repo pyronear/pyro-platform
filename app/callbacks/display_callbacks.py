@@ -5,12 +5,14 @@
 
 import ast
 import json
+import os
 from datetime import date, datetime, timedelta, timezone
 from io import StringIO
 
 import dash
 import logging_config
 import pandas as pd
+from dash import Input, Output, State, callback, ctx, no_update
 from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
@@ -54,6 +56,14 @@ def update_live_stream_button(lang):
 )
 def update_start_live_stream_button(lang):
     return translate("start_live_stream_button", lang)
+
+
+@app.callback(
+    Output("create-occlusion-mask", "children"),
+    Input("language", "data"),
+)
+def update_start_live_stream_button(lang):
+    return translate("create_occlusion_mask", lang)
 
 
 @app.callback(
@@ -647,3 +657,128 @@ def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
 
     logger.info(f"Selected camera={cam_name}, azimuth={azimuth_camera}")
     return (cam_name, azimuth_camera)
+
+
+@app.callback(
+    Output("bbox-modal", "is_open"),
+    Output("bbox-store", "data"),
+    Input("create-occlusion-mask", "n_clicks"),
+    Input("confirm-bbox-button", "n_clicks"),
+    State("alert-camera-value", "children"),
+    State("sequence_on_display", "data"),
+    State("bbox-store", "data"),
+    prevent_initial_call=True,
+)
+def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display, bbox_store):
+    triggered = ctx.triggered_id
+
+    if triggered == "create-occlusion-mask":
+        if not camera_info or not sequence_on_display:
+            raise PreventUpdate
+        try:
+            cam_name, _, azimuth_camera = camera_info.split(" ")
+            azimuth_camera = int(azimuth_camera.replace("°", ""))
+        except:
+            raise PreventUpdate
+
+        try:
+            df = pd.read_json(StringIO(sequence_on_display), orient="split")
+            df["bboxes"] = df["bboxes"].apply(
+                lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
+            )
+            best_bbox = None
+            best_score = -1
+            for bboxes in df["bboxes"]:
+                for bbox in bboxes:
+                    if bbox[-1] > best_score:
+                        best_score = bbox[-1]
+                        best_bbox = bbox
+            if best_bbox is None:
+                raise PreventUpdate
+
+            data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
+            return True, data
+        except:
+            raise PreventUpdate
+
+    elif triggered == "confirm-bbox-button":
+        if not bbox_store:
+            raise PreventUpdate
+        try:
+            cam_name = bbox_store["cam_name"]
+            azimuth = bbox_store["azimuth"]
+            bbox = bbox_store["bbox"]
+            date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            os.makedirs("occlusion_masks", exist_ok=True)
+            json_path = f"occlusion_masks/{cam_name}_{azimuth}.json"
+            if os.path.exists(json_path):
+                with open(json_path, "r") as f:
+                    bbox_dict = json.load(f)
+            else:
+                bbox_dict = {}
+            bbox_dict[date_now] = bbox
+            with open(json_path, "w") as f:
+                json.dump(bbox_dict, f, indent=2)
+            print(f"BBox sauvegardée dans {json_path}")
+            return False, no_update
+        except Exception as e:
+            print(f"Erreur lors de la sauvegarde de la bbox : {e}")
+            raise PreventUpdate
+
+    raise PreventUpdate
+
+
+import ast
+from io import StringIO
+
+import pandas as pd
+from dash import Input, Output, State, callback
+
+
+@callback(
+    Output("bbox-image-container", "children"),
+    Input("bbox-store", "data"),
+    State("sequence_on_display", "data"),
+    prevent_initial_call=True,
+)
+def display_bbox_on_image(bbox_data, sequence_data):
+    if not bbox_data:
+        raise PreventUpdate
+
+    try:
+        bbox = bbox_data["bbox"]
+        # valeurs normalisées
+        x1, y1, x2, y2, _ = bbox
+        w = x2 - x1
+        h = y2 - y1
+
+        df = pd.read_json(StringIO(sequence_data), orient="split")
+
+        if df.empty:
+            raise PreventUpdate
+
+        # Prend la première image contenant la bbox
+        img_url = df.iloc[0]["url"]
+
+        return dash.html.Div(
+            [
+                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto"}),
+                dash.html.Div(
+                    style={
+                        "position": "absolute",
+                        "top": f"{y1 * 100}%",
+                        "left": f"{x1 * 100}%",
+                        "width": f"{w * 100}%",
+                        "height": f"{h * 100}%",
+                        "border": "2px solid red",
+                        "background-color": "rgba(255, 0, 0, 0.5)",  # red fill with 30% opacity
+                        "box-sizing": "border-box",
+                    }
+                ),
+            ],
+            style={"position": "relative", "display": "inline-block"},
+        )
+
+    except Exception as e:
+        print(f"[display_bbox_on_image] Error: {e}")
+        raise PreventUpdate

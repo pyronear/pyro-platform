@@ -310,6 +310,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                 ),
                             ),
                             dbc.Button(id="start-live-stream", color="primary", className="mb-3"),
+                            dbc.Button(id="create-occlusion-mask", color="primary", className="mb-3"),
                         ],
                         width=2,
                         style={
@@ -333,6 +334,25 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 fullscreen=True,
                 is_open=False,
             ),
+            dcc.Store(id="bbox-store"),
+            dbc.Modal(
+                id="bbox-modal",
+                is_open=False,
+                children=[
+                    dbc.ModalHeader("Confirmer le masque d’occlusion"),
+                    dbc.ModalBody(
+                        html.Div(
+                            [
+                                html.Div(
+                                    id="bbox-image-container", style={"position": "relative", "display": "inline-block"}
+                                ),
+                            ]
+                        )
+                    ),
+                    dbc.ModalFooter(dbc.Button("Confirmer", id="confirm-bbox-button", color="primary")),
+                ],
+            ),
+            dcc.Store(id="bbox-store"),
         ],
         fluid=True,
     )
