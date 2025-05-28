@@ -17,7 +17,20 @@ from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
-
+import os
+import io
+import zipfile
+import requests
+import pandas as pd
+from dash import dcc, Output, Input, State
+from PIL import Image, ImageDraw
+from flask import send_file
+from datetime import datetime
+from dash.exceptions import PreventUpdate
+from urllib.parse import quote
+import uuid
+from io import StringIO
+import ast  # safer than eval
 import config as cfg
 from services import api_client
 from utils.display import (
@@ -363,33 +376,73 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         raise PreventUpdate
 
 
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+import flask
+@app.server.route("/downloads/<path:filename>")
+def serve_download(filename):
+    return send_file(os.path.join(DOWNLOAD_DIR, filename), as_attachment=True)
+
+
 @app.callback(
     Output("download-link", "href"),
-    [Input("image-slider", "value")],
-    [State("sequence_on_display", "data")],
+    Input("image-slider", "value"),
+    State("sequence_on_display", "data"),
     prevent_initial_call=True,
 )
 def update_download_link(slider_value, sequence_on_display):
-    """
-    Updates the download link for the currently displayed image.
+    if not sequence_on_display:
+        raise PreventUpdate
 
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
+    df = pd.read_json(StringIO(sequence_on_display), orient="split")
 
-    Returns:
-    - str: URL for downloading the current image.
-    """
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    if len(sequence_on_display):
-        try:
-            return sequence_on_display["url"].values[slider_value]
-        except Exception as e:
-            logger.info(e)
-            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
+    print("update_download_link", len(df))
 
-    return ""  # Return empty string if no image URL is available
+    if df.empty:
+        raise PreventUpdate
 
+    try:
+        cam_id = df["camera_id"].iloc[0]
+        azimuth = int(df["azimuth"].iloc[0])
+        archive_name = f"{cam_id}_{azimuth}_{uuid.uuid4().hex[:8]}.zip"
+        archive_path = os.path.join(DOWNLOAD_DIR, archive_name)
+        dd=1/0
+
+        with zipfile.ZipFile(archive_path, 'w') as zf:
+            for _, row in df.iterrows():
+                image_name = os.path.basename(row["url"])
+                original_path = f"original/{image_name}"
+                annotated_path = f"annotated/{image_name}"
+
+                # Download original
+                resp = requests.get(row["url"])
+                image_bytes = io.BytesIO(resp.content)
+                img = Image.open(image_bytes).convert("RGB")
+                zf.writestr(original_path, image_bytes.getvalue())
+
+                # Annotate
+                draw = ImageDraw.Draw(img)
+                for bbox in ast.literal_eval(row["bboxes"]):
+                    x1, y1, x2, y2, _ = bbox
+                    if x2 > x1:
+                        width, height = img.size
+                        draw.rectangle(
+                            [x1 * width, y1 * height, x2 * width, y2 * height],
+                            outline="red", width=2
+                    )
+
+                # Save annotated
+                annotated_io = io.BytesIO()
+                img.save(annotated_io, format="JPEG")
+                zf.writestr(annotated_path, annotated_io.getvalue())
+
+        # Serve file via static route
+        return f"/{DOWNLOAD_DIR}/{quote(archive_name)}"
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return ""
 
 # Map
 @app.callback(
