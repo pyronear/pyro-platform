@@ -7,7 +7,7 @@ import ast
 import json
 import urllib
 import urllib.parse
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from io import StringIO
 
 import dash
@@ -602,6 +602,13 @@ def reset_zoom(n_clicks):
 )
 def blink_image(n_intervals, api_sequences):
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    api_sequences["last_seen_at"] = pd.to_datetime(api_sequences["last_seen_at"], utc=True)
+
+    # Get current UTC time
+    now_utc = datetime.now(timezone.utc)
+
+    # Find sequences where last_seen_at is within the last 15 minutes
+    recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=15)]
 
     container_style = {
         "display": "flex",
@@ -610,7 +617,7 @@ def blink_image(n_intervals, api_sequences):
         "height": "100vh",
         "width": "100vw",
     }
-    if api_sequences.empty:
+    if recent_sequences.empty:
         image_path = "https://pyronear.org/img/logo_letters_orange.png"
         container_style["background-color"] = "#044448"
     else:
