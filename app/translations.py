@@ -41,6 +41,15 @@ translate_dict = {
         "start": "▶️ Démarrer",
         "stop": "⏹️ Arrêter",
         "select_stream": "🎥 Sélectionner un site",
+        "capture_image": "📸 Capturer une image",
+        "camera_info": "🎥 Informations caméra",
+        "camera_name": "Nom de la caméra : ",
+        "current_azimuth": "Azimuth actuel : ",
+        "preset_azimuths": "Azimuths préenregistrés : ",
+        "auto_end_modal_title": "⏱️ Fin de diffusion automatique",
+        "auto_end_modal_body": "Le flux a été interrompu après 2 minutes sans activité. Vous pouvez sélectionner à nouveau une caméra pour relancer le flux.",
+        "image_preview_title": "📸 Aperçu de l'image capturée",
+        "download_image_button": "⬇️ Télécharger",
         # login
         "username_placeholder": "UTILISATEUR",
         "password_placeholder": "MOT DE PASSE",
@@ -82,6 +91,15 @@ translate_dict = {
         "start": "▶️ Iniciar",
         "stop": "⏹️ Detener",
         "select_stream": "🎥 Seleccionar un sitio",
+        "capture_image": "📸 Capturar imagen",
+        "camera_info": "🎥 Información de la cámara",
+        "camera_name": "Nombre de la cámara: ",
+        "current_azimuth": "Azimut actual: ",
+        "preset_azimuths": "Azimuts preestablecidos: ",
+        "auto_end_modal_title": "⏱️ Fin de transmisión automática",
+        "auto_end_modal_body": "La transmisión se interrumpió después de 2 minutos sin actividad. Puede seleccionar una cámara nuevamente para reiniciar la transmisión.",
+        "image_preview_title": "📸 Vista previa de la imagen capturada",
+        "download_image_button": "⬇️ Descargar",
         # login
         "username_placeholder": "NOMBRE DE USUARIO",
         "password_placeholder": "CONTRASEÑA",
@@ -123,17 +141,23 @@ translate_dict = {
         "stop": "⏹️ Stop",
         "select_stream": "🎥 Select a Site",
         "start_live_stream_button": "Start Live Stream",
+        "capture_image": "📸 Capture Image",
+        "camera_info": "🎥 Camera Information",
+        "camera_name": "Camera Name: ",
+        "current_azimuth": "Current Azimuth: ",
+        "preset_azimuths": "Preset Azimuths: ",
+        "auto_end_modal_title": "⏱️ Automatic Stream End",
+        "auto_end_modal_body": "The stream was stopped after 2 minutes of inactivity. You can select a camera again to restart the stream.",
+        "image_preview_title": "📸 Captured Image Preview",
+        "download_image_button": "⬇️ Download",
         # login
         "username_placeholder": "USERNAME",
         "password_placeholder": "PASSWORD",
         "login_button_text": "Log In",
     },
 }
-<<<<<<< HEAD
 
 
 def translate(key: str, lang: str = "fr") -> str:
     """Translation helper with fallback logic."""
     return translate_dict.get(lang, translate_dict["fr"]).get(key, f"[{key}]")
-=======
->>>>>>> main
