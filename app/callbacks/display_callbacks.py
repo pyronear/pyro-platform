@@ -14,7 +14,7 @@ import dash
 import logging_config
 import pandas as pd
 from botocore.exceptions import ClientError
-from dash import Input, Output, State, callback, ctx, no_update
+from dash import Input, Output, State, ctx, no_update
 from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
@@ -695,7 +695,7 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
         if best_bbox is None:
             raise PreventUpdate
 
-        # Increase 10 %
+        # Expand bbox by 10%
         x_min, y_min, x_max, y_max, score = best_bbox
         width = x_max - x_min
         height = y_max - y_min
@@ -709,12 +709,12 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
 
         data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
         return True, data
+
     elif triggered == "confirm-bbox-button":
         if not bbox_store:
             raise PreventUpdate
 
         try:
-            # Init S3 client
             s3_client = boto3.client(
                 "s3",
                 endpoint_url=os.getenv("S3_ENDPOINT_URL"),
@@ -731,30 +731,30 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
 
             object_key = f"{cam_name}_{azimuth}.json"
 
-            # Vérifier si le fichier JSON existe déjà
+            # Check if file exists
             file_exists = False
             try:
                 s3_client.head_object(Bucket=bucket_name, Key=object_key)
                 file_exists = True
             except ClientError as e:
                 if e.response["Error"]["Code"] != "404":
-                    print(f"Erreur lors du head_object: {e}")
+                    print(f"head_object error: {e}")
                     raise PreventUpdate
 
-            # Télécharger l'existant ou créer un dict vide
+            # Load existing data or start with an empty dict
             existing_data = {}
             if file_exists:
                 try:
                     response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
                     existing_data = json.loads(response["Body"].read())
                 except Exception as e:
-                    print(f"Erreur lecture contenu depuis S3 : {e}")
+                    print(f"Failed to read S3 content: {e}")
                     raise PreventUpdate
 
             # Add new bbox
             existing_data[date_now] = bbox
 
-            # Uploader le fichier JSON mis à jour
+            # Upload updated JSON
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=object_key,
@@ -762,17 +762,17 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
                 ContentType="application/json",
                 ACL="public-read",
             )
-            print(f"BBox saved to S3 : {object_key}")
+            print(f"BBox saved to S3: {object_key}")
             return False, no_update
 
         except Exception as e:
-            print(f"Error saving to S3 : {e}")
+            print(f"Error saving to S3: {e}")
             raise PreventUpdate
 
     raise PreventUpdate
 
 
-@callback(
+@app.callback(
     Output("bbox-image-container", "children"),
     Input("bbox-store", "data"),
     State("sequence_on_display", "data"),
@@ -784,7 +784,6 @@ def display_bbox_on_image(bbox_data, sequence_data):
 
     try:
         bbox = bbox_data["bbox"]
-        # valeurs normalisées
         x1, y1, x2, y2, _ = bbox
         w = x2 - x1
         h = y2 - y1
@@ -794,7 +793,6 @@ def display_bbox_on_image(bbox_data, sequence_data):
         if df.empty:
             raise PreventUpdate
 
-        # Prend la première image contenant la bbox
         img_url = df.iloc[0]["url"]
 
         return dash.html.Div(
@@ -808,7 +806,7 @@ def display_bbox_on_image(bbox_data, sequence_data):
                         "width": f"{w * 100}%",
                         "height": f"{h * 100}%",
                         "border": "2px solid red",
-                        "background-color": "rgba(255, 0, 0, 0.5)",  # filled bbox
+                        "background-color": "rgba(255, 0, 0, 0.5)",
                         "box-sizing": "border-box",
                     }
                 ),
