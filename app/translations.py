@@ -129,8 +129,11 @@ translate_dict = {
         "login_button_text": "Log In",
     },
 }
+<<<<<<< HEAD
 
 
 def translate(key: str, lang: str = "fr") -> str:
     """Translation helper with fallback logic."""
     return translate_dict.get(lang, translate_dict["fr"]).get(key, f"[{key}]")
+=======
+>>>>>>> main
