@@ -309,8 +309,8 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     id="map-button",
                                 ),
                             ),
-                            dbc.Button(id="start-live-stream", color="primary", className="mb-3"),
-                            dbc.Button(id="create-occlusion-mask", color="primary", className="mb-3"),
+                            dbc.Button(id="start-live-stream", color="primary", className="mb-1"),
+                            dbc.Button(id="create-occlusion-mask", color="primary", className="mb-1"),
                         ],
                         width=2,
                         style={
@@ -338,18 +338,17 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
             dbc.Modal(
                 id="bbox-modal",
                 is_open=False,
+                fullscreen=True,
                 children=[
-                    dbc.ModalHeader("Confirmer le masque d’occlusion"),
+                    dbc.ModalHeader(translate("occlusion_modal", lang)),
                     dbc.ModalBody(
                         html.Div(
-                            [
-                                html.Div(
-                                    id="bbox-image-container", style={"position": "relative", "display": "inline-block"}
-                                ),
-                            ]
+                            id="bbox-image-container", style={"width": "100%", "height": "100%", "overflow": "hidden"}
                         )
                     ),
-                    dbc.ModalFooter(dbc.Button("Confirmer", id="confirm-bbox-button", color="primary")),
+                    dbc.ModalFooter(
+                        dbc.Button(translate("confirm_bbox", lang), id="confirm-bbox-button", color="primary")
+                    ),
                 ],
             ),
             dcc.Store(id="bbox-store"),

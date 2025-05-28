@@ -13,7 +13,7 @@ import dash
 import logging_config
 import pandas as pd
 from dash import Input, Output, State, callback, ctx, no_update
-from dash.dependencies import ALL, Input, Output, State
+from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
@@ -62,7 +62,7 @@ def update_start_live_stream_button(lang):
     Output("create-occlusion-mask", "children"),
     Input("language", "data"),
 )
-def update_start_live_stream_button(lang):
+def update_create_occlusion_mask_button(lang):
     return translate("create_occlusion_mask", lang)
 
 
@@ -675,31 +675,38 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
     if triggered == "create-occlusion-mask":
         if not camera_info or not sequence_on_display:
             raise PreventUpdate
-        try:
-            cam_name, _, azimuth_camera = camera_info.split(" ")
-            azimuth_camera = int(azimuth_camera.replace("°", ""))
-        except:
+
+        cam_name, _, azimuth_camera = camera_info.split(" ")
+        azimuth_camera = int(azimuth_camera.replace("°", ""))
+
+        df = pd.read_json(StringIO(sequence_on_display), orient="split")
+        df["bboxes"] = df["bboxes"].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
+        )
+        best_bbox = None
+        best_score = -1
+        for bboxes in df["bboxes"]:
+            for bbox in bboxes:
+                if bbox[-1] > best_score:
+                    best_score = bbox[-1]
+                    best_bbox = bbox
+        if best_bbox is None:
             raise PreventUpdate
 
-        try:
-            df = pd.read_json(StringIO(sequence_on_display), orient="split")
-            df["bboxes"] = df["bboxes"].apply(
-                lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-            )
-            best_bbox = None
-            best_score = -1
-            for bboxes in df["bboxes"]:
-                for bbox in bboxes:
-                    if bbox[-1] > best_score:
-                        best_score = bbox[-1]
-                        best_bbox = bbox
-            if best_bbox is None:
-                raise PreventUpdate
+        # Agrandir la bbox de 10 %
+        x_min, y_min, x_max, y_max, score = best_bbox
+        width = x_max - x_min
+        height = y_max - y_min
+        expand_x = width * 0.05
+        expand_y = height * 0.05
+        x_min = max(0, x_min - expand_x)
+        y_min = max(0, y_min - expand_y)
+        x_max = min(1, x_max + expand_x)
+        y_max = min(1, y_max + expand_y)
+        best_bbox = [x_min, y_min, x_max, y_max, score]
 
-            data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
-            return True, data
-        except:
-            raise PreventUpdate
+        data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
+        return True, data
 
     elif triggered == "confirm-bbox-button":
         if not bbox_store:
@@ -726,13 +733,6 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
             raise PreventUpdate
 
     raise PreventUpdate
-
-
-import ast
-from io import StringIO
-
-import pandas as pd
-from dash import Input, Output, State, callback
 
 
 @callback(
@@ -762,7 +762,7 @@ def display_bbox_on_image(bbox_data, sequence_data):
 
         return dash.html.Div(
             [
-                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto"}),
+                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto", "display": "block"}),
                 dash.html.Div(
                     style={
                         "position": "absolute",
@@ -771,12 +771,18 @@ def display_bbox_on_image(bbox_data, sequence_data):
                         "width": f"{w * 100}%",
                         "height": f"{h * 100}%",
                         "border": "2px solid red",
-                        "background-color": "rgba(255, 0, 0, 0.5)",  # red fill with 30% opacity
+                        "background-color": "rgba(255, 0, 0, 0.5)",  # filled bbox
                         "box-sizing": "border-box",
                     }
                 ),
             ],
-            style={"position": "relative", "display": "inline-block"},
+            style={
+                "position": "relative",
+                "width": "100%",
+                "max-width": "100%",
+                "height": "auto",
+                "display": "inline-block",
+            },
         )
 
     except Exception as e:
