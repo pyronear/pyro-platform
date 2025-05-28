@@ -712,7 +712,9 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
     elif triggered == "confirm-bbox-button":
         if not bbox_store:
             raise PreventUpdate
+
         try:
+            # Init S3 client
             s3_client = boto3.client(
                 "s3",
                 endpoint_url=os.getenv("S3_ENDPOINT_URL"),
@@ -729,30 +731,42 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
 
             object_key = f"{cam_name}_{azimuth}.json"
 
+            # Vérifier si le fichier JSON existe déjà
+            file_exists = False
             try:
-                response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-                existing_data = json.loads(response["Body"].read())
+                s3_client.head_object(Bucket=bucket_name, Key=object_key)
+                file_exists = True
             except ClientError as e:
-                if e.response["Error"]["Code"] == "NoSuchKey":
-                    existing_data = {}
-                else:
-                    print(f"Erreur lecture depuis S3 : {e}")
+                if e.response["Error"]["Code"] != "404":
+                    print(f"Erreur lors du head_object: {e}")
                     raise PreventUpdate
 
+            # Télécharger l'existant ou créer un dict vide
+            existing_data = {}
+            if file_exists:
+                try:
+                    response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+                    existing_data = json.loads(response["Body"].read())
+                except Exception as e:
+                    print(f"Erreur lecture contenu depuis S3 : {e}")
+                    raise PreventUpdate
+
+            # Add new bbox
             existing_data[date_now] = bbox
 
-            # Sauvegarder dans le bucket
+            # Uploader le fichier JSON mis à jour
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=object_key,
                 Body=json.dumps(existing_data, indent=2).encode("utf-8"),
                 ContentType="application/json",
+                ACL="public-read",
             )
-            print(f"BBox sauvegardée dans OVH S3 : {object_key}")
+            print(f"BBox saved to S3 : {object_key}")
             return False, no_update
 
         except Exception as e:
-            print(f"Erreur lors de la sauvegarde de la bbox sur S3 : {e}")
+            print(f"Error saving to S3 : {e}")
             raise PreventUpdate
 
     raise PreventUpdate
