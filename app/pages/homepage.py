@@ -37,7 +37,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                 children=[
                                                     html.Img(
                                                         id="main-image",
-                                                        src=translate[lang]["no_alert_default_image"],
+                                                        src=translate("no_alert_default_image", lang),
                                                         className="zoomable-image",
                                                         style={"maxWidth": "100%", "height": "auto"},
                                                     )
@@ -90,7 +90,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                 [
                                     dbc.Col(
                                         dbc.Button(
-                                            translate[lang]["show_hide_prediction"],
+                                            translate("show_hide_prediction", lang),
                                             id="hide-bbox-button",
                                             n_clicks=0,
                                             className="btn-uniform",
@@ -101,7 +101,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     dbc.Col(
                                         html.A(
                                             dbc.Button(
-                                                translate[lang]["download_image"],
+                                                translate("download_image", lang),
                                                 className="btn-uniform",
                                                 id="dl-image-button",
                                             ),
@@ -115,7 +115,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     ),
                                     dbc.Col(
                                         dbc.Button(
-                                            translate[lang]["acknowledge_alert"],
+                                            translate("acknowledge_alert", lang),
                                             id="acknowledge-button",
                                             n_clicks=0,
                                             className="btn-uniform",
@@ -144,7 +144,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     html.Div(
                                         [
                                             html.H4(
-                                                translate[lang]["confirmation_modal_title"],
+                                                translate("confirmation_modal_title", lang),
                                                 style={
                                                     "margin-bottom": "20px",
                                                     "font-size": "20px",
@@ -154,7 +154,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                             html.Div(
                                                 [
                                                     html.Button(
-                                                        translate[lang]["confirmation_modal_yes"],
+                                                        translate("confirmation_modal_yes", lang),
                                                         id="confirm-wildfire",
                                                         n_clicks=0,
                                                         style={
@@ -168,7 +168,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                         },
                                                     ),
                                                     html.Button(
-                                                        translate[lang]["confirmation_modal_no"],
+                                                        translate("confirmation_modal_no", lang),
                                                         id="confirm-non-wildfire",
                                                         n_clicks=0,
                                                         style={
@@ -182,7 +182,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                         },
                                                     ),
                                                     html.Button(
-                                                        translate[lang]["confirmation_modal_cancel"],
+                                                        translate("confirmation_modal_cancel", lang),
                                                         id="cancel-confirmation",
                                                         n_clicks=0,
                                                         style={
@@ -226,14 +226,14 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                             id="alert-information-styling-container",
                                             children=[
                                                 html.H5(
-                                                    translate[lang]["alert_information"], style={"text-align": "center"}
+                                                    translate("alert_information", lang), style={"text-align": "center"}
                                                 ),
                                                 html.Div(
                                                     id="alert-camera",
                                                     children=[
                                                         html.Span(
                                                             id="alert-camera-header",
-                                                            children=translate[lang]["camera"],
+                                                            children=translate("camera", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
@@ -247,7 +247,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     children=[
                                                         html.Span(
                                                             id="camera-location-header",
-                                                            children=translate[lang]["camera_location"],
+                                                            children=translate("camera_location", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
@@ -261,7 +261,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     children=[
                                                         html.Span(
                                                             id="alert-azimuth-header",
-                                                            children=translate[lang]["detection_azimuth"],
+                                                            children=translate("detection_azimuth", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
@@ -275,7 +275,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     children=[
                                                         html.Span(
                                                             id="alert-date-header",
-                                                            children=translate[lang]["date"],
+                                                            children=translate("date", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
@@ -303,7 +303,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                             ),
                             html.Div(
                                 dbc.Button(
-                                    translate[lang]["enlarge_map"],
+                                    translate("enlarge_map", lang),
                                     className="common-style",
                                     style={"backgroundColor": "#FEBA6A", "color": "black", "width": "100%"},
                                     id="map-button",
@@ -323,7 +323,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
             dcc.Interval(id="auto-slider-update", interval=500, n_intervals=0),
             dbc.Modal(
                 [
-                    dbc.ModalHeader(translate[lang]["map"]),
+                    dbc.ModalHeader(translate("map", lang)),
                     dbc.ModalBody(
                         build_alerts_map(api_cameras, id_suffix="-md"),
                     ),

@@ -87,7 +87,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
             # If either the username or the password is missing, the condition is verified
 
             # We add the appropriate feedback
-            form_feedback.append(html.P(translate[lang]["missing_password_or_user_name"]))
+            form_feedback.append(html.P(translate("missing_password_or_user_name", lang)))
 
             # The login modal remains open; other outputs are updated with arbitrary values
             return (
@@ -117,7 +117,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
-                form_feedback.append(html.P(translate[lang]["wrong_credentials"]))
+                form_feedback.append(translate("wrong_credentials", lang))
 
                 return (
                     dash.no_update,

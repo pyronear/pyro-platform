@@ -30,22 +30,22 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 @app.callback(Output("camera_status_button_text", "children"), Input("language", "data"))
 def update_camera_status_button(lang):
-    return [translate[lang]["camera_status"]]
+    return [translate("camera_status", lang)]
 
 
 @app.callback(Output("blinking_alarm_button_text", "children"), Input("language", "data"))
 def update_blinking_alarm_button(lang):
-    return [translate[lang]["blinking_alarm"]]
+    return [translate("blinking_alarm", lang)]
 
 
 @app.callback(Output("home_button_text", "children"), Input("language", "data"))
 def update_home_button(lang):
-    return [translate[lang]["home"]]
+    return [translate("home", lang)]
 
 
 @app.callback(Output("live_stream_button_text", "children"), Input("language", "data"))
 def update_live_stream_button(lang):
-    return [translate[lang]["live_stream"]]
+    return [translate("live_stream", lang)]
 
 
 @app.callback(
@@ -53,7 +53,7 @@ def update_live_stream_button(lang):
     Input("language", "data"),
 )
 def update_start_live_stream_button(lang):
-    return translate[lang]["start_live_stream_button"]
+    return translate("start_live_stream_button", lang)
 
 
 @app.callback(

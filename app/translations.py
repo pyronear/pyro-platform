@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
-translate = {
+translate_dict = {
     "fr": {
         # data callbacks
         "missing_password_or_user_name": "Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe.",
@@ -129,3 +129,8 @@ translate = {
         "login_button_text": "Log In",
     },
 }
+
+
+def translate(key: str, lang: str = "fr") -> str:
+    """Translation helper with fallback logic."""
+    return translate_dict.get(lang, translate_dict["fr"]).get(key, f"[{key}]")

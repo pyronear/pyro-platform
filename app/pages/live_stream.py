@@ -133,7 +133,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                         [  # GROUPED RIGHT SECTION
                             dcc.Dropdown(
                                 id="available-stream-sites-dropdown",
-                                placeholder=translate[lang]["select_stream"],
+                                placeholder=translate("select_stream", lang),
                                 value=default_stream,
                                 options=dropdown_options if available_stream else [],  # type: ignore[arg-type]
                                 style=PICK_STREAM_STYLE,
@@ -290,7 +290,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                             html.Div(
                                                 [
                                                     html.Div(
-                                                        translate[lang]["move_speed"],
+                                                        translate("move_speed", lang),
                                                         style={
                                                             "textAlign": "center",
                                                             "fontWeight": "bold",
@@ -314,7 +314,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                             html.Div(
                                                 [
                                                     html.Div(
-                                                        translate[lang]["zoom_level"],
+                                                        translate("zoom_level", lang),
                                                         style={
                                                             "textAlign": "center",
                                                             "fontWeight": "bold",

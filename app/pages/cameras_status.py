@@ -80,10 +80,10 @@ def cameras_status_layout(user_token, api_cameras, lang="fr"):
             dbc.Breadcrumb(
                 items=[
                     {"label": "Homepage", "href": "/", "external_link": False},
-                    {"label": translate[lang]["breadcrumb"], "active": True},
+                    {"label": translate("breadcrumb", lang), "active": True},
                 ],
             ),
-            html.H1(translate[lang]["page_title"], style={"font-size": "2rem"}),
+            html.H1(translate("page_title", lang), style={"font-size": "2rem"}),
             html.Div(id="camera-cards-container", children=[]),
         ],
         fluid=True,

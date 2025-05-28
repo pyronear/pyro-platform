@@ -77,11 +77,13 @@ def Navbar(lang="fr"):
                     dcc.Dropdown(
                         id="language-selector",
                         options=[
-                            {"label": "🇫🇷 FR", "value": "fr"},
-                            {"label": "🇪🇸 ES", "value": "es"},
-                            {"label": "🇬🇧 EN", "value": "en"},
+                            {"label": "🇫🇷 Français", "value": "fr"},
+                            {"label": "🇪🇸 Español", "value": "es"},
+                            {"label": "🇬🇧 English", "value": "en"},
                         ],
-                        value="fr",
+                        value="fr",  # valeur initiale par défaut
+                        clearable=False,
+                        style={"width": "150px"},
                     ),
                 ],
             ),
