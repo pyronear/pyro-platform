@@ -74,8 +74,17 @@ def Navbar(lang="fr"):
                         style={"fontSize": "16px"},
                     ),
                     # 🌐 Langues
-                    dbc.Button(["🇫🇷", " FR"], id="btn-fr", color="light", className="mr-2"),
-                    dbc.Button(["🇪🇸", " ES"], id="btn-es", color="light"),
+                    dcc.Dropdown(
+                        id="language-selector",
+                        options=[
+                            {"label": "🇫🇷 Français", "value": "fr"},
+                            {"label": "🇪🇸 Español", "value": "es"},
+                            {"label": "🇬🇧 English", "value": "en"},
+                        ],
+                        value="fr",  # valeur initiale par défaut
+                        clearable=False,
+                        style={"width": "150px"},
+                    ),
                 ],
             ),
         ],

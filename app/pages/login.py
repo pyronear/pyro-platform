@@ -5,25 +5,13 @@
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from translations import translate
 
 # Pyronear - Horizontal Logo
 pyro_logo = "https://pyronear.org/img/logo_letters.png"
 
 
 def login_layout(lang="fr"):
-    translate = {
-        "fr": {
-            "username_placeholder": "UTILISATEUR",
-            "password_placeholder": "MOT DE PASSE",
-            "login_button_text": "Connexion",
-        },
-        "es": {
-            "username_placeholder": "NOMBRE DE USUARIO",
-            "password_placeholder": "CONTRASEÑA",
-            "login_button_text": "Iniciar sesión",
-        },
-    }
-
     """
     This function creates and returns the login page, which opens at the beginning of each session for user authentication.
     """

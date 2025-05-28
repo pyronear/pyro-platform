@@ -39,20 +39,12 @@ app.layout = get_main_layout()
         Input("api_cameras", "data"),
         Input("url", "search"),
         Input("selected-camera-info", "data"),
+        Input("language", "data"),
     ],
     [State("user_token", "data"), State("available-stream-sites", "data")],
 )
-def display_page(pathname, api_cameras, search, selected_camera_info, user_token, available_stream):
-    logger.debug(
-        "display_page called with pathname: %s, user_token: %s",
-        pathname,
-        user_token,
-    )
-
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-    if lang not in cfg.AVAILABLE_LANGS:
-        lang = cfg.DEFAULT_LANGUAGE
+def display_page(pathname, api_cameras, search, selected_camera_info, lang, user_token, available_stream):
+    logger.debug("display_page called with pathname: %s, user_token: %s using lang %s", pathname, user_token, lang)
 
     if not isinstance(user_token, str) or not user_token:
         return login_layout(lang=lang)

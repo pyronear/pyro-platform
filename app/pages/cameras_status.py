@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
 from dash import html
+from translations import translate
 
 import config as cfg
 from utils.display import convert_dt_to_local_tz
@@ -74,17 +75,6 @@ def display_cam_cards(cameras):
 
 
 def cameras_status_layout(user_token, api_cameras, lang="fr"):
-    translate = {
-        "fr": {
-            "breadcrumb": "Dashboard des caméras",
-            "page_title": "Dashboard de l'état des caméras",
-        },
-        "es": {
-            "breadcrumb": "Panel de cámaras",
-            "page_title": "Panel de control del estado de la cámara",
-        },
-    }
-
     return dbc.Container(
         [
             dbc.Breadcrumb(

@@ -8,6 +8,7 @@ from typing import List, TypedDict
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 from dash_extensions import EventListener  # type: ignore
+from translations import translate
 
 from utils.display import build_alerts_map
 
@@ -102,23 +103,6 @@ PICK_STREAM_STYLE = {
     "marginRight": "10px",
     "borderRadius": "6px",
     "fontWeight": "bold",
-}
-
-translate = {
-    "fr": {
-        "move_speed": "Vitesse de déplacement",
-        "zoom_level": "Niveau de zoom",
-        "start": "▶️ Démarrer",
-        "stop": "⏹️ Arrêter",
-        "select_stream": "🎥 Sélectionner un site",
-    },
-    "es": {
-        "move_speed": "Velocidad de movimiento",
-        "zoom_level": "Nivel de zoom",
-        "start": "▶️ Iniciar",
-        "stop": "⏹️ Detener",
-        "select_stream": "🎥 Seleccionar un sitio",
-    },
 }
 
 

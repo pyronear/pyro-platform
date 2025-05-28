@@ -5,8 +5,6 @@
 
 import ast
 import json
-import urllib
-import urllib.parse
 from datetime import date, datetime, timedelta, timezone
 from io import StringIO
 
@@ -17,6 +15,7 @@ from dash.dependencies import ALL, Input, Output, State
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
+from translations import translate
 
 import config as cfg
 from services import api_client
@@ -29,80 +28,41 @@ from utils.display import (
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
-@app.callback(Output("camera_status_button_text", "children"), Input("url", "search"))
-def update_nav_bar_language(search):
-    translate = {
-        "fr": {
-            "camera_status": "Statut des Caméras",
-        },
-        "es": {
-            "camera_status": "Estado de las Cámaras",
-        },
-    }
-
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-
+@app.callback(Output("camera_status_button_text", "children"), Input("language", "data"))
+def update_camera_status_button(lang):
     return [translate[lang]["camera_status"]]
 
 
-@app.callback(Output("blinking_alarm_button_text", "children"), Input("url", "search"))
-def update_blinking_alarm_language(search):
-    translate = {
-        "fr": {
-            "blinking_alarm": "Page d'Alarme",
-        },
-        "es": {
-            "blinking_alarm": "Página de Alarma",
-        },
-    }
-
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-
+@app.callback(Output("blinking_alarm_button_text", "children"), Input("language", "data"))
+def update_blinking_alarm_button(lang):
     return [translate[lang]["blinking_alarm"]]
 
 
-@app.callback(Output("home_button_text", "children"), Input("url", "search"))
-def update_home_button_language(search):
-    translate = {
-        "fr": {"home": "Alertes"},
-        "es": {"home": "Alertas"},
-    }
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-    return [translate.get(lang, translate["fr"])["home"]]
+@app.callback(Output("home_button_text", "children"), Input("language", "data"))
+def update_home_button(lang):
+    return [translate[lang]["home"]]
 
 
-@app.callback(Output("live_stream_button_text", "children"), Input("url", "search"))
-def update_live_stream_button_language(search):
-    translate = {
-        "fr": {"live_stream": "Levée de doute"},
-        "es": {"live_stream": "Transmisión en Vivo"},
-    }
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-    return [translate.get(lang, translate["fr"])["live_stream"]]
+@app.callback(Output("live_stream_button_text", "children"), Input("language", "data"))
+def update_live_stream_button(lang):
+    return [translate[lang]["live_stream"]]
 
 
-@app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
-def update_language_url(fr_clicks, es_clicks):
-    # Check which button has been clicked
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return ""
+@app.callback(
+    Output("start-live-stream", "children"),
+    Input("language", "data"),
+)
+def update_start_live_stream_button(lang):
+    return translate[lang]["start_live_stream_button"]
 
-    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # update the URL according to the button clicked
-    if button_id == "btn-fr":
-        return "?lang=fr"
-    elif button_id == "btn-es":
-        return "?lang=es"
-
-    return ""
+@app.callback(
+    Output("language", "data"),
+    Input("language-selector", "value"),
+    prevent_initial_call="initial_duplicate",  # ne déclenche pas à l'initialisation si même valeur
+)
+def update_language_store(selected_lang):
+    return selected_lang
 
 
 # Create event list

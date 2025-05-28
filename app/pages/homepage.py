@@ -6,6 +6,7 @@
 
 import dash_bootstrap_components as dbc
 from dash import Dash, dcc, html
+from translations import translate
 
 from components.alerts import create_event_list
 from utils.display import build_alerts_map
@@ -15,43 +16,6 @@ app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_token, api_cameras, lang="fr"):
-    translate = {
-        "fr": {
-            "show_hide_prediction": "Afficher / Cacher la prédiction",
-            "download_image": "Télécharger l'image",
-            "acknowledge_alert": "Acquitter l'alerte",
-            "confirmation_modal_title": "Est-ce une fumée suspecte ?",
-            "confirmation_modal_yes": "Oui, c'est une fumée",
-            "confirmation_modal_no": "Non, c'est un faux positif",
-            "confirmation_modal_cancel": "Annuler",
-            "enlarge_map": "Agrandir la carte",
-            "alert_information": "Information Alerte",
-            "camera": "Caméra: ",
-            "camera_location": "Position caméra: ",
-            "detection_azimuth": "Azimuth de detection: ",
-            "date": "Date: ",
-            "map": "Carte",
-            "no_alert_default_image": "./assets/images/no-alert-default.png",
-        },
-        "es": {
-            "show_hide_prediction": "Mostrar / Ocultar la predicción",
-            "download_image": "Descargar la imagen",
-            "acknowledge_alert": "Descartar la alerta",
-            "confirmation_modal_title": "¿Es un humo sospechoso?",
-            "confirmation_modal_yes": "Sí, es un humo",
-            "confirmation_modal_no": "No, es un falso positivo",
-            "confirmation_modal_cancel": "Cancelar",
-            "enlarge_map": "Ampliar el mapa",
-            "alert_information": "Información sobre alerta",
-            "camera": "Cámara: ",
-            "camera_location": "Ubicación cámara: ",
-            "detection_azimuth": "Azimut de detección: ",
-            "date": "Fecha: ",
-            "map": "Mapa",
-            "no_alert_default_image": "./assets/images/no-alert-default-es.png",
-        },
-    }
-
     return dbc.Container(
         [
             dbc.Row(
@@ -345,7 +309,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     id="map-button",
                                 ),
                             ),
-                            dbc.Button("Start Live Stream", id="start-live-stream", color="primary", className="mb-3"),
+                            dbc.Button(id="start-live-stream", color="primary", className="mb-3"),
                         ],
                         width=2,
                         style={
@@ -369,7 +333,6 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 fullscreen=True,
                 is_open=False,
             ),
-            dcc.Store(id="language", data=lang),
         ],
         fluid=True,
     )
