@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import dash_bootstrap_components as dbc
-from dash import dcc, html
+from dash import html
 from translations import translate
 
 # Pyronear - Horizontal Logo
@@ -25,7 +25,7 @@ def login_layout(lang="fr"):
                     dbc.Input(
                         id="username_input",
                         type="text",
-                        placeholder=translate[lang]["username_placeholder"],
+                        placeholder=translate("username_placeholder", lang),
                         style={"width": "250px"},
                         autoFocus=True,
                     ),
@@ -33,12 +33,12 @@ def login_layout(lang="fr"):
                     dbc.Input(
                         id="password_input",
                         type="password",
-                        placeholder=translate[lang]["password_placeholder"],
+                        placeholder=translate("password_placeholder", lang),
                         style={"width": "250px"},
                     ),
                     html.Div(style={"height": "15px"}),  # Spacing
                     dbc.Button(
-                        translate[lang]["login_button_text"],
+                        translate("login_button_text", lang),
                         id="send_form_button",
                         color="primary",
                         className="ml-3",
@@ -51,8 +51,6 @@ def login_layout(lang="fr"):
                         id="loading_spinner",
                         style={"display": "none"},
                     ),
-                    # Store the current language
-                    dcc.Store(id="language", data=lang),
                 ],
             ),
         ]

@@ -133,14 +133,14 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                         [  # GROUPED RIGHT SECTION
                             dcc.Dropdown(
                                 id="available-stream-sites-dropdown",
-                                placeholder=translate[lang]["select_stream"],
+                                placeholder=translate("select_stream", lang),
                                 value=default_stream,
                                 options=dropdown_options if available_stream else [],  # type: ignore[arg-type]
                                 style=PICK_STREAM_STYLE,
                             ),
                             html.Div(
                                 html.Button(
-                                    "📸 Capturer une image",
+                                    translate("capture_image", lang),
                                     id="capture-image-button",
                                     n_clicks=0,
                                     className="btn btn-primary",
@@ -290,7 +290,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                             html.Div(
                                                 [
                                                     html.Div(
-                                                        translate[lang]["move_speed"],
+                                                        translate("move_speed", lang),
                                                         style={
                                                             "textAlign": "center",
                                                             "fontWeight": "bold",
@@ -314,7 +314,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                             html.Div(
                                                 [
                                                     html.Div(
-                                                        translate[lang]["zoom_level"],
+                                                        translate("zoom_level", lang),
                                                         style={
                                                             "textAlign": "center",
                                                             "fontWeight": "bold",
@@ -356,19 +356,24 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                     },
                                     children=[
                                         html.H5(
-                                            "🎥 Informations caméra",
+                                            translate("camera_info", lang),
                                             style={"textAlign": "center", "marginBottom": "12px"},
                                         ),
                                         html.Div(
                                             [
-                                                html.Span("Nom de la caméra : ", className="alert-information-title"),
+                                                html.Span(
+                                                    translate("camera_name", lang), className="alert-information-title"
+                                                ),
                                                 html.Span(id="stream-camera-name"),
                                             ],
                                             style={"marginBottom": "8px"},
                                         ),
                                         html.Div(
                                             [
-                                                html.Span("Azimuth actuel : ", className="alert-information-title"),
+                                                html.Span(
+                                                    translate("current_azimuth", lang),
+                                                    className="alert-information-title",
+                                                ),
                                                 dcc.Input(
                                                     id="stream-current-azimuth",
                                                     type="number",
@@ -385,7 +390,8 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                         html.Div(
                                             [
                                                 html.Span(
-                                                    "Azimuths préenregistrés : ", className="alert-information-title"
+                                                    translate("preset_azimuths", lang),
+                                                    className="alert-information-title",
                                                 ),
                                                 html.Span(id="stream-preset-azimuths", style={"marginLeft": "8px"}),
                                             ],
@@ -430,13 +436,13 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             # Modal for image preview
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("📸 Aperçu de l'image capturée")),
+                    dbc.ModalHeader(dbc.ModalTitle(translate("image_preview_title", lang))),
                     dbc.ModalBody(
                         html.Img(id="captured-image", src="", style={"width": "100%", "borderRadius": "8px"})
                     ),
                     dbc.ModalFooter(
                         html.A(
-                            "⬇️ Télécharger",
+                            translate("download_image_button", lang),
                             id="download-captured-image",
                             download="capture.jpg",
                             href="",
@@ -466,11 +472,8 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                 is_open=False,
                 centered=True,
                 children=[
-                    dbc.ModalHeader("⏱️ Fin de diffusion automatique"),
-                    dbc.ModalBody(
-                        "Le flux a été interrompu après 2 minutes sans activité. "
-                        "Vous pouvez sélectionner à nouveau une caméra pour relancer le flux."
-                    ),
+                    dbc.ModalHeader(translate("auto_end_modal_title", lang)),
+                    dbc.ModalBody(translate("auto_end_modal_body", lang)),
                 ],
             ),
             dcc.Store(id="hide-stream-flag", data=False),
