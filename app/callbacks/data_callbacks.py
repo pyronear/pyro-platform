@@ -117,7 +117,7 @@ def login_callback(n_clicks, username, password, user_token, lang):
                 )
             except Exception:
                 # This if statement is verified if credentials are invalid
-                form_feedback.append(translate("wrong_credentials", lang))
+                form_feedback.append(html.P(translate("wrong_credentials", lang)))
 
                 return (
                     dash.no_update,
