@@ -135,7 +135,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                 id="available-stream-sites-dropdown",
                                 placeholder=translate[lang]["select_stream"],
                                 value=default_stream,
-                                options=dropdown_options if available_stream else [],
+                                options=dropdown_options if available_stream else [],  # type: ignore[arg-type]
                                 style=PICK_STREAM_STYLE,
                             ),
                             html.Div(
