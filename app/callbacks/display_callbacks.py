@@ -9,9 +9,11 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from io import StringIO
 
+import boto3
 import dash
 import logging_config
 import pandas as pd
+from botocore.exceptions import ClientError
 from dash import Input, Output, State, callback, ctx, no_update
 from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
@@ -693,7 +695,7 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
         if best_bbox is None:
             raise PreventUpdate
 
-        # Agrandir la bbox de 10 %
+        # Increase 10 %
         x_min, y_min, x_max, y_max, score = best_bbox
         width = x_max - x_min
         height = y_max - y_min
@@ -707,29 +709,50 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
 
         data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
         return True, data
-
     elif triggered == "confirm-bbox-button":
         if not bbox_store:
             raise PreventUpdate
         try:
+            s3_client = boto3.client(
+                "s3",
+                endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+                aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+                aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+                region_name=os.getenv("S3_REGION"),
+            )
+            bucket_name = "occlusion-masks-json"
+
             cam_name = bbox_store["cam_name"]
             azimuth = bbox_store["azimuth"]
             bbox = bbox_store["bbox"]
             date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            os.makedirs("occlusion_masks", exist_ok=True)
-            json_path = f"occlusion_masks/{cam_name}_{azimuth}.json"
-            if os.path.exists(json_path):
-                with open(json_path, "r") as f:
-                    bbox_dict = json.load(f)
-            else:
-                bbox_dict = {}
-            bbox_dict[date_now] = bbox
-            with open(json_path, "w") as f:
-                json.dump(bbox_dict, f, indent=2)
-            print(f"BBox sauvegardée dans {json_path}")
+
+            object_key = f"{cam_name}_{azimuth}.json"
+
+            try:
+                response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+                existing_data = json.loads(response["Body"].read())
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "NoSuchKey":
+                    existing_data = {}
+                else:
+                    print(f"Erreur lecture depuis S3 : {e}")
+                    raise PreventUpdate
+
+            existing_data[date_now] = bbox
+
+            # Sauvegarder dans le bucket
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key=object_key,
+                Body=json.dumps(existing_data, indent=2).encode("utf-8"),
+                ContentType="application/json",
+            )
+            print(f"BBox sauvegardée dans OVH S3 : {object_key}")
             return False, no_update
+
         except Exception as e:
-            print(f"Erreur lors de la sauvegarde de la bbox : {e}")
+            print(f"Erreur lors de la sauvegarde de la bbox sur S3 : {e}")
             raise PreventUpdate
 
     raise PreventUpdate
