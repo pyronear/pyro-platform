@@ -72,5 +72,6 @@ def get_main_layout():
             dcc.Store(id="trigger_no_detections", data=False),
             dcc.Store(id="available-stream-sites", storage_type="session"),
             dcc.Store(id="selected-camera-info", storage_type="session"),
+            dcc.Store(id="language", storage_type="session", data="fr"),
         ]
     )

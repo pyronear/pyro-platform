@@ -14,6 +14,7 @@ from dash.dependencies import Input, Output, State
 from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
 from main import app
+from translations import translate
 
 import config as cfg
 from pages.cameras_status import display_cam_cards
@@ -65,17 +66,6 @@ def login_callback(n_clicks, username, password, user_token, lang):
     empty_style_unchanged = {"": ""}
     hide_element_style = {"display": "none"}
     show_spinner_style = {"transform": "scale(4)"}
-
-    translate = {
-        "fr": {
-            "missing_password_or_user_name": "Il semble qu'il manque votre nom d'utilisateur et/ou votre mot de passe.",
-            "wrong_credentials": "Nom d'utilisateur et/ou mot de passe erroné.",
-        },
-        "es": {
-            "missing_password_or_user_name": "Parece que falta su nombre de usuario y/o su contraseña.",
-            "wrong_credentials": "Nombre de usuario y/o contraseña incorrectos.",
-        },
-    }
 
     if user_token is not None:
         return (
