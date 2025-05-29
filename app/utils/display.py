@@ -4,7 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 
 import dash_leaflet as dl
@@ -245,3 +245,56 @@ def create_event_list_from_alerts(api_events, cameras):
         )
         for _, event in filtered_events.iterrows()
     ]
+
+
+def bboxes_overlap(b1, b2, iou_threshold=0.1):
+    """
+    Compute IoU (Intersection over Union) between two bboxes and return True if they overlap.
+    Each bbox is a list: [x_min, y_min, x_max, y_max, score]
+    """
+    xA = max(b1[0], b2[0])
+    yA = max(b1[1], b2[1])
+    xB = min(b1[2], b2[2])
+    yB = min(b1[3], b2[3])
+
+    inter_area = max(0, xB - xA) * max(0, yB - yA)
+    if inter_area == 0:
+        return False
+
+    area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+    area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+    iou = inter_area / float(area1 + area2 - inter_area)
+    return iou > iou_threshold
+
+
+def filter_bboxes_dict(bboxes_dict):
+    """
+    Filters the input dict of {timestamp: bbox}:
+    - Keeps only bboxes < 60 days old
+    - Removes overlaps by keeping the most recent bbox
+    """
+    if not bboxes_dict:
+        return {}
+
+    now = datetime.now()
+    max_age = timedelta(days=60)
+
+    # Parse, filter old
+    items = [
+        (datetime.strptime(k, "%Y-%m-%d %H:%M:%S"), k, v)
+        for k, v in bboxes_dict.items()
+        if now - datetime.strptime(k, "%Y-%m-%d %H:%M:%S") <= max_age
+    ]
+
+    # Sort by timestamp descending (most recent first)
+    items.sort(reverse=True)
+
+    kept = []
+    kept_dict = {}
+
+    for dt, k, bbox in items:
+        if not any(bboxes_overlap(bbox, other_bbox) for _, other_bbox in kept):
+            kept.append((k, bbox))
+            kept_dict[k] = bbox
+
+    return kept_dict

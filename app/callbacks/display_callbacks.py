@@ -27,6 +27,7 @@ from utils.display import (
     build_vision_polygon,
     convert_dt_to_local_tz,
     create_event_list_from_alerts,
+    filter_bboxes_dict,
 )
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
@@ -729,6 +730,7 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
             s3_client.head_object(Bucket=bucket_name, Key=object_key)
             response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
             existing_data = json.loads(response["Body"].read())
+            existing_data = filter_bboxes_dict(existing_data)
         except ClientError as e:
             if e.response["Error"]["Code"] != "404":
                 logger.error(f"head_object error: {e}")
