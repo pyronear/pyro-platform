@@ -38,6 +38,7 @@ translate_dict = {
         "create_occlusion_mask": "Ajouter au masque d'occlusion",
         "occlusion_modal": "Confirmer la zone d'occlusion",
         "confirm_bbox": "Confirmer la sélection",
+        "delete_bbox": "Supprimer les zones d'occlusions",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -91,6 +92,7 @@ translate_dict = {
         "create_occlusion_mask": "Añadir a la máscara de oclusión",
         "occlusion_modal": "Confirmar zona de ocultación",
         "confirm_bbox": "Confirmar selección",
+        "delete_bbox": "Eliminar las zonas de oclusión",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -143,6 +145,7 @@ translate_dict = {
         "create_occlusion_mask": "Add occlusion mask",
         "occlusion_modal": "Confirm Occlusion Area",
         "confirm_bbox": "Confirm Selection",
+        "delete_bbox": "Delete occlusion zones",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",

@@ -14,7 +14,7 @@ import dash
 import logging_config
 import pandas as pd
 from botocore.exceptions import ClientError
-from dash import Input, Output, State, ctx, no_update
+from dash import Input, Output, State, ctx
 from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
@@ -357,8 +357,8 @@ def update_download_link(slider_value, sequence_on_display):
         try:
             return sequence_on_display["url"].values[slider_value]
         except Exception as e:
-            logger.info(e)
-            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
+            logger.error(e)
+            logger.error(f"Size of the alert_data dataframe: {sequence_on_display.size}")
 
     return ""  # Return empty string if no image URL is available
 
@@ -666,13 +666,28 @@ def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
     Output("bbox-store", "data"),
     Input("create-occlusion-mask", "n_clicks"),
     Input("confirm-bbox-button", "n_clicks"),
+    Input("delete-bbox-button", "n_clicks"),
     State("alert-camera-value", "children"),
     State("sequence_on_display", "data"),
     State("bbox-store", "data"),
     prevent_initial_call=True,
 )
-def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display, bbox_store):
+def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequence_on_display, bbox_store):
     triggered = ctx.triggered_id
+
+    # Shared S3 client setup
+    try:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+            region_name=os.getenv("S3_REGION"),
+        )
+        bucket_name = "occlusion-masks-json"
+    except Exception as e:
+        logger.error(f"Error initializing S3 client: {e}")
+        raise PreventUpdate
 
     if triggered == "create-occlusion-mask":
         if not camera_info or not sequence_on_display:
@@ -680,6 +695,7 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
 
         cam_name, _, azimuth_camera = camera_info.split(" ")
         azimuth_camera = int(azimuth_camera.replace("°", ""))
+        object_key = f"{cam_name}_{azimuth_camera}.json"
 
         df = pd.read_json(StringIO(sequence_on_display), orient="split")
         df["bboxes"] = df["bboxes"].apply(
@@ -707,66 +723,59 @@ def handle_modal(create_clicks, confirm_clicks, camera_info, sequence_on_display
         y_max = min(1, y_max + expand_y)
         best_bbox = [x_min, y_min, x_max, y_max, score]
 
-        data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bbox": best_bbox}
+        # Fetch existing masks from S3
+        existing_data = {}
+        try:
+            s3_client.head_object(Bucket=bucket_name, Key=object_key)
+            response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+            existing_data = json.loads(response["Body"].read())
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "404":
+                logger.error(f"head_object error: {e}")
+                raise PreventUpdate
+        except Exception as e:
+            logger.error(f"Error loading S3 object: {e}")
+            raise PreventUpdate
+
+        date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        existing_data[date_now] = best_bbox
+
+        data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bboxes_dict": existing_data}
         return True, data
 
-    elif triggered == "confirm-bbox-button":
+    elif triggered in {"confirm-bbox-button", "delete-bbox-button"}:
         if not bbox_store:
             raise PreventUpdate
 
+        cam_name = bbox_store["cam_name"]
+        azimuth = bbox_store["azimuth"]
+        object_key = f"{cam_name}_{azimuth}.json"
+
+        if triggered == "confirm-bbox-button":
+            bboxes_dict = bbox_store.get("bboxes_dict", {})
+        else:
+            # delete-bbox-button
+            bboxes_dict = {}
+
         try:
-            s3_client = boto3.client(
-                "s3",
-                endpoint_url=os.getenv("S3_ENDPOINT_URL"),
-                aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
-                aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
-                region_name=os.getenv("S3_REGION"),
-            )
-            bucket_name = "occlusion-masks-json"
-
-            cam_name = bbox_store["cam_name"]
-            azimuth = bbox_store["azimuth"]
-            bbox = bbox_store["bbox"]
-            date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            object_key = f"{cam_name}_{azimuth}.json"
-
-            # Check if file exists
-            file_exists = False
-            try:
-                s3_client.head_object(Bucket=bucket_name, Key=object_key)
-                file_exists = True
-            except ClientError as e:
-                if e.response["Error"]["Code"] != "404":
-                    print(f"head_object error: {e}")
-                    raise PreventUpdate
-
-            # Load existing data or start with an empty dict
-            existing_data = {}
-            if file_exists:
-                try:
-                    response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-                    existing_data = json.loads(response["Body"].read())
-                except Exception as e:
-                    print(f"Failed to read S3 content: {e}")
-                    raise PreventUpdate
-
-            # Add new bbox
-            existing_data[date_now] = bbox
-
-            # Upload updated JSON
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=object_key,
-                Body=json.dumps(existing_data, indent=2).encode("utf-8"),
+                Body=json.dumps(bboxes_dict, indent=2).encode("utf-8"),
                 ContentType="application/json",
                 ACL="public-read",
             )
-            print(f"BBox saved to S3: {object_key}")
-            return False, no_update
+            action = "deleted" if triggered == "delete-bbox-button" else "saved"
+            logger.info(f"BBoxes {action} on S3: {object_key}")
+            updated_store = {
+                "cam_name": cam_name,
+                "azimuth": azimuth,
+                "bboxes_dict": bboxes_dict,
+            }
+            return False, updated_store
 
         except Exception as e:
-            print(f"Error saving to S3: {e}")
+            logger.error(f"Error writing to S3: {e}")
             raise PreventUpdate
 
     raise PreventUpdate
@@ -783,33 +792,49 @@ def display_bbox_on_image(bbox_data, sequence_data):
         raise PreventUpdate
 
     try:
-        bbox = bbox_data["bbox"]
-        x1, y1, x2, y2, _ = bbox
-        w = x2 - x1
-        h = y2 - y1
+        bboxes_dict = bbox_data.get("bboxes_dict")
+        if not bboxes_dict:
+            raise PreventUpdate
 
         df = pd.read_json(StringIO(sequence_data), orient="split")
-
         if df.empty:
             raise PreventUpdate
 
         img_url = df.iloc[0]["url"]
 
-        return dash.html.Div(
-            [
-                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto", "display": "block"}),
+        # Identifier la bbox la plus récente
+        latest_date = max(bboxes_dict.keys())
+
+        rectangles = []
+        for date, bbox in bboxes_dict.items():
+            x1, y1, x2, y2, _ = bbox
+            w = x2 - x1
+            h = y2 - y1
+
+            is_latest = date == latest_date
+            border_color = "green" if is_latest else "red"
+            bg_color = "rgba(0, 255, 0, 0.3)" if is_latest else "rgba(255, 0, 0, 0.3)"
+
+            rectangles.append(
                 dash.html.Div(
+                    title=date,
                     style={
                         "position": "absolute",
                         "top": f"{y1 * 100}%",
                         "left": f"{x1 * 100}%",
                         "width": f"{w * 100}%",
                         "height": f"{h * 100}%",
-                        "border": "2px solid red",
-                        "background-color": "rgba(255, 0, 0, 0.5)",
+                        "border": f"2px solid {border_color}",
+                        "background-color": bg_color,
                         "box-sizing": "border-box",
-                    }
-                ),
+                    },
+                )
+            )
+
+        return dash.html.Div(
+            [
+                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto", "display": "block"}),
+                *rectangles,
             ],
             style={
                 "position": "relative",
@@ -821,5 +846,5 @@ def display_bbox_on_image(bbox_data, sequence_data):
         )
 
     except Exception as e:
-        print(f"[display_bbox_on_image] Error: {e}")
+        logger.error(f"[display_bbox_on_image] Error: {e}")
         raise PreventUpdate

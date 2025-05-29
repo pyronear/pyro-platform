@@ -347,7 +347,15 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                         )
                     ),
                     dbc.ModalFooter(
-                        dbc.Button(translate("confirm_bbox", lang), id="confirm-bbox-button", color="primary")
+                        [
+                            dbc.Button(translate("confirm_bbox", lang), id="confirm-bbox-button", color="primary"),
+                            dbc.Button(
+                                translate("delete_bbox", lang),
+                                id="delete-bbox-button",
+                                color="danger",
+                                className="ms-2",
+                            ),
+                        ]
                     ),
                 ],
             ),
