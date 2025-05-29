@@ -808,18 +808,18 @@ def display_bbox_on_image(bbox_data, sequence_data):
         latest_date = max(bboxes_dict.keys())
 
         rectangles = []
-        for date, bbox in bboxes_dict.items():
+        for creation_date, bbox in bboxes_dict.items():
             x1, y1, x2, y2, _ = bbox
             w = x2 - x1
             h = y2 - y1
 
-            is_latest = date == latest_date
+            is_latest = creation_date == latest_date
             border_color = "green" if is_latest else "red"
             bg_color = "rgba(0, 255, 0, 0.3)" if is_latest else "rgba(255, 0, 0, 0.3)"
 
             rectangles.append(
                 dash.html.Div(
-                    title=date,
+                    title=creation_date,
                     style={
                         "position": "absolute",
                         "top": f"{y1 * 100}%",

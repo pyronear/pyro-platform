@@ -292,7 +292,7 @@ def filter_bboxes_dict(bboxes_dict):
     kept = []
     kept_dict = {}
 
-    for dt, k, bbox in items:
+    for _, k, bbox in items:
         if not any(bboxes_overlap(bbox, other_bbox) for _, other_bbox in kept):
             kept.append((k, bbox))
             kept_dict[k] = bbox
