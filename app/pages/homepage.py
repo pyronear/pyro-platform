@@ -309,7 +309,8 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     id="map-button",
                                 ),
                             ),
-                            dbc.Button(id="start-live-stream", color="primary", className="mb-3"),
+                            dbc.Button(id="start-live-stream", color="primary", className="mb-1"),
+                            dbc.Button(id="create-occlusion-mask", color="primary", className="mb-1"),
                         ],
                         width=2,
                         style={
@@ -333,6 +334,32 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 fullscreen=True,
                 is_open=False,
             ),
+            dcc.Store(id="bbox-store"),
+            dbc.Modal(
+                id="bbox-modal",
+                is_open=False,
+                fullscreen=True,
+                children=[
+                    dbc.ModalHeader(translate("occlusion_modal", lang)),
+                    dbc.ModalBody(
+                        html.Div(
+                            id="bbox-image-container", style={"width": "100%", "height": "100%", "overflow": "hidden"}
+                        )
+                    ),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(translate("confirm_bbox", lang), id="confirm-bbox-button", color="primary"),
+                            dbc.Button(
+                                translate("delete_bbox", lang),
+                                id="delete-bbox-button",
+                                color="danger",
+                                className="ms-2",
+                            ),
+                        ]
+                    ),
+                ],
+            ),
+            dcc.Store(id="bbox-store"),
         ],
         fluid=True,
     )
