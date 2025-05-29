@@ -6,6 +6,7 @@
 
 from datetime import datetime, timedelta
 from io import StringIO
+from typing import List, Tuple
 
 import dash_leaflet as dl
 import pandas as pd
@@ -289,7 +290,7 @@ def filter_bboxes_dict(bboxes_dict):
     # Sort by timestamp descending (most recent first)
     items.sort(reverse=True)
 
-    kept = []
+    kept: List[Tuple[str, list[float]]] = []
     kept_dict = {}
 
     for _, k, bbox in items:
