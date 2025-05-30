@@ -574,15 +574,6 @@ def reset_zoom(n_clicks):
     Input("api_sequences", "data"),
 )
 def blink_image(n_intervals, api_sequences):
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    api_sequences["last_seen_at"] = pd.to_datetime(api_sequences["last_seen_at"], utc=True)
-
-    # Get current UTC time
-    now_utc = datetime.now(timezone.utc)
-
-    # Find sequences where last_seen_at is within the last 15 minutes
-    recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=15)]
-
     container_style = {
         "display": "flex",
         "justify-content": "center",  # Center horizontaly
@@ -590,11 +581,26 @@ def blink_image(n_intervals, api_sequences):
         "height": "100vh",
         "width": "100vw",
     }
-    if recent_sequences.empty:
+
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if api_sequences.empty:
         image_path = "https://pyronear.org/img/logo_letters_orange.png"
         container_style["background-color"] = "#044448"
+
     else:
-        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        api_sequences["last_seen_at"] = pd.to_datetime(api_sequences["last_seen_at"], utc=True)
+
+        # Get current UTC time
+        now_utc = datetime.now(timezone.utc)
+
+        # Find sequences where last_seen_at is within the last 15 minutes
+        recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=15)]
+
+        if recent_sequences.empty:
+            image_path = "https://pyronear.org/img/logo_letters_orange.png"
+            container_style["background-color"] = "#044448"
+        else:
+            image_path = "https://pyronear.org/img/logo_letters_orange.png"
         container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
 
     return [image_path, container_style]
