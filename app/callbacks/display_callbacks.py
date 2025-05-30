@@ -767,13 +767,14 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
 
         try:
             json_bytes = json.dumps(bboxes_dict, indent=2).encode("utf-8")
-            byte_buffer = BytesIO(json_bytes)
+
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=object_key,
-                Body=byte_buffer,
+                Body=json_bytes,  # ← simple: on envoie les bytes directement
                 ContentType="application/json",
-                ACL="public-read",
+                ContentLength=len(json_bytes),  # ← désactive aws-chunked
+                ACL="public-read"
             )
             action = "deleted" if triggered == "delete-bbox-button" else "saved"
             logger.info(f"BBoxes {action} on S3: {object_key}")
