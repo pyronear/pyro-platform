@@ -773,6 +773,7 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                 Key=object_key,
                 Body=byte_buffer,
                 ContentType="application/json",
+                ContentLength=len(json_bytes),
                 ACL="public-read",
             )
             action = "deleted" if triggered == "delete-bbox-button" else "saved"
