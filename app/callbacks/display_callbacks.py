@@ -767,6 +767,9 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
 
         try:
             json_bytes = json.dumps(bboxes_dict, indent=2).encode("utf-8")
+            logger.info(f"[UPLOAD] Body type: {type(json_bytes)}, Length: {len(json_bytes)} dict : {json_bytes}")
+
+
 
             s3_client.put_object(
                 Bucket=bucket_name,
