@@ -7,7 +7,7 @@ import ast
 import json
 import os
 from datetime import date, datetime, timedelta, timezone
-from io import StringIO
+from io import BytesIO, StringIO
 
 import boto3
 import dash
@@ -766,10 +766,12 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
             bboxes_dict = {}
 
         try:
+            json_bytes = json.dumps(bboxes_dict, indent=2).encode("utf-8")
+            byte_buffer = BytesIO(json_bytes)
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=object_key,
-                Body=json.dumps(bboxes_dict, indent=2).encode("utf-8"),
+                Body=byte_buffer,
                 ContentType="application/json",
                 ACL="public-read",
             )
