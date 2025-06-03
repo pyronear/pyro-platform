@@ -413,22 +413,37 @@ def update_map_and_alert_info(sequence_on_display, cameras):
 
         # Filter out rows where 'bboxes' is not empty and get the last one.
         # If all are empty, then simply get the last row of the DataFrame.
-        row_with_bboxes = (
-            sequence_on_display[sequence_on_display["bboxes"].astype(bool)].iloc[-1]
-            if not sequence_on_display[sequence_on_display["bboxes"].astype(bool)].empty
-            else sequence_on_display.iloc[-1]
-        )
+        def get_confidence(bboxes):
+            if not bboxes:
+                return -1  # or np.nan if you prefer
+            return max(bbox[-1] for bbox in bboxes)
+
+        # Compute confidence for each row
+        sequence_on_display["max_conf"] = sequence_on_display["bboxes"].apply(get_confidence)
+
+        # Filter out rows where bboxes is not empty
+        non_empty = sequence_on_display[sequence_on_display["bboxes"].astype(bool)]
+
+        # Get row with highest confidence or fallback to last row
+        if not non_empty.empty:
+            row_with_bboxes = non_empty.loc[non_empty["max_conf"].idxmax()]
+        else:
+            row_with_bboxes = sequence_on_display.iloc[-1]
 
         row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
-        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
+        lat, lon, angle_of_view = (
+            row_cam[["lat"]].values.item(),
+            row_cam[["lon"]].values.item(),
+            row_cam[["angle_of_view"]].values.item(),
+        )
 
         polygon, detection_azimuth = build_vision_polygon(
             site_lat=lat,
             site_lon=lon,
             azimuth=row_with_bboxes["azimuth"],
-            opening_angle=cfg.CAM_OPENING_ANGLE,
+            opening_angle=angle_of_view,
             dist_km=cfg.CAM_RANGE_KM,
-            bboxes=row_with_bboxes["processed_bboxes"],
+            bboxes=row_with_bboxes["bboxes"],
         )
 
         date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])

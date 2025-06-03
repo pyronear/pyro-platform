@@ -77,19 +77,32 @@ def build_departments_geojson():
     return geojson
 
 
-def calculate_new_polygon_parameters(azimuth, opening_angle, bboxes):
+def calculate_new_polygon_parameters(azimuth, opening_angle, bbox):
     """
-    This function compute the vision polygon parameters based on bboxes
-    """
-    # Assuming bboxes is in the format [x0, y0, x1, y1, confidence]
-    x0, _, width, _ = bboxes[:4]
-    xc = (x0 + width / 2) / 100
+    Computes the new azimuth and opening angle based on the bounding box.
 
-    # New azimuth
+    Parameters:
+    - azimuth: float, center azimuth of the camera (in degrees)
+    - opening_angle: float, horizontal field of view of the camera (in degrees)
+    - bbox: list or tuple [x0, y0, x1, y1, confidence], normalized coordinates (0 to 1)
+
+    Returns:
+    - new_azimuth: int, estimated azimuth of the detection (in degrees)
+    - new_opening_angle: int, estimated angular width (in degrees)
+    """
+    x0, _, x1, _, _ = bbox
+
+    # Center x in normalized coordinates
+    xc = (x0 + x1) / 2
+
+    # Width of bbox in normalized coords
+    width = x1 - x0
+
+    # Compute new azimuth (relative offset from center)
     new_azimuth = azimuth - opening_angle * (0.5 - xc)
 
-    # New opening angle
-    new_opening_angle = opening_angle * width / 100 + 1  # avoid angle 0
+    # Compute angular width of the bbox
+    new_opening_angle = opening_angle * width + 1  # +1 to avoid zero angle
 
     return int(new_azimuth) % 360, int(new_opening_angle)
 
