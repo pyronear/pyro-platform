@@ -26,7 +26,7 @@ from services import api_client
 from utils.display import (
     build_vision_polygon,
     convert_dt_to_local_tz,
-    create_event_list_from_alerts,
+    create_sequence_list,
     filter_bboxes_dict,
 )
 
@@ -83,17 +83,16 @@ def update_language_store(selected_lang):
     Output("sequence-list-container", "children"),
     [
         Input("api_sequences", "data"),
-        Input("to_acknowledge", "data"),
     ],
     State("api_cameras", "data"),
+    State("my-date-picker-single", "date"),
 )
-def update_event_list(api_sequences, to_acknowledge, cameras):
+def update_event_list(api_sequences, cameras, selected_date):
     """
-    Updates the event list based on changes in the events data or acknowledgement actions.
+    Updates the event list based on changes in the events data
 
     Parameters:
     - api_detections (json): JSON formatted data containing current alerts information.
-    - to_acknowledge (int): Event ID that is being acknowledged.
 
     Returns:
     - html.Div: A Div containing the updated list of alerts.
@@ -103,11 +102,7 @@ def update_event_list(api_sequences, to_acknowledge, cameras):
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     cameras = pd.read_json(StringIO(cameras), orient="split")
 
-    if len(api_sequences):
-        # Drop acknowledge event for faster update
-        api_sequences = api_sequences[~api_sequences["id"].isin([to_acknowledge])]
-
-    return create_event_list_from_alerts(api_sequences, cameras)
+    return create_sequence_list(api_sequences, cameras)
 
 
 # Select the event id

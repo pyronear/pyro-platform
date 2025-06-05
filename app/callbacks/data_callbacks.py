@@ -193,6 +193,7 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
         Input("main_api_fetch_interval", "n_intervals"),
         Input("api_cameras", "data"),
         Input("my-date-picker-single", "date"),  # NEW: date picker input
+        Input("to_acknowledge", "data"),
     ],
     [
         State("api_sequences", "data"),
@@ -200,7 +201,7 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
     ],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, api_cameras, selected_date, local_sequences, user_token):
+def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_sequences, user_token):
     """
     Callback to periodically fetch alerts data from the API or after date change.
 
@@ -242,8 +243,17 @@ def api_watcher(n_intervals, api_cameras, selected_date, local_sequences, user_t
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            aligned_api, aligned_local = api_sequences["id"].align(local_sequences_df["id"])
-            if all(aligned_api == aligned_local):
+            # Merge both DataFrames on 'id' to compare annotations
+            merged = pd.merge(
+                api_sequences[["id", "is_wildfire"]],
+                local_sequences_df[["id", "is_wildfire"]],
+                on="id",
+                how="inner",
+                suffixes=("", "_local"),
+            )
+
+            # If the annotations haven't changed, skip update
+            if merged["is_wildfire"].equals(merged["is_wildfire_local"]):
                 return dash.no_update
 
         return api_sequences.to_json(orient="split")

@@ -226,38 +226,47 @@ def build_alerts_map(api_cameras, id_suffix=""):
     return map_object
 
 
-def create_event_list_from_alerts(api_events, cameras):
+def create_sequence_list(api_sequences, cameras):
     """
-    This function build the list of events on the left based on event data
+    This function builds the list of sequences on the left based on sequence data
     """
-    if api_events.empty:
+    if api_sequences.empty:
         return []
 
-    filtered_events = api_events.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
+    filtered_sequences = api_sequences.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
+
+    def get_annotation_emoji(value):
+        if value == 1.0:
+            return "🔥"
+        elif value == 0.0:
+            return "🚫"
+        else:
+            return ""
 
     return [
         html.Button(
-            id={"type": "event-button", "index": event["id"]},
+            id={"type": "event-button", "index": sequence["id"]},
             children=[
                 html.Div(
                     (
-                        f"{cameras[cameras['id'] == event['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
-                        f" : {int(event['azimuth'])}°"
+                        f"{cameras[cameras['id'] == sequence['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
+                        f" : {int(sequence['azimuth'])}°"
+                        f" {get_annotation_emoji(sequence.get('is_wildfire'))}"
                     ),
                     style={"fontWeight": "bold"},
                 ),
                 html.Div(
                     convert_dt_to_local_tz(
-                        lat=cameras[cameras["id"] == event["camera_id"]]["lat"].values[0],
-                        lon=cameras[cameras["id"] == event["camera_id"]]["lon"].values[0],
-                        str_utc_timestamp=event["started_at"],
+                        lat=cameras[cameras["id"] == sequence["camera_id"]]["lat"].values[0],
+                        lon=cameras[cameras["id"] == sequence["camera_id"]]["lon"].values[0],
+                        str_utc_timestamp=sequence["started_at"],
                     )
                 ),
             ],
             n_clicks=0,
             className="pyronear-card alert-card",
         )
-        for _, event in filtered_events.iterrows()
+        for _, sequence in filtered_sequences.iterrows()
     ]
 
 
