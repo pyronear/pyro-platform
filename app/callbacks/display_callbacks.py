@@ -331,34 +331,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         raise PreventUpdate
 
 
-@app.callback(
-    Output("download-link", "href"),
-    [Input("image-slider", "value")],
-    [State("sequence_on_display", "data")],
-    prevent_initial_call=True,
-)
-def update_download_link(slider_value, sequence_on_display):
-    """
-    Updates the download link for the currently displayed image.
-
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
-
-    Returns:
-    - str: URL for downloading the current image.
-    """
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    if len(sequence_on_display):
-        try:
-            return sequence_on_display["url"].values[slider_value]
-        except Exception as e:
-            logger.error(e)
-            logger.error(f"Size of the alert_data dataframe: {sequence_on_display.size}")
-
-    return ""  # Return empty string if no image URL is available
-
-
 # Map
 @app.callback(
     [
@@ -869,3 +841,69 @@ def display_bbox_on_image(bbox_data, sequence_data):
     except Exception as e:
         logger.error(f"[display_bbox_on_image] Error: {e}")
         raise PreventUpdate
+
+
+import os
+import shutil
+from io import StringIO
+
+import pandas as pd
+import requests
+from dash import Input, Output, State, ctx
+
+
+def prepare_archive(sequence_data, folder_name):
+    # Load the sequence DataFrame
+    df = pd.read_json(StringIO(sequence_data), orient="split")
+
+    # Create target folder
+    image_dir = os.path.join("zips", folder_name)
+    os.makedirs(image_dir, exist_ok=True)
+
+    # Download each image
+    for _, row in df.iterrows():
+        url = row["url"]
+        fname = row["bucket_key"]
+        local_path = os.path.join(image_dir, fname)
+        if not os.path.exists(local_path):
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(local_path, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+    # Create the zip archive
+    shutil.make_archive(os.path.join("zips", folder_name), "zip", image_dir)
+    shutil.rmtree(image_dir)
+
+
+@app.callback(
+    Output("zip-modal", "is_open"),
+    Output("zip-modal-body", "children"),
+    Output("zip-dl-link", "href"),
+    Output("zip-dl-link", "download"),
+    Output("confirm-dl-button", "disabled"),
+    Input("dl-button", "n_clicks"),
+    Input("confirm-dl-button", "n_clicks"),
+    State("sequence_on_display", "data"),
+    State("alert-camera-value", "children"),
+    State("alert-date-value", "children"),
+    prevent_initial_call=True,
+)
+def prepare_archive_callback(open_clicks, close_clicks, sequence_data, camera_value, date_value):
+    triggered_id = ctx.triggered_id
+
+    if triggered_id == "dl-button":
+        if not camera_value or not date_value or not sequence_data:
+            return True, "Erreur: données manquantes", "", "", True
+
+        # Format zip base and file name
+        folder_name = f"{camera_value}-{date_value}".replace(" ", "_").replace(":", "-").replace("°", "")
+        zip_filename = f"{folder_name}.zip"
+        prepare_archive(sequence_data, folder_name)
+
+        return True, "Fichier prêt à être téléchargé", f"/download/{zip_filename}", zip_filename, False
+
+    elif triggered_id == "confirm-dl-button":
+        return False, "", "", "", True
+
+    return dash.no_update

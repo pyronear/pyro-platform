@@ -4,6 +4,8 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+import os
+import shutil
 from datetime import datetime, timedelta
 from io import StringIO
 from typing import List, Tuple
@@ -321,3 +323,19 @@ def filter_bboxes_dict(bboxes_dict):
             kept_dict[k] = bbox
 
     return kept_dict
+
+
+def download_and_zip_images(df, image_dir, zip_path):
+    os.makedirs(image_dir, exist_ok=True)
+
+    for _, row in df.iterrows():
+        url = row["url"]
+        filename = os.path.join(image_dir, row["bucket_key"])
+        if not os.path.exists(filename):
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(filename, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+    shutil.make_archive(zip_path.replace(".zip", ""), "zip", image_dir)
+    shutil.rmtree(image_dir)
