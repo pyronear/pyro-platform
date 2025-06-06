@@ -99,7 +99,9 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                         width=3,
                                     ),
                                     dbc.Col(
-                                        dbc.Button("Créer l'archive", id="dl-button", className="btn-uniform"),
+                                        dbc.Button(
+                                            translate("download", lang), id="dl-button", className="btn-uniform"
+                                        ),
                                         width=3,
                                     ),
                                     dbc.Col(
@@ -354,11 +356,10 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 is_open=False,
                 centered=True,
                 children=[
-                    dbc.ModalHeader("Préparation de l'archive"),
-                    dbc.ModalBody(id="zip-modal-body", children="Création en cours..."),
+                    dbc.ModalHeader(id="zip-modal-header", children=translate("archive_ready", lang)),
                     dbc.ModalFooter(
                         html.A(
-                            dbc.Button("Télécharger", id="confirm-dl-button", color="success", disabled=True),
+                            dbc.Button(translate("download", lang), id="confirm-dl-button", color="success"),
                             id="zip-dl-link",
                             href="",
                             download="",

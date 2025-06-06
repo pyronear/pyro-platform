@@ -325,17 +325,63 @@ def filter_bboxes_dict(bboxes_dict):
     return kept_dict
 
 
-def download_and_zip_images(df, image_dir, zip_path):
+import os
+import shutil
+from io import StringIO
+
+import cv2
+import numpy as np
+import pandas as pd
+import requests
+from PIL import Image
+
+
+def prepare_archive(sequence_data, folder_name):
+    df = pd.read_json(StringIO(sequence_data), orient="split")
+
+    # Clean old
+    if os.path.isdir("zips"):
+        shutil.rmtree("zips")
+
+    # Define directories
+    base_dir = os.path.join("zips", folder_name)
+    image_dir = os.path.join(base_dir, "images")
+    pred_dir = os.path.join(base_dir, "predictions")
     os.makedirs(image_dir, exist_ok=True)
+    os.makedirs(pred_dir, exist_ok=True)
+
+    gif_frames = []
 
     for _, row in df.iterrows():
         url = row["url"]
-        filename = os.path.join(image_dir, row["bucket_key"])
-        if not os.path.exists(filename):
+        fname = row["bucket_key"]
+        original_path = os.path.join(image_dir, fname)
+        pred_path = os.path.join(pred_dir, fname)
+
+        # Download image
+        if not os.path.exists(original_path):
             r = requests.get(url, stream=True)
             if r.status_code == 200:
-                with open(filename, "wb") as f:
+                with open(original_path, "wb") as f:
                     shutil.copyfileobj(r.raw, f)
 
-    shutil.make_archive(zip_path.replace(".zip", ""), "zip", image_dir)
-    shutil.rmtree(image_dir)
+        # Load image and draw bbox
+        img = Image.open(original_path).convert("RGB")
+        img_np = np.array(img)
+        h, w = img_np.shape[:2]
+
+        if isinstance(row["processed_bboxes"], list) and row["processed_bboxes"]:
+            for bbox in row["processed_bboxes"]:
+                bbox = [b / 100 for b in bbox]
+                x, y, w_box, h_box = bbox
+                x1 = int(x * w)
+                y1 = int(y * h)
+                x2 = int((x + w_box) * w)
+                y2 = int((y + h_box) * h)
+                cv2.rectangle(img_np, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+        # Save prediction image
+        cv2.imwrite(pred_path, cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR))
+
+    # Create zip
+    shutil.make_archive(os.path.join("zips", folder_name), "zip", base_dir)
