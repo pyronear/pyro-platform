@@ -577,14 +577,14 @@ def blink_image(n_intervals, api_sequences):
         now_utc = datetime.now(timezone.utc)
 
         # Find sequences where last_seen_at is within the last 15 minutes
-        recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=15)]
+        recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=30)]
 
         if recent_sequences.empty:
             image_path = "https://pyronear.org/img/logo_letters_orange.png"
             container_style["background-color"] = "#044448"
         else:
             image_path = "https://pyronear.org/img/logo_letters_orange.png"
-        container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
+            container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
 
     return [image_path, container_style]
 
