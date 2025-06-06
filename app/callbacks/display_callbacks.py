@@ -851,21 +851,25 @@ def display_bbox_on_image(bbox_data, sequence_data):
     Input("dl-button", "n_clicks"),
     Input("confirm-dl-button", "n_clicks"),
     State("sequence_on_display", "data"),
+    State("api_sequences", "data"),
     State("alert-camera-value", "children"),
     State("alert-date-value", "children"),
     prevent_initial_call=True,
 )
-def prepare_archive_callback(open_clicks, close_clicks, sequence_data, camera_value, date_value):
+def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_sequences, camera_value, date_value):
     triggered_id = ctx.triggered_id
 
     if triggered_id == "dl-button":
         if not camera_value or not date_value or not sequence_data:
             return dash.no_update
 
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+        sequence_data = pd.read_json(StringIO(sequence_data), orient="split")
+
         # Format zip base and file name
         folder_name = f"{camera_value}-{date_value}".replace(" ", "_").replace(":", "-").replace("°", "")
         zip_filename = f"{folder_name}.zip"
-        prepare_archive(sequence_data, folder_name)
+        prepare_archive(sequence_data, api_sequences, folder_name, camera_value)
 
         return True, f"/download/{zip_filename}", zip_filename
 
