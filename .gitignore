@@ -152,3 +152,4 @@ poetry.lock
 site_devices.json
 available_stream.json
 occlusion_masks
+zips
