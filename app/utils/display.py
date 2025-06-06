@@ -255,7 +255,7 @@ def create_sequence_list(api_sequences, cameras):
                 html.Div(
                     (
                         f"{cameras[cameras['id'] == sequence['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
-                        f" : {int(sequence['azimuth'])}°"
+                        f" : {int(sequence['cone_azimuth']) % 360}°"
                         f" {get_annotation_emoji(sequence.get('is_wildfire'))}"
                     ),
                     style={"fontWeight": "bold"},
