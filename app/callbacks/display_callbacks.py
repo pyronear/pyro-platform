@@ -858,6 +858,8 @@ def prepare_archive(sequence_data, folder_name):
 
     # Create target folder
     image_dir = os.path.join("zips", folder_name)
+    if os.path.isdir(image_dir):
+        shutil.rmtree(image_dir)
     os.makedirs(image_dir, exist_ok=True)
 
     # Download each image
