@@ -28,6 +28,7 @@ from utils.display import (
     convert_dt_to_local_tz,
     create_sequence_list,
     filter_bboxes_dict,
+    prepare_archive,
 )
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
@@ -329,34 +330,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         return (current_value + 1) % (max_value + 1)
     else:
         raise PreventUpdate
-
-
-@app.callback(
-    Output("download-link", "href"),
-    [Input("image-slider", "value")],
-    [State("sequence_on_display", "data")],
-    prevent_initial_call=True,
-)
-def update_download_link(slider_value, sequence_on_display):
-    """
-    Updates the download link for the currently displayed image.
-
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
-
-    Returns:
-    - str: URL for downloading the current image.
-    """
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    if len(sequence_on_display):
-        try:
-            return sequence_on_display["url"].values[slider_value]
-        except Exception as e:
-            logger.error(e)
-            logger.error(f"Size of the alert_data dataframe: {sequence_on_display.size}")
-
-    return ""  # Return empty string if no image URL is available
 
 
 # Map
@@ -869,3 +842,34 @@ def display_bbox_on_image(bbox_data, sequence_data):
     except Exception as e:
         logger.error(f"[display_bbox_on_image] Error: {e}")
         raise PreventUpdate
+
+
+@app.callback(
+    Output("zip-modal", "is_open"),
+    Output("zip-dl-link", "href"),
+    Output("zip-dl-link", "download"),
+    Input("dl-button", "n_clicks"),
+    Input("confirm-dl-button", "n_clicks"),
+    State("sequence_on_display", "data"),
+    State("alert-camera-value", "children"),
+    State("alert-date-value", "children"),
+    prevent_initial_call=True,
+)
+def prepare_archive_callback(open_clicks, close_clicks, sequence_data, camera_value, date_value):
+    triggered_id = ctx.triggered_id
+
+    if triggered_id == "dl-button":
+        if not camera_value or not date_value or not sequence_data:
+            return dash.no_update
+
+        # Format zip base and file name
+        folder_name = f"{camera_value}-{date_value}".replace(" ", "_").replace(":", "-").replace("°", "")
+        zip_filename = f"{folder_name}.zip"
+        prepare_archive(sequence_data, folder_name)
+
+        return True, f"/download/{zip_filename}", zip_filename
+
+    elif triggered_id == "confirm-dl-button":
+        return False, "", ""
+
+    return dash.no_update

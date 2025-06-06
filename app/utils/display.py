@@ -4,11 +4,15 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+import os
+import shutil
 from datetime import datetime, timedelta
 from io import StringIO
 from typing import List, Tuple
 
+import cv2
 import dash_leaflet as dl
+import numpy as np
 import pandas as pd
 import pytz
 import requests
@@ -321,3 +325,52 @@ def filter_bboxes_dict(bboxes_dict):
             kept_dict[k] = bbox
 
     return kept_dict
+
+
+def prepare_archive(sequence_data, folder_name):
+    df = pd.read_json(StringIO(sequence_data), orient="split")
+
+    # Clean old
+    if os.path.isdir("zips"):
+        shutil.rmtree("zips")
+
+    # Define directories
+    base_dir = os.path.join("zips", folder_name)
+    image_dir = os.path.join(base_dir, "images")
+    pred_dir = os.path.join(base_dir, "predictions")
+    os.makedirs(image_dir, exist_ok=True)
+    os.makedirs(pred_dir, exist_ok=True)
+
+    for _, row in df.iterrows():
+        url = row["url"]
+        fname = row["bucket_key"]
+        original_path = os.path.join(image_dir, fname)
+        pred_path = os.path.join(pred_dir, fname)
+
+        # Download image
+        if not os.path.exists(original_path):
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(original_path, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+        # Load image and draw bbox
+        img = cv2.imread(original_path)
+        img_np = np.array(img)
+        h, w = img_np.shape[:2]
+
+        if isinstance(row["processed_bboxes"], list) and row["processed_bboxes"]:
+            for bbox in row["processed_bboxes"]:
+                bbox = [b / 100 for b in bbox]
+                x, y, w_box, h_box = bbox
+                x1 = int(x * w)
+                y1 = int(y * h)
+                x2 = int((x + w_box) * w)
+                y2 = int((y + h_box) * h)
+                cv2.rectangle(img_np, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+        # Save prediction image
+        cv2.imwrite(pred_path, img_np)
+
+    # Create zip
+    shutil.make_archive(os.path.join("zips", folder_name), "zip", base_dir)

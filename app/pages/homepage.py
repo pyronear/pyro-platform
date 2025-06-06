@@ -99,17 +99,8 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                         width=3,
                                     ),
                                     dbc.Col(
-                                        html.A(
-                                            dbc.Button(
-                                                translate("download_image", lang),
-                                                className="btn-uniform",
-                                                id="dl-image-button",
-                                            ),
-                                            className="no-underline",
-                                            id="download-link",
-                                            download="",
-                                            href="",
-                                            target="_blank",
+                                        dbc.Button(
+                                            translate("download", lang), id="dl-button", className="btn-uniform"
                                         ),
                                         width=3,
                                     ),
@@ -360,6 +351,23 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 ],
             ),
             dcc.Store(id="bbox-store"),
+            dbc.Modal(
+                id="zip-modal",
+                is_open=False,
+                centered=True,
+                children=[
+                    dbc.ModalHeader(id="zip-modal-header", children=translate("archive_ready", lang)),
+                    dbc.ModalFooter(
+                        html.A(
+                            dbc.Button(translate("download", lang), id="confirm-dl-button", color="success"),
+                            id="zip-dl-link",
+                            href="",
+                            download="",
+                            target="_blank",
+                        )
+                    ),
+                ],
+            ),
         ],
         fluid=True,
     )

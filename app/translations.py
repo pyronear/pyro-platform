@@ -39,6 +39,9 @@ translate_dict = {
         "occlusion_modal": "Confirmer la zone d'occlusion",
         "confirm_bbox": "Confirmer la sélection",
         "delete_bbox": "Supprimer les zones d'occlusions",
+        "download_image_button": "⬇️ Télécharger",
+        "archive_ready": "Archive prête",
+        "download": "Télécharger",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -93,6 +96,8 @@ translate_dict = {
         "occlusion_modal": "Confirmar zona de ocultación",
         "confirm_bbox": "Confirmar selección",
         "delete_bbox": "Eliminar las zonas de oclusión",
+        "archive_ready": "Archivo listo",
+        "download": "Descargar",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -146,6 +151,8 @@ translate_dict = {
         "occlusion_modal": "Confirm Occlusion Area",
         "confirm_bbox": "Confirm Selection",
         "delete_bbox": "Delete occlusion zones",
+        "archive_ready": "Archive ready",
+        "download": "Download",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",
