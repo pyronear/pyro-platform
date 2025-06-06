@@ -856,10 +856,12 @@ def prepare_archive(sequence_data, folder_name):
     # Load the sequence DataFrame
     df = pd.read_json(StringIO(sequence_data), orient="split")
 
+    # Clean old
+    if os.path.isdir("zips"):
+        shutil.rmtree("zips")
+
     # Create target folder
     image_dir = os.path.join("zips", folder_name)
-    if os.path.isdir(image_dir):
-        shutil.rmtree(image_dir)
     os.makedirs(image_dir, exist_ok=True)
 
     # Download each image
