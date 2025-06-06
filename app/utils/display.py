@@ -4,6 +4,7 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
+import json
 import os
 import shutil
 from datetime import datetime, timedelta
@@ -327,9 +328,7 @@ def filter_bboxes_dict(bboxes_dict):
     return kept_dict
 
 
-def prepare_archive(sequence_data, folder_name):
-    df = pd.read_json(StringIO(sequence_data), orient="split")
-
+def prepare_archive(sequence_data, api_sequences, folder_name, camera_value):
     # Clean old
     if os.path.isdir("zips"):
         shutil.rmtree("zips")
@@ -341,7 +340,16 @@ def prepare_archive(sequence_data, folder_name):
     os.makedirs(image_dir, exist_ok=True)
     os.makedirs(pred_dir, exist_ok=True)
 
-    for _, row in df.iterrows():
+    # Get metadata
+    sequence_id = sequence_data.get("sequence_id")[0]
+    sequence_metadata = api_sequences[api_sequences["id"] == sequence_id]
+    metadata_dict = sequence_metadata.iloc[0].to_dict()
+    metadata_dict["camera"] = camera_value
+
+    with open(os.path.join(base_dir, "sequence_metadata.json"), "w") as f:
+        json.dump(metadata_dict, f, indent=2)
+
+    for _, row in sequence_data.iterrows():
         url = row["url"]
         fname = row["bucket_key"]
         original_path = os.path.join(image_dir, fname)
