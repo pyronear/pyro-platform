@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 from io import StringIO
 from typing import List, Tuple
 
+import cv2
 import dash_leaflet as dl
+import numpy as np
 import pandas as pd
 import pytz
 import requests
@@ -325,17 +327,6 @@ def filter_bboxes_dict(bboxes_dict):
     return kept_dict
 
 
-import os
-import shutil
-from io import StringIO
-
-import cv2
-import numpy as np
-import pandas as pd
-import requests
-from PIL import Image
-
-
 def prepare_archive(sequence_data, folder_name):
     df = pd.read_json(StringIO(sequence_data), orient="split")
 
@@ -349,8 +340,6 @@ def prepare_archive(sequence_data, folder_name):
     pred_dir = os.path.join(base_dir, "predictions")
     os.makedirs(image_dir, exist_ok=True)
     os.makedirs(pred_dir, exist_ok=True)
-
-    gif_frames = []
 
     for _, row in df.iterrows():
         url = row["url"]
@@ -366,7 +355,7 @@ def prepare_archive(sequence_data, folder_name):
                     shutil.copyfileobj(r.raw, f)
 
         # Load image and draw bbox
-        img = Image.open(original_path).convert("RGB")
+        img = cv2.imread(original_path)
         img_np = np.array(img)
         h, w = img_np.shape[:2]
 
@@ -381,7 +370,7 @@ def prepare_archive(sequence_data, folder_name):
                 cv2.rectangle(img_np, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
         # Save prediction image
-        cv2.imwrite(pred_path, cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(pred_path, img_np)
 
     # Create zip
     shutil.make_archive(os.path.join("zips", folder_name), "zip", base_dir)
