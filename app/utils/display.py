@@ -344,7 +344,8 @@ def prepare_archive(sequence_data, api_sequences, folder_name, camera_value):
     sequence_id = sequence_data.get("sequence_id")[0]
     sequence_metadata = api_sequences[api_sequences["id"] == sequence_id]
     metadata_dict = sequence_metadata.iloc[0].to_dict()
-    metadata_dict["camera"] = camera_value
+    metadata_dict["camera"] = camera_value.replace("°", "")
+    metadata_dict = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in metadata_dict.items()}
 
     with open(os.path.join(base_dir, "sequence_metadata.json"), "w") as f:
         json.dump(metadata_dict, f, indent=2)
