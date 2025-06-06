@@ -576,8 +576,6 @@ def blink_image(n_intervals, api_sequences):
         # Get current UTC time
         now_utc = datetime.now(timezone.utc)
 
-        print(api_sequences["last_seen_at"], now_utc)
-
         # Find sequences where last_seen_at is within the last 15 minutes
         recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=30)]
 
