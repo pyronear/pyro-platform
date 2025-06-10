@@ -845,6 +845,32 @@ def display_bbox_on_image(bbox_data, sequence_data):
 
 
 @app.callback(
+    Output("download-link", "href"),
+    [Input("image-slider", "value")],
+    [State("sequence_on_display", "data")],
+    prevent_initial_call=True,
+)
+def update_download_link(slider_value, sequence_on_display):
+    """
+    Updates the download link for the currently displayed image.
+    Parameters:
+    - slider_value (int): Current value of the image slider.
+    - alert_data (json): JSON formatted data for the selected event.
+    Returns:
+    - str: URL for downloading the current image.
+    """
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    if len(sequence_on_display):
+        try:
+            return sequence_on_display["url"].values[slider_value]
+        except Exception as e:
+            logger.error(e)
+            logger.error(f"Size of the alert_data dataframe: {sequence_on_display.size}")
+
+    return ""  # Return empty string if no image URL is available
+
+
+@app.callback(
     Output("zip-modal", "is_open"),
     Output("zip-dl-link", "href"),
     Output("zip-dl-link", "download"),
