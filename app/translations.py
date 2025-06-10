@@ -41,7 +41,7 @@ translate_dict = {
         "delete_bbox": "Supprimer les zones d'occlusions",
         "download_image_button": "⬇️ Télécharger",
         "archive_ready": "Archive prête",
-        "download": "Télécharger",
+        "download": "Télécharger la Séquence",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -97,7 +97,7 @@ translate_dict = {
         "confirm_bbox": "Confirmar selección",
         "delete_bbox": "Eliminar las zonas de oclusión",
         "archive_ready": "Archivo listo",
-        "download": "Descargar",
+        "download": "Descargar la secuencia",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -152,7 +152,7 @@ translate_dict = {
         "confirm_bbox": "Confirm Selection",
         "delete_bbox": "Delete occlusion zones",
         "archive_ready": "Archive ready",
-        "download": "Download",
+        "download": "Download Sequence",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",

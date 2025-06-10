@@ -99,6 +99,21 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                         width=3,
                                     ),
                                     dbc.Col(
+                                        html.A(
+                                            dbc.Button(
+                                                translate("download_image", lang),
+                                                className="btn-uniform",
+                                                id="dl-image-button",
+                                            ),
+                                            className="no-underline",
+                                            id="download-link",
+                                            download="",
+                                            href="",
+                                            target="_blank",
+                                        ),
+                                        width=3,
+                                    ),
+                                    dbc.Col(
                                         dbc.Button(
                                             translate("download", lang), id="dl-button", className="btn-uniform"
                                         ),
