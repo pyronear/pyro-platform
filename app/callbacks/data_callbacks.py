@@ -223,7 +223,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
     try:
         # Use selected_date if provided
         if selected_date:
-            response = api_client.fetch_sequences_from_date(selected_date)
+            response = api_client.fetch_sequences_from_date(selected_date, limit=100)
         else:
             response = api_client.fetch_latest_sequences()
 
