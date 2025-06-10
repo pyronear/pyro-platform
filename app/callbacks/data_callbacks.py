@@ -243,17 +243,12 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            # Merge both DataFrames on 'id' to compare annotations
-            merged = pd.merge(
-                api_sequences[["id", "is_wildfire"]],
-                local_sequences_df[["id", "is_wildfire"]],
-                on="id",
-                how="inner",
-                suffixes=("", "_local"),
-            )
-
-            # If the annotations haven't changed, skip update
-            if merged["is_wildfire"].equals(merged["is_wildfire_local"]):
+            same_last_seen_at = (
+                pd.to_datetime(local_sequences_df["last_seen_at"]).values
+                == pd.to_datetime(api_sequences["last_seen_at"]).values
+            ).all()
+            same_is_wildfire = local_sequences_df["is_wildfire"].sum() == api_sequences["is_wildfire"].sum()
+            if same_last_seen_at and same_is_wildfire:
                 return dash.no_update
 
         return api_sequences.to_json(orient="split")
