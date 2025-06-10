@@ -6,7 +6,7 @@
 import ast
 from typing import List
 
-import pandas as pd
+import pandas as pd  # type: ignore
 
 
 def process_bbox(input_str):

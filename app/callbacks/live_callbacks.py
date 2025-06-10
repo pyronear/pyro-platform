@@ -11,7 +11,7 @@ import time
 from io import StringIO
 
 import logging_config
-import pandas as pd
+import pandas as pd  # type: ignore
 import requests
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
