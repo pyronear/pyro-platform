@@ -57,7 +57,7 @@ def display_cam_cards(cameras):
                         style={"padding": "10px"},
                     ),
                     dbc.CardImg(
-                        src=row["last_image"] if row["last_image"] is not None else no_cam_img_url,
+                        src=row["last_image_url"] if row["last_image_url"] is not None else no_cam_img_url,
                         top=False,
                         style={"width": "100%", "borderRadius": "0"},
                     ),
