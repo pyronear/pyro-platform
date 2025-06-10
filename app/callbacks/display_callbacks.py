@@ -9,7 +9,7 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO, StringIO
 
-import boto3
+import boto3  # type: ignore
 import dash
 import logging_config
 import pandas as pd
