@@ -172,6 +172,9 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     return [styles, button_index, 1, "reset_zoom"]
 
 
+from datetime import datetime, timedelta
+
+
 @app.callback(
     [
         Output("main-image", "src"),
@@ -179,50 +182,43 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
         Output("bbox-1", "style"),
         Output("bbox-2", "style"),
         Output("image-slider", "max"),
+        Output("image-slider", "marks"),
+        Output("image-slider", "min"),
+        Output("slider-container", "style"),
     ],
     [Input("image-slider", "value"), Input("sequence_on_display", "data")],
     [
         State("sequence-list-container", "children"),
         State("language", "data"),
+        State("alert-date-value", "children"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang):
-    """
-    Updates the image and bounding box display based on the slider value.
-    """
-    img_src = ""
+def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, alert_date_value):
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
 
     sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
 
-    if sequence_on_display.empty:
-        raise PreventUpdate
+    if sequence_on_display.empty or not len(sequence_list):
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
 
-    if len(sequence_list) == 0:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
-
-    # Filter images with non-empty URLs
     images, boxes = zip(
         *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"]),
         strict=False,
     )
 
     if not images:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
 
-    # Ensure slider_value is within the range of available images
-    slider_value = slider_value % len(images)
+    n_images = len(images)
+    slider_value = slider_value % n_images
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
-    # Create styles for each bbox (default hidden)
     bbox_styles = [{"display": "none"} for _ in range(3)]
-
-    # Update styles for available bounding boxes
-    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
+    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):
         bbox_styles[i] = {
             "position": "absolute",
             "left": f"{x0}%",
@@ -235,7 +231,17 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
             "display": "block",
         }
 
-    return [img_src, *bbox_styles, len(images) - 1]
+    try:
+        if isinstance(alert_date_value, str) and alert_date_value.strip():
+            last_time = datetime.strptime(alert_date_value.strip(), "%Y-%m-%d %H:%M")
+        else:
+            raise ValueError("Empty or invalid date string")
+    except Exception:
+        last_time = datetime.now()
+
+    marks = {i: (last_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in range(n_images)}
+
+    return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}]
 
 
 @app.callback(
@@ -344,7 +350,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("alert-azimuth-value", "children"),
         Output("alert-date-value", "children"),
         Output("alert-information", "style"),
-        Output("slider-container", "style"),
     ],
     Input("sequence_on_display", "data"),
     State("api_cameras", "data"),
@@ -432,7 +437,6 @@ def update_map_and_alert_info(sequence_on_display, cameras):
             angle_info,
             date_info,
             {"display": "block"},
-            {"display": "block"},
         )
 
     return (
@@ -444,7 +448,6 @@ def update_map_and_alert_info(sequence_on_display, cameras):
         dash.no_update,
         dash.no_update,
         dash.no_update,
-        {"display": "none"},
         {"display": "none"},
     )
 

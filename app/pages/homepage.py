@@ -76,7 +76,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     ),
                                     dbc.Col(
                                         html.Div(
-                                            dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                            dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0, marks={}),
                                             id="slider-container",
                                             className="common-style-slider",
                                             style={"display": "none"},
