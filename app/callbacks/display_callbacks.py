@@ -425,7 +425,8 @@ def update_map_and_alert_info(sequence_on_display, cameras, sequence_id_on_displ
 
         camera_info = f"{cam_name}"
         location_info = f"{lat:.4f}, {lon:.4f}"
-        angle_info = f"{detection_azimuth}°"
+        azimuth = int(current_sequence["cone_azimuth"])
+        angle_info = f"{azimuth}°"
 
         return (
             polygon,
