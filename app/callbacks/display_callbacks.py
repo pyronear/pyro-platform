@@ -465,6 +465,8 @@ def acknowledge_event(
 ):
     ctx = dash.callback_context
 
+    logger.info("acknowledge_event")
+
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
 
