@@ -277,15 +277,29 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-date",
+                                                    id="alert-start-date",
                                                     children=[
                                                         html.Span(
-                                                            id="alert-date-header",
-                                                            children=translate("date", lang),
+                                                            id="alert-start-date-header",
+                                                            children=translate("start_time", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
-                                                            id="alert-date-value",
+                                                            id="alert-start-date-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="alert-end-date",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-end-date-header",
+                                                            children=translate("end_time", lang),
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="alert-end-date-value",
                                                             children=[],
                                                         ),
                                                     ],

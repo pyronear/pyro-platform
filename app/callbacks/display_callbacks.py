@@ -172,9 +172,6 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     return [styles, button_index, 1, "reset_zoom"]
 
 
-from datetime import datetime, timedelta
-
-
 @app.callback(
     [
         Output("main-image", "src"),
@@ -190,11 +187,11 @@ from datetime import datetime, timedelta
     [
         State("sequence-list-container", "children"),
         State("language", "data"),
-        State("alert-date-value", "children"),
+        State("alert-end-date-value", "children"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, alert_date_value):
+def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, alert_end_value):
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
@@ -232,8 +229,8 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
         }
 
     try:
-        if isinstance(alert_date_value, str) and alert_date_value.strip():
-            last_time = datetime.strptime(alert_date_value.strip(), "%Y-%m-%d %H:%M")
+        if isinstance(alert_end_value, str) and alert_end_value.strip():
+            last_time = datetime.strptime(alert_end_value.strip(), "%H:%M")
         else:
             raise ValueError("Empty or invalid date string")
     except Exception:
@@ -348,14 +345,15 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("alert-camera-value", "children"),
         Output("camera-location-value", "children"),
         Output("alert-azimuth-value", "children"),
-        Output("alert-date-value", "children"),
+        Output("alert-start-date-value", "children"),
+        Output("alert-end-date-value", "children"),
         Output("alert-information", "style"),
     ],
     Input("sequence_on_display", "data"),
-    State("api_cameras", "data"),
+    [State("api_cameras", "data"), State("sequence_id_on_display", "data"), State("api_sequences", "data")],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_on_display, cameras):
+def update_map_and_alert_info(sequence_on_display, cameras, sequence_id_on_display, api_sequences):
     """
     Updates the map's vision polygons, center, and alert information based on the current alert data.
 
@@ -376,6 +374,7 @@ def update_map_and_alert_info(sequence_on_display, cameras):
     """
     logger.info("update_map_and_alert_info")
     sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     cameras = pd.read_json(StringIO(cameras), orient="split")
 
     if not sequence_on_display.empty:
@@ -419,13 +418,14 @@ def update_map_and_alert_info(sequence_on_display, cameras):
             bboxes=row_with_bboxes["bboxes"],
         )
 
-        date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])
+        current_sequence = api_sequences[api_sequences["id"] == sequence_id_on_display].iloc[0]
+        start_date_info = convert_dt_to_local_tz(lat, lon, current_sequence["started_at"]).split(" ")[-1]
+        end_date_info = convert_dt_to_local_tz(lat, lon, current_sequence["last_seen_at"]).split(" ")[-1]
         cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
 
         camera_info = f"{cam_name}"
         location_info = f"{lat:.4f}, {lon:.4f}"
         angle_info = f"{detection_azimuth}°"
-        date_info = f"{date_val}"
 
         return (
             polygon,
@@ -435,7 +435,8 @@ def update_map_and_alert_info(sequence_on_display, cameras):
             camera_info,
             location_info,
             angle_info,
-            date_info,
+            start_date_info,
+            end_date_info,
             {"display": "block"},
         )
 
@@ -443,6 +444,7 @@ def update_map_and_alert_info(sequence_on_display, cameras):
         [],
         dash.no_update,
         [],
+        dash.no_update,
         dash.no_update,
         dash.no_update,
         dash.no_update,
@@ -884,7 +886,7 @@ def update_download_link(slider_value, sequence_on_display):
     State("sequence_on_display", "data"),
     State("api_sequences", "data"),
     State("alert-camera-value", "children"),
-    State("alert-date-value", "children"),
+    State("alert-start-date-value", "children"),
     prevent_initial_call=True,
 )
 def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_sequences, camera_value, date_value):
