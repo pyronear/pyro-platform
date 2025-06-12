@@ -243,11 +243,16 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            same_last_seen_at = (
-                pd.to_datetime(local_sequences_df["last_seen_at"]).values
-                == pd.to_datetime(api_sequences["last_seen_at"]).values
-            ).all()
-            same_is_wildfire = local_sequences_df["is_wildfire"].sum() == api_sequences["is_wildfire"].sum()
+            same_last_seen_at = False
+            same_is_wildfire = False
+
+            if len(local_sequences_df) == len(api_sequences):
+                same_last_seen_at = (
+                    pd.to_datetime(local_sequences_df["last_seen_at"]).values
+                    == pd.to_datetime(api_sequences["last_seen_at"]).values
+                ).all()
+                same_is_wildfire = local_sequences_df["is_wildfire"].sum() == api_sequences["is_wildfire"].sum()
+
             if same_last_seen_at and same_is_wildfire:
                 return dash.no_update
 
@@ -266,6 +271,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 )
 def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded):
     # Deserialize data
+
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
         return dash.no_update, dash.no_update, dash.no_update
