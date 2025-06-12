@@ -9,10 +9,10 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO, StringIO
 
-import boto3
+import boto3  # type: ignore
 import dash
 import logging_config
-import pandas as pd
+import pandas as pd  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
 from dash.dependencies import ALL
