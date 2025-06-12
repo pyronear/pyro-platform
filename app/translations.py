@@ -42,6 +42,8 @@ translate_dict = {
         "download_image_button": "⬇️ Télécharger",
         "archive_ready": "Archive prête",
         "download": "Télécharger la Séquence",
+        "start_time": "Début à ",
+        "end_time": "Fin à ",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -56,7 +58,6 @@ translate_dict = {
         "auto_end_modal_title": "⏱️ Fin de diffusion automatique",
         "auto_end_modal_body": "Le flux a été interrompu après 2 minutes sans activité. Vous pouvez sélectionner à nouveau une caméra pour relancer le flux.",
         "image_preview_title": "📸 Aperçu de l'image capturée",
-        "download_image_button": "⬇️ Télécharger",
         # login
         "username_placeholder": "UTILISATEUR",
         "password_placeholder": "MOT DE PASSE",
@@ -98,6 +99,8 @@ translate_dict = {
         "delete_bbox": "Eliminar las zonas de oclusión",
         "archive_ready": "Archivo listo",
         "download": "Descargar la secuencia",
+        "start_time": "Inicio a las ",
+        "end_time": "Fin a las ",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -153,6 +156,8 @@ translate_dict = {
         "delete_bbox": "Delete occlusion zones",
         "archive_ready": "Archive ready",
         "download": "Download Sequence",
+        "start_time": "Start at ",
+        "end_time": "End at ",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",

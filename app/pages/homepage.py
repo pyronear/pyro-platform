@@ -76,7 +76,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                     ),
                                     dbc.Col(
                                         html.Div(
-                                            dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
+                                            dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0, marks={}),
                                             id="slider-container",
                                             className="common-style-slider",
                                             style={"display": "none"},
@@ -277,15 +277,29 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-date",
+                                                    id="alert-start-date",
                                                     children=[
                                                         html.Span(
-                                                            id="alert-date-header",
-                                                            children=translate("date", lang),
+                                                            id="alert-start-date-header",
+                                                            children=translate("start_time", lang),
                                                             className="alert-information-title",
                                                         ),
                                                         html.Span(
-                                                            id="alert-date-value",
+                                                            id="alert-start-date-value",
+                                                            children=[],
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    id="alert-end-date",
+                                                    children=[
+                                                        html.Span(
+                                                            id="alert-end-date-header",
+                                                            children=translate("end_time", lang),
+                                                            className="alert-information-title",
+                                                        ),
+                                                        html.Span(
+                                                            id="alert-end-date-value",
                                                             children=[],
                                                         ),
                                                     ],
