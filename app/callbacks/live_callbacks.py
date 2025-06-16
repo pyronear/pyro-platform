@@ -20,6 +20,7 @@ from main import app
 import config as cfg
 from utils.display import build_vision_polygon
 from utils.live_stream import fetch_cameras, find_closest_camera_pose, fov_zoom, send_api_request
+from utils.telemetry import telemetry_client
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -151,11 +152,26 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
             raise PreventUpdate
 
         camera_ip = current_camera.get("camera", {}).get("ip")
+        camera_name = current_camera.get("camera", {}).get("name")
+        camera_id = current_camera.get("camera", {}).get("id")
         if not camera_ip:
             raise PreventUpdate
 
         logger.info(f"[start_stream] Starting stream for {camera_ip}")
         send_api_request(pi_api_url, f"/start_stream/{camera_ip}")
+
+        user_name = ctx.states.get("user_name.data")
+        if user_name:
+            telemetry_client.capture(
+                event="live_stream_started",
+                distinct_id=user_name,
+                properties={
+                    "camera_ip": camera_ip,
+                    "camera_name": camera_name,
+                    "camera_id": camera_id,
+                    "trigger_source": "manual"
+                }
+            )
 
         now_iso = datetime.datetime.now().isoformat()
         return now_iso, False, False, False, ""  # start time, timer enabled, modal closed, flag false, no banner
@@ -240,6 +256,8 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
     pose_shift = current_camera.get("pose_shift", 0)
 
     camera_ip = camera.get("ip")
+    camera_name = camera.get("name")
+    camera_id = camera.get("id")
     pose_id = camera.get("pose_id")
 
     if not pi_api_url or not camera_ip:
@@ -272,6 +290,21 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
                 logger.info(f"[AUTO] Applying fine shift of {degrees:.2f}° to the {direction} for {camera_ip}")
                 send_api_request(pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={degrees:.2f}&speed=4")
 
+                user_name = ctx.states.get("user_name.data")
+                if user_name:
+                    telemetry_client.capture(
+                        event="camera_controlled",
+                        distinct_id=user_name,
+                        properties={
+                            "camera_ip": camera_ip,
+                            "camera_name": camera_name,
+                            "camera_id": camera_id,
+                            "action": f"auto_{direction.lower()}",
+                            "speed": 4,
+                            "control_method": "auto_adjustment"
+                        }
+                    )
+
         # 🧑‍💻 Case 2: Manual PTZ controls
         elif trigger in direction_map:
             direction = direction_map[trigger]
@@ -283,12 +316,42 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
                 logger.info(f"[MANUAL] Stopping movement for {camera_ip}")
                 send_api_request(pi_api_url, f"/stop/{camera_ip}")
 
+            user_name = ctx.states.get("user_name.data")
+            if user_name:
+                telemetry_client.capture(
+                    event="camera_controlled",
+                    distinct_id=user_name,
+                    properties={
+                        "camera_ip": camera_ip,
+                        "camera_name": camera_name,
+                        "camera_id": camera_id,
+                        "action": direction.lower(),
+                        "speed": true_speed,
+                        "control_method": "manual"
+                    }
+                )
+
         # 🔍 Case 3: Zoom input change
         elif trigger == "zoom-input":
             if zoom_level is not None:
                 true_zoom = int(zoom_level * 41 / 100)
                 logger.info(f"[MANUAL] Zooming {camera_ip} to level {true_zoom}")
                 send_api_request(pi_api_url, f"/zoom/{camera_ip}/{true_zoom}")
+
+                user_name = ctx.states.get("user_name.data")
+                if user_name:
+                    telemetry_client.capture(
+                        event="camera_zoom_changed",
+                        distinct_id=user_name,
+                        properties={
+                            "camera_ip": camera_ip,
+                            "camera_name": camera_name,
+                            "camera_id": camera_id,
+                            "zoom_level": zoom_level,
+                            "true_zoom": true_zoom,
+                            "control_method": "manual"
+                        }
+                    )
 
     except Exception as e:
         logger.warning(f"[ERROR] Failed to control camera {camera_ip} via Pi {pi_api_url}: {e}")
@@ -452,6 +515,8 @@ def open_capture_modal(n_clicks, current_camera, api_url):
     last_command_time = time.time()
 
     camera_id = current_camera["camera"].get("ip")
+    camera_name = current_camera["camera"].get("name")
+    camera_db_id = current_camera["camera"].get("id")
     if not camera_id:
         logger.error("No IP in current_camera data")
         return False, "", ""
@@ -460,10 +525,40 @@ def open_capture_modal(n_clicks, current_camera, api_url):
         resp = requests.get(f"{api_url}/capture/{camera_id}", timeout=5)
         if resp.status_code != 200:
             logger.error(f"Non-200 response: {resp.status_code}")
+
+            user_name = ctx.states.get("user_name.data")
+            if user_name:
+                telemetry_client.capture(
+                    event="image_capture_failed",
+                    distinct_id=user_name,
+                    properties={
+                        "camera_ip": camera_id,
+                        "camera_name": camera_name,
+                        "camera_id": camera_db_id,
+                        "error_type": "http_error",
+                        "error_message": f"HTTP {resp.status_code}",
+                        "error_reason": "Non-200 response from capture endpoint"
+                    }
+                )
             return False, "", ""
 
         if not resp.content or len(resp.content) < 100:
             logger.error(f"Image too small or empty: {len(resp.content)} bytes")
+
+            user_name = ctx.states.get("user_name.data")
+            if user_name:
+                telemetry_client.capture(
+                    event="image_capture_failed",
+                    distinct_id=user_name,
+                    properties={
+                        "camera_ip": camera_id,
+                        "camera_name": camera_name,
+                        "camera_id": camera_db_id,
+                        "error_type": "invalid_image",
+                        "error_message": "Image too small or empty",
+                        "error_reason": f"Image size: {len(resp.content)} bytes"
+                    }
+                )
             return False, "", ""
 
         # Convert image to base64 for display
@@ -471,11 +566,40 @@ def open_capture_modal(n_clicks, current_camera, api_url):
         base64_img = base64.b64encode(image_bytes).decode("utf-8")
         img_src = f"data:image/jpeg;base64,{base64_img}"
 
+        user_name = ctx.states.get("user_name.data")
+        if user_name:
+            telemetry_client.capture(
+                event="image_captured",
+                distinct_id=user_name,
+                properties={
+                    "camera_ip": camera_id,
+                    "camera_name": camera_name,
+                    "camera_id": camera_db_id,
+                    "image_size": len(resp.content),
+                    "capture_method": "manual"
+                }
+            )
+
         logger.info("✅ Image capture successful, displaying modal.")
         return True, img_src, img_src
 
     except Exception as e:
         logger.error(f"❌ Exception during image capture: {e}")
+
+        user_name = ctx.states.get("user_name.data")
+        if user_name:
+            telemetry_client.capture(
+                event="image_capture_failed",
+                distinct_id=user_name,
+                properties={
+                    "camera_ip": camera_id,
+                    "camera_name": camera_name,
+                    "camera_id": camera_db_id,
+                    "error_type": "exception",
+                    "error_message": str(e),
+                    "error_reason": "Exception during capture request"
+                }
+            )
         return False, "", ""
 
 
