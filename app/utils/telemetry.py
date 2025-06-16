@@ -6,7 +6,7 @@
 from typing import Any, Optional
 
 import logging_config
-from posthog import PostHog
+from posthog import Posthog
 
 import config as cfg
 
@@ -18,7 +18,7 @@ class TelemetryClient:
         self.api_key = api_key
         self.is_enabled = isinstance(api_key, str)
         if self.is_enabled:
-            self.ph_client = PostHog(project_api_key=api_key, host=cfg.POSTHOG_HOST)
+            self.ph_client = Posthog(project_api_key=api_key, host=cfg.POSTHOG_HOST)
             logger.info("Telemetry client initialized")
 
     def capture(self, event: str, distinct_id: str, properties: Optional[dict[str, Any]] = None) -> None:
