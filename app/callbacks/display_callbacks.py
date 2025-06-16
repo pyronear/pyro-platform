@@ -1073,6 +1073,19 @@ def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_seque
         zip_filename = f"{folder_name}.zip"
         prepare_archive(sequence_data, api_sequences, folder_name, camera_value)
 
+        # Track archive download request
+        user_name = ctx.states.get("user_name.data")
+        if user_name:
+            telemetry_client.capture(
+                event="archive_download_requested",
+                distinct_id=user_name,
+                properties={
+                    "camera": camera_value,
+                    "date": date_value,
+                    "archive_name": zip_filename,
+                }
+            )
+
         return True, f"/download/{zip_filename}", zip_filename
 
     elif triggered_id == "confirm-dl-button":
