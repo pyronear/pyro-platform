@@ -13,7 +13,7 @@ import boto3
 import dash
 import logging_config
 import pandas as pd
-from botocore.exceptions import ClientError  # type: ignore
+from botocore.exceptions import ClientError
 from dash import Input, Output, State, ctx
 from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
