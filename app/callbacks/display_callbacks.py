@@ -728,6 +728,7 @@ def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
 )
 def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequence_on_display, bbox_store):
     triggered = ctx.triggered_id
+    user_name = ctx.states.get("user_name.data")
 
     # Shared S3 client setup
     try:
@@ -741,6 +742,29 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
         bucket_name = "occlusion-masks-json"
     except Exception as e:
         logger.error(f"Error initializing S3 client: {e}")
+        if user_name:
+            # Get camera_id from sequence data if available
+            camera_id = None
+            if sequence_on_display:
+                try:
+                    df = pd.read_json(StringIO(sequence_on_display), orient="split")
+                    if not df.empty:
+                        camera_id = df.iloc[0]["camera_id"]
+                except Exception:
+                    pass
+
+            telemetry_client.capture(
+                event="occlusion_mask_error",
+                distinct_id=user_name,
+                properties={
+                    "error_type": "s3_client_init",
+                    "error_message": str(e),
+                    "camera_name": camera_info.split(" ")[0] if camera_info else None,
+                    "camera_id": camera_id,
+                    "azimuth": int(camera_info.split(" ")[-1].replace("°", "")) if camera_info else None,
+                    "action": "create"
+                }
+            )
         raise PreventUpdate
 
     if triggered == "create-occlusion-mask":
@@ -752,6 +776,7 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
         object_key = f"{cam_name}_{azimuth_camera}.json"
 
         df = pd.read_json(StringIO(sequence_on_display), orient="split")
+        camera_id = df.iloc[0]["camera_id"]
         df["bboxes"] = df["bboxes"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
         )
@@ -763,6 +788,19 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                     best_score = bbox[-1]
                     best_bbox = bbox
         if best_bbox is None:
+            if user_name:
+                telemetry_client.capture(
+                    event="occlusion_mask_error",
+                    distinct_id=user_name,
+                    properties={
+                        "error_type": "no_bbox_found",
+                        "error_message": "No bounding box found in sequence",
+                        "camera_name": cam_name,
+                        "camera_id": camera_id,
+                        "azimuth": azimuth_camera,
+                        "action": "create"
+                    }
+                )
             raise PreventUpdate
 
         # Expand bbox by 10%
@@ -787,13 +825,51 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
         except ClientError as e:
             if e.response["Error"]["Code"] != "404":
                 logger.error(f"head_object error: {e}")
+                if user_name:
+                    telemetry_client.capture(
+                        event="occlusion_mask_error",
+                        distinct_id=user_name,
+                        properties={
+                            "error_type": "s3_fetch",
+                            "error_message": str(e),
+                            "camera_name": cam_name,
+                            "camera_id": camera_id,
+                            "azimuth": azimuth_camera,
+                            "action": "create"
+                        }
+                    )
                 raise PreventUpdate
         except Exception as e:
             logger.error(f"Error loading S3 object: {e}")
+            if user_name:
+                telemetry_client.capture(
+                    event="occlusion_mask_error",
+                    distinct_id=user_name,
+                    properties={
+                        "error_type": "s3_load",
+                        "error_message": str(e),
+                        "camera_name": cam_name,
+                        "camera_id": camera_id,
+                        "azimuth": azimuth_camera,
+                        "action": "create"
+                    }
+                )
             raise PreventUpdate
 
         date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         existing_data[date_now] = best_bbox
+
+        if user_name:
+            telemetry_client.capture(
+                event="occlusion_mask_created",
+                distinct_id=user_name,
+                properties={
+                    "camera_name": cam_name,
+                    "camera_id": camera_id,
+                    "azimuth": azimuth_camera,
+                    "action": "create"
+                }
+            )
 
         data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bboxes_dict": existing_data}
         return True, data
@@ -806,11 +882,23 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
         azimuth = bbox_store["azimuth"]
         object_key = f"{cam_name}_{azimuth}.json"
 
+        # Get camera_id from sequence data
+        camera_id = None
+        if sequence_on_display:
+            try:
+                df = pd.read_json(StringIO(sequence_on_display), orient="split")
+                if not df.empty:
+                    camera_id = df.iloc[0]["camera_id"]
+            except Exception:
+                pass
+
         if triggered == "confirm-bbox-button":
             bboxes_dict = bbox_store.get("bboxes_dict", {})
+            action = "saved"
         else:
             # delete-bbox-button
             bboxes_dict = {}
+            action = "deleted"
 
         try:
             json_bytes = json.dumps(bboxes_dict, indent=2).encode("utf-8")
@@ -823,8 +911,19 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                 ContentLength=len(json_bytes),
                 ACL="public-read",
             )
-            action = "deleted" if triggered == "delete-bbox-button" else "saved"
             logger.info(f"BBoxes {action} on S3: {object_key}")
+
+            if user_name:
+                telemetry_client.capture(
+                    event=f"occlusion_mask_{action}",
+                    distinct_id=user_name,
+                    properties={
+                        "camera_name": cam_name,
+                        "camera_id": camera_id,
+                        "azimuth": azimuth
+                    }
+                )
+
             updated_store = {
                 "cam_name": cam_name,
                 "azimuth": azimuth,
@@ -834,6 +933,19 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
 
         except Exception as e:
             logger.error(f"Error writing to S3: {e}")
+            if user_name:
+                telemetry_client.capture(
+                    event="occlusion_mask_error",
+                    distinct_id=user_name,
+                    properties={
+                        "error_type": "s3_write",
+                        "error_message": str(e),
+                        "camera_name": cam_name,
+                        "camera_id": camera_id,
+                        "azimuth": azimuth,
+                        "action": action
+                    }
+                )
             raise PreventUpdate
 
     raise PreventUpdate
