@@ -26,6 +26,10 @@ CAMERA_INACTIVITY_THRESHOLD_MINUTES: int = 30
 SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
 SERVER_NAME: Optional[str] = os.getenv("SERVER_NAME")
 
+# Analytics
+POSTHOG_HOST: str = os.getenv("POSTHOG_HOST", "https://eu.posthog.com")
+POSTHOG_KEY: Optional[str] = os.environ.get("POSTHOG_KEY")
+
 # Safeguards
 SAFE_DEV_MODE: Optional[str] = os.getenv("SAFE_DEV_MODE")
 
