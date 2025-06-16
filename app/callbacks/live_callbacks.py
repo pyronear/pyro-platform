@@ -169,8 +169,8 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
                     "camera_ip": camera_ip,
                     "camera_name": camera_name,
                     "camera_id": camera_id,
-                    "trigger_source": "manual"
-                }
+                    "trigger_source": "manual",
+                },
             )
 
         now_iso = datetime.datetime.now().isoformat()
@@ -199,25 +199,23 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
                 logger.info("[stream monitor] Inactivity threshold reached.")
                 return no_update, True, True, True, ""
 
-            status_banner = html.Div(
-                [
-                    html.Span(
-                        "🔴 Live stream",
-                        style={
-                            "backgroundColor": "#f99",
-                            "color": "black",
-                            "borderRadius": "6px",
-                            "padding": "4px 8px",
-                            "marginRight": "8px",
-                            "fontWeight": "bold",
-                        },
-                    ),
-                    html.Span(
-                        f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
-                        style={"color": "orange", "fontWeight": "bold"},
-                    ),
-                ]
-            )
+            status_banner = html.Div([
+                html.Span(
+                    "🔴 Live stream",
+                    style={
+                        "backgroundColor": "#f99",
+                        "color": "black",
+                        "borderRadius": "6px",
+                        "padding": "4px 8px",
+                        "marginRight": "8px",
+                        "fontWeight": "bold",
+                    },
+                ),
+                html.Span(
+                    f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
+                    style={"color": "orange", "fontWeight": "bold"},
+                ),
+            ])
 
             return no_update, no_update, False, False, status_banner
 
@@ -301,8 +299,8 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
                             "camera_id": camera_id,
                             "action": f"auto_{direction.lower()}",
                             "speed": 4,
-                            "control_method": "auto_adjustment"
-                        }
+                            "control_method": "auto_adjustment",
+                        },
                     )
 
         # 🧑‍💻 Case 2: Manual PTZ controls
@@ -327,8 +325,8 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
                         "camera_id": camera_id,
                         "action": direction.lower(),
                         "speed": true_speed,
-                        "control_method": "manual"
-                    }
+                        "control_method": "manual",
+                    },
                 )
 
         # 🔍 Case 3: Zoom input change
@@ -349,8 +347,8 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
                             "camera_id": camera_id,
                             "zoom_level": zoom_level,
                             "true_zoom": true_zoom,
-                            "control_method": "manual"
-                        }
+                            "control_method": "manual",
+                        },
                     )
 
     except Exception as e:
@@ -537,8 +535,8 @@ def open_capture_modal(n_clicks, current_camera, api_url):
                         "camera_id": camera_db_id,
                         "error_type": "http_error",
                         "error_message": f"HTTP {resp.status_code}",
-                        "error_reason": "Non-200 response from capture endpoint"
-                    }
+                        "error_reason": "Non-200 response from capture endpoint",
+                    },
                 )
             return False, "", ""
 
@@ -556,8 +554,8 @@ def open_capture_modal(n_clicks, current_camera, api_url):
                         "camera_id": camera_db_id,
                         "error_type": "invalid_image",
                         "error_message": "Image too small or empty",
-                        "error_reason": f"Image size: {len(resp.content)} bytes"
-                    }
+                        "error_reason": f"Image size: {len(resp.content)} bytes",
+                    },
                 )
             return False, "", ""
 
@@ -576,8 +574,8 @@ def open_capture_modal(n_clicks, current_camera, api_url):
                     "camera_name": camera_name,
                     "camera_id": camera_db_id,
                     "image_size": len(resp.content),
-                    "capture_method": "manual"
-                }
+                    "capture_method": "manual",
+                },
             )
 
         logger.info("✅ Image capture successful, displaying modal.")
@@ -597,8 +595,8 @@ def open_capture_modal(n_clicks, current_camera, api_url):
                     "camera_id": camera_db_id,
                     "error_type": "exception",
                     "error_message": str(e),
-                    "error_reason": "Exception during capture request"
-                }
+                    "error_reason": "Exception during capture request",
+                },
             )
         return False, "", ""
 

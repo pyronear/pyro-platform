@@ -169,8 +169,8 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
                 "is_wildfire": sequence_data.get("is_wildfire", None),
                 "started_at": sequence_data["started_at"],
                 "selection_method": "button_click",
-                "total_sequences": len(api_sequences)
-            }
+                "total_sequences": len(api_sequences),
+            },
         )
 
     # Highlight the button
@@ -516,9 +516,7 @@ def acknowledge_event(
                 telemetry_client.capture(
                     event="acknowledgment_modal_opened",
                     distinct_id=user_name,
-                    properties={
-                        "sequence_id": sequence_id_on_display
-                    }
+                    properties={"sequence_id": sequence_id_on_display},
                 )
             return modal_visible_style, dash.no_update
 
@@ -530,11 +528,7 @@ def acknowledge_event(
             telemetry_client.capture(
                 event="alert_acknowledged",
                 distinct_id=user_name,
-                properties={
-                    "sequence_id": sequence_id_on_display,
-                    "classification": "wildfire",
-                    "action": "confirmed"
-                }
+                properties={"sequence_id": sequence_id_on_display, "classification": "wildfire", "action": "confirmed"},
             )
         return modal_hidden_style, sequence_id_on_display
 
@@ -549,8 +543,8 @@ def acknowledge_event(
                 properties={
                     "sequence_id": sequence_id_on_display,
                     "classification": "false_positive",
-                    "action": "confirmed"
-                }
+                    "action": "confirmed",
+                },
             )
         return modal_hidden_style, sequence_id_on_display
 
@@ -560,9 +554,7 @@ def acknowledge_event(
             telemetry_client.capture(
                 event="acknowledgment_cancelled",
                 distinct_id=user_name,
-                properties={
-                    "sequence_id": sequence_id_on_display
-                }
+                properties={"sequence_id": sequence_id_on_display},
             )
         return modal_hidden_style, dash.no_update
 
@@ -762,8 +754,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                     "camera_name": camera_info.split(" ")[0] if camera_info else None,
                     "camera_id": camera_id,
                     "azimuth": int(camera_info.split(" ")[-1].replace("°", "")) if camera_info else None,
-                    "action": "create"
-                }
+                    "action": "create",
+                },
             )
         raise PreventUpdate
 
@@ -798,8 +790,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                         "camera_name": cam_name,
                         "camera_id": camera_id,
                         "azimuth": azimuth_camera,
-                        "action": "create"
-                    }
+                        "action": "create",
+                    },
                 )
             raise PreventUpdate
 
@@ -835,8 +827,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                             "camera_name": cam_name,
                             "camera_id": camera_id,
                             "azimuth": azimuth_camera,
-                            "action": "create"
-                        }
+                            "action": "create",
+                        },
                     )
                 raise PreventUpdate
         except Exception as e:
@@ -851,8 +843,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                         "camera_name": cam_name,
                         "camera_id": camera_id,
                         "azimuth": azimuth_camera,
-                        "action": "create"
-                    }
+                        "action": "create",
+                    },
                 )
             raise PreventUpdate
 
@@ -867,8 +859,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                     "camera_name": cam_name,
                     "camera_id": camera_id,
                     "azimuth": azimuth_camera,
-                    "action": "create"
-                }
+                    "action": "create",
+                },
             )
 
         data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bboxes_dict": existing_data}
@@ -917,11 +909,7 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                 telemetry_client.capture(
                     event=f"occlusion_mask_{action}",
                     distinct_id=user_name,
-                    properties={
-                        "camera_name": cam_name,
-                        "camera_id": camera_id,
-                        "azimuth": azimuth
-                    }
+                    properties={"camera_name": cam_name, "camera_id": camera_id, "azimuth": azimuth},
                 )
 
             updated_store = {
@@ -943,8 +931,8 @@ def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequ
                         "camera_name": cam_name,
                         "camera_id": camera_id,
                         "azimuth": azimuth,
-                        "action": action
-                    }
+                        "action": action,
+                    },
                 )
             raise PreventUpdate
 
@@ -1083,7 +1071,7 @@ def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_seque
                     "camera": camera_value,
                     "date": date_value,
                     "archive_name": zip_filename,
-                }
+                },
             )
 
         return True, f"/download/{zip_filename}", zip_filename
