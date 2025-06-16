@@ -25,6 +25,7 @@ pytz = ">=2023.3.post1"
 boto3 = "==1.26.158"
 botocore = "==1.29.158"
 opencv-python-headless = ">=4.0.0"
+posthog = ">=3.0.0"
 
 [tool.poetry.group.quality]
 optional = true
