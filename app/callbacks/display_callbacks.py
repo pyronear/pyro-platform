@@ -30,6 +30,7 @@ from utils.display import (
     filter_bboxes_dict,
     prepare_archive,
 )
+from utils.telemetry import telemetry_client
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -154,6 +155,23 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
             button_index = button_ids[0]["index"]
         else:
             button_index = 0
+
+    user_name = ctx.states.get("user_name.data")
+
+    if user_name:
+        sequence_data = api_sequences[api_sequences["id"] == button_index].iloc[0]
+        telemetry_client.capture(
+            event="alert_selected",
+            distinct_id=user_name,
+            properties={
+                "sequence_id": button_index,
+                "camera_id": sequence_data["camera_id"],
+                "is_wildfire": sequence_data.get("is_wildfire", None),
+                "started_at": sequence_data["started_at"],
+                "selection_method": "button_click",
+                "total_sequences": len(api_sequences)
+            }
+        )
 
     # Highlight the button
     styles = []
@@ -478,6 +496,8 @@ def acknowledge_event(
 
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
+    user_name = ctx.states.get("user_name.data")
+
     # Modal styles
     modal_visible_style = {
         "position": "fixed",
@@ -492,22 +512,58 @@ def acknowledge_event(
     if triggered_id == "acknowledge-button":
         # Show the modal
         if acknowledge_clicks > 0:
+            if user_name:
+                telemetry_client.capture(
+                    event="acknowledgment_modal_opened",
+                    distinct_id=user_name,
+                    properties={
+                        "sequence_id": sequence_id_on_display
+                    }
+                )
             return modal_visible_style, dash.no_update
 
     elif triggered_id == "confirm-wildfire":
         # Send wildfire confirmation to the API
         api_client.token = user_token
         api_client.label_sequence(sequence_id_on_display, True)
+        if user_name:
+            telemetry_client.capture(
+                event="alert_acknowledged",
+                distinct_id=user_name,
+                properties={
+                    "sequence_id": sequence_id_on_display,
+                    "classification": "wildfire",
+                    "action": "confirmed"
+                }
+            )
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "confirm-non-wildfire":
         # Send non-wildfire confirmation to the API
         api_client.token = user_token
         api_client.label_sequence(sequence_id_on_display, False)
+        if user_name:
+            telemetry_client.capture(
+                event="alert_acknowledged",
+                distinct_id=user_name,
+                properties={
+                    "sequence_id": sequence_id_on_display,
+                    "classification": "false_positive",
+                    "action": "confirmed"
+                }
+            )
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
         # Cancel action
+        if user_name:
+            telemetry_client.capture(
+                event="acknowledgment_cancelled",
+                distinct_id=user_name,
+                properties={
+                    "sequence_id": sequence_id_on_display
+                }
+            )
         return modal_hidden_style, dash.no_update
 
     raise dash.exceptions.PreventUpdate
