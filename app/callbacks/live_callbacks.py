@@ -199,23 +199,25 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
                 logger.info("[stream monitor] Inactivity threshold reached.")
                 return no_update, True, True, True, ""
 
-            status_banner = html.Div([
-                html.Span(
-                    "🔴 Live stream",
-                    style={
-                        "backgroundColor": "#f99",
-                        "color": "black",
-                        "borderRadius": "6px",
-                        "padding": "4px 8px",
-                        "marginRight": "8px",
-                        "fontWeight": "bold",
-                    },
-                ),
-                html.Span(
-                    f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
-                    style={"color": "orange", "fontWeight": "bold"},
-                ),
-            ])
+            status_banner = html.Div(
+                [
+                    html.Span(
+                        "🔴 Live stream",
+                        style={
+                            "backgroundColor": "#f99",
+                            "color": "black",
+                            "borderRadius": "6px",
+                            "padding": "4px 8px",
+                            "marginRight": "8px",
+                            "fontWeight": "bold",
+                        },
+                    ),
+                    html.Span(
+                        f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
+                        style={"color": "orange", "fontWeight": "bold"},
+                    ),
+                ]
+            )
 
             return no_update, no_update, False, False, status_banner
 
