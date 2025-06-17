@@ -294,7 +294,13 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
         # If the displayed sequence changes, load its detections if not already loaded
         if sequence_id_on_display not in api_detections:
             response = api_client.fetch_sequences_detections(sequence_id_on_display)
-            detections = pd.DataFrame(response.json())
+            data = response.json()
+            if isinstance(data, list):
+                detections = pd.DataFrame(data)
+            else:
+                detections = pd.DataFrame()
+                logger.error("Error Reading detection")
+
             if not detections.empty and "bboxes" in detections.columns:
                 detections = detections.iloc[::-1].reset_index(drop=True)
                 detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
@@ -316,7 +322,13 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
 
             if sequence_id not in are_detections_loaded or are_detections_loaded[sequence_id] != str(last_seen_at):
                 response = api_client.fetch_sequences_detections(sequence_id)
-                detections = pd.DataFrame(response.json())
+                data = response.json()
+                if isinstance(data, list):
+                    detections = pd.DataFrame(data)
+                else:
+                    detections = pd.DataFrame()
+                    logger.error("Error Reading detection")
+
                 if not detections.empty and "bboxes" in detections.columns:
                     detections = detections.iloc[::-1].reset_index(drop=True)
                     detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)

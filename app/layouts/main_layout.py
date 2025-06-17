@@ -61,7 +61,7 @@ def get_main_layout():
                 storage_type="session",
                 data=pd.DataFrame().to_json(orient="split"),
             ),
-            dcc.Store(id="sequence_id_on_display", data=0),
+            dcc.Store(id="sequence_id_on_display", storage_type="session", data=0),
             dcc.Store(id="auto-move-state", data={"active": True}),
             # Add this to your app.layout
             dcc.Store(id="bbox_visibility", data={"visible": True}),
