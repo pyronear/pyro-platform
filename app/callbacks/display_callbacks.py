@@ -609,6 +609,17 @@ def toggle_datepicker_modal(open_click, close_click, is_open):
 
 
 @app.callback(
+    Output("my-date-picker-single", "date", allow_duplicate=True),
+    Input("home-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_date_picker(n_clicks):
+    if n_clicks:
+        return None
+    raise PreventUpdate
+
+
+@app.callback(
     Output("my-date-picker-single", "min_date_allowed"),
     Output("my-date-picker-single", "max_date_allowed"),
     Output("my-date-picker-single", "initial_visible_month"),

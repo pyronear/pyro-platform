@@ -32,6 +32,7 @@ app.layout = get_main_layout()
 
 
 # Manage Pages
+# Manage Pages
 @app.callback(
     Output("page-content", "children"),
     [
@@ -40,10 +41,13 @@ app.layout = get_main_layout()
         Input("url", "search"),
         Input("selected-camera-info", "data"),
         Input("language", "data"),
+        Input("my-date-picker-single", "date"),
     ],
     [State("user_token", "data"), State("available-stream-sites", "data")],
 )
-def display_page(pathname, api_cameras, search, selected_camera_info, lang, user_token, available_stream):
+def display_page(
+    pathname, api_cameras, search, selected_camera_info, lang, selected_date, user_token, available_stream
+):
     logger.debug("display_page called with pathname: %s, user_token: %s using lang %s", pathname, user_token, lang)
 
     if not isinstance(user_token, str) or not user_token:
@@ -54,8 +58,9 @@ def display_page(pathname, api_cameras, search, selected_camera_info, lang, user
     if triggered == "selected-camera-info" and selected_camera_info:
         return live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info, lang=lang)
 
-    if pathname == "/" or pathname is None:
+    if (pathname == "/" or pathname is None) or triggered == "my-date-picker-single":
         return homepage_layout(user_token, api_cameras, lang=lang)
+
     if pathname == "/cameras-status":
         return cameras_status_layout(user_token, api_cameras, lang=lang)
     if pathname == "/blinking-alarm":
