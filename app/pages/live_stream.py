@@ -458,8 +458,8 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0),  # every second
             dcc.Store(id="stream-start-time", storage_type="session"),
             dcc.Store(id="detection-status", storage_type="session", data="running"),  # or "stopped", etc.
-            html.Div(id="dummy-output", storage_type="session", style={"display": "none"}),
-            html.Div(id="dummy-output2", storage_type="session", style={"display": "none"}),
+            html.Div(id="dummy-output", style={"display": "none"}),
+            html.Div(id="dummy-output2", style={"display": "none"}),
             dcc.Store(id="pi_api_url", storage_type="session"),
             dcc.Store(id="pi_cameras", storage_type="session"),
             dcc.Store(id="current_camera", storage_type="session"),
