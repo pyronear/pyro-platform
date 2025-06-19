@@ -22,7 +22,7 @@ from main import app
 from translations import translate
 
 import config as cfg
-from services import api_client
+from services import get_client
 from utils.display import (
     build_vision_polygon,
     convert_dt_to_local_tz,
@@ -476,6 +476,9 @@ def acknowledge_event(
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
 
+    if user_token is None:
+        return dash.no_update
+
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     # Modal styles
@@ -489,6 +492,8 @@ def acknowledge_event(
     }
     modal_hidden_style = {"display": "none"}
 
+    client = get_client(user_token)
+
     if triggered_id == "acknowledge-button":
         # Show the modal
         if acknowledge_clicks > 0:
@@ -496,14 +501,14 @@ def acknowledge_event(
 
     elif triggered_id == "confirm-wildfire":
         # Send wildfire confirmation to the API
-        api_client.token = user_token
-        api_client.label_sequence(sequence_id_on_display, True)
+        client.token = user_token
+        client.label_sequence(sequence_id_on_display, True)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "confirm-non-wildfire":
         # Send non-wildfire confirmation to the API
-        api_client.token = user_token
-        api_client.label_sequence(sequence_id_on_display, False)
+        client.token = user_token
+        client.label_sequence(sequence_id_on_display, False)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
