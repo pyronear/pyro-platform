@@ -76,7 +76,7 @@ def Navbar(lang="fr"):
                     # 🌐 Langues
                     dcc.Dropdown(
                         id="language-selector",
-                        options=[
+                        options=[  # type: ignore[arg-type]
                             {"label": "🇫🇷 Français", "value": "fr"},
                             {"label": "🇪🇸 Español", "value": "es"},
                             {"label": "🇬🇧 English", "value": "en"},

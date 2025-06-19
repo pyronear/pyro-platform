@@ -247,7 +247,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             same_is_wildfire = False
 
             if len(local_sequences_df) == len(api_sequences):
-                same_last_seen_at = (
+                same_last_seen_at = (  # type: ignore[union-attr]
                     pd.to_datetime(local_sequences_df["last_seen_at"]).values
                     == pd.to_datetime(api_sequences["last_seen_at"]).values
                 ).all()
