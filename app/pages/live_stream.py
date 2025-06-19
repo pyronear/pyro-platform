@@ -456,17 +456,17 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                 fullscreen=True,
             ),
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0),  # every second
-            dcc.Store(id="stream-start-time"),
-            dcc.Store(id="detection-status", data="running"),  # or "stopped", etc.
-            html.Div(id="dummy-output", style={"display": "none"}),
-            html.Div(id="dummy-output2", style={"display": "none"}),
-            dcc.Store(id="pi_api_url"),
-            dcc.Store(id="pi_cameras"),
-            dcc.Store(id="current_camera"),
-            dcc.Store(id="trigered_from_alert", data=True if available_stream else False),
-            dcc.Store(id="hide-stream-flag", data=False),
-            dcc.Store(id="click-coords"),
-            dcc.Store(id="click-coords2"),
+            dcc.Store(id="stream-start-time", storage_type="session"),
+            dcc.Store(id="detection-status", storage_type="session", data="running"),  # or "stopped", etc.
+            html.Div(id="dummy-output", storage_type="session", style={"display": "none"}),
+            html.Div(id="dummy-output2", storage_type="session", style={"display": "none"}),
+            dcc.Store(id="pi_api_url", storage_type="session"),
+            dcc.Store(id="pi_cameras", storage_type="session"),
+            dcc.Store(id="current_camera", storage_type="session"),
+            dcc.Store(id="trigered_from_alert", storage_type="session", data=True if available_stream else False),
+            dcc.Store(id="hide-stream-flag", storage_type="session", data=False),
+            dcc.Store(id="click-coords", storage_type="session"),
+            dcc.Store(id="click-coords2", storage_type="session"),
             dbc.Modal(
                 id="inactivity-modal",
                 is_open=False,
@@ -476,7 +476,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                     dbc.ModalBody(translate("auto_end_modal_body", lang)),
                 ],
             ),
-            dcc.Store(id="hide-stream-flag", data=False),
+            dcc.Store(id="hide-stream-flag", storage_type="session", data=False),
         ],
         style=STREAM_PAGE_STYLE,
     )

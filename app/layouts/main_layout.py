@@ -62,14 +62,14 @@ def get_main_layout():
                 data=pd.DataFrame().to_json(orient="split"),
             ),
             dcc.Store(id="sequence_id_on_display", storage_type="session", data=0),
-            dcc.Store(id="auto-move-state", data={"active": True}),
+            dcc.Store(id="auto-move-state", storage_type="session", data={"active": True}),
             # Add this to your app.layout
-            dcc.Store(id="bbox_visibility", data={"visible": True}),
+            dcc.Store(id="bbox_visibility", storage_type="session", data={"visible": True}),
             # Storage components saving the user's headers and credentials
             dcc.Store(id="user_token", storage_type="session", data=user_token),
             dcc.Store(id="user_name", storage_type="session"),
-            dcc.Store(id="to_acknowledge", data=0),
-            dcc.Store(id="trigger_no_detections", data=False),
+            dcc.Store(id="to_acknowledge", storage_type="session", data=0),
+            dcc.Store(id="trigger_no_detections", storage_type="session", data=False),
             dcc.Store(id="available-stream-sites", storage_type="session"),
             dcc.Store(id="selected-camera-info", storage_type="session"),
             dcc.Store(id="language", storage_type="session", data="fr"),
