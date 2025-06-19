@@ -18,7 +18,7 @@ from translations import translate
 
 import config as cfg
 from pages.cameras_status import display_cam_cards
-from services import api_client, get_token
+from services import get_client, get_token
 from utils.data import process_bbox
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
@@ -163,11 +163,13 @@ def load_available_stream(user_name):
 )
 def get_cameras(user_token):
     logger.info("Get cameras data")
-    if user_token is not None:
-        api_client.token = user_token
-    cameras = pd.DataFrame(api_client.fetch_cameras().json())
+    if user_token is None:
+        return dash.no_update
+    else:
+        client = get_client(user_token)
+        cameras = pd.DataFrame(client.fetch_cameras().json())
 
-    return cameras.to_json(orient="split")
+        return cameras.to_json(orient="split")
 
 
 @app.callback(
@@ -177,10 +179,11 @@ def get_cameras(user_token):
 )
 def api_cameras_watcher(n_intervals, api_cameras, user_token):
     logger.info("Get cameras data")
-    if user_token is not None:
-        api_client.token = user_token
+    if user_token is None:
+        raise PreventUpdate
 
-    cameras = pd.DataFrame(api_client.fetch_cameras().json())
+    client = get_client(user_token)
+    cameras = pd.DataFrame(client.fetch_cameras().json())
     cameras["last_active_at"] = pd.to_datetime(cameras["last_active_at"]).dt.strftime("%Y-%m-%d %H:%M")
     cameras = cameras.sort_values("name")
 
@@ -220,12 +223,13 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
     logger.info("Start Fetching Sequences")
 
+    client = get_client(user_token)
+
     try:
-        # Use selected_date if provided
         if selected_date:
-            response = api_client.fetch_sequences_from_date(selected_date, limit=100)
+            response = client.fetch_sequences_from_date(selected_date, limit=100)
         else:
-            response = api_client.fetch_latest_sequences()
+            response = client.fetch_latest_sequences()
 
         api_sequences = pd.DataFrame(response.json())
 
@@ -266,11 +270,14 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 @app.callback(
     [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
     [Input("api_sequences", "data"), Input("sequence_id_on_display", "data"), Input("api_detections", "data")],
-    State("are_detections_loaded", "data"),
+    [State("are_detections_loaded", "data"), State("user_token", "data")],
     prevent_initial_call=True,
 )
-def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded):
+def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded, user_token):
     # Deserialize data
+
+    if user_token is None:
+        raise PreventUpdate
 
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
@@ -290,10 +297,12 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
 
     triggered_input = ctx.triggered[0]["prop_id"].split(".")[0]
 
+    client = get_client(user_token)
+
     if triggered_input == "sequence_id_on_display":
         # If the displayed sequence changes, load its detections if not already loaded
         if sequence_id_on_display not in api_detections:
-            response = api_client.fetch_sequences_detections(sequence_id_on_display)
+            response = client.fetch_sequences_detections(sequence_id_on_display)
             data = response.json()
             if isinstance(data, list):
                 detections = pd.DataFrame(data)
@@ -321,7 +330,7 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
             last_seen_at = row["last_seen_at"]
 
             if sequence_id not in are_detections_loaded or are_detections_loaded[sequence_id] != str(last_seen_at):
-                response = api_client.fetch_sequences_detections(sequence_id)
+                response = client.fetch_sequences_detections(sequence_id)
                 data = response.json()
                 if isinstance(data, list):
                     detections = pd.DataFrame(data)

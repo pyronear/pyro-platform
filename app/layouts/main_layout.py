@@ -10,10 +10,10 @@ from dash import dcc, html
 
 import config as cfg
 from components.navbar import Navbar
-from services import api_client
+from services import get_token
 
 if not cfg.LOGIN:
-    user_token = api_client.token
+    user_token = get_token(cfg.API_LOGIN, cfg.API_PWD)
 
 else:
     user_token = None
