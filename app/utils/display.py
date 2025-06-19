@@ -248,13 +248,22 @@ def create_sequence_list(api_sequences, cameras):
         else:
             return ""
 
+    def get_camera_info(cam_id):
+        cam = cameras[cameras["id"] == cam_id]
+        if cam.empty:
+            return "Unknown", 0.0, 0.0
+        cam_name = cam["name"].values[0][:-3].replace("_", " ")
+        cam_lat = cam["lat"].values[0]
+        cam_lon = cam["lon"].values[0]
+        return cam_name, cam_lat, cam_lon
+
     return [
         html.Button(
             id={"type": "event-button", "index": sequence["id"]},
             children=[
                 html.Div(
                     (
-                        f"{cameras[cameras['id'] == sequence['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
+                        f"{get_camera_info(sequence['camera_id'])[0]}"
                         f" : {int(sequence['cone_azimuth']) % 360}°"
                         f" {get_annotation_emoji(sequence.get('is_wildfire'))}"
                     ),
@@ -262,8 +271,8 @@ def create_sequence_list(api_sequences, cameras):
                 ),
                 html.Div(
                     convert_dt_to_local_tz(
-                        lat=cameras[cameras["id"] == sequence["camera_id"]]["lat"].values[0],
-                        lon=cameras[cameras["id"] == sequence["camera_id"]]["lon"].values[0],
+                        lat=get_camera_info(sequence["camera_id"])[1],
+                        lon=get_camera_info(sequence["camera_id"])[2],
                         str_utc_timestamp=sequence["started_at"],
                     )
                 ),
