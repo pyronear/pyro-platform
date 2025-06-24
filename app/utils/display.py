@@ -233,8 +233,8 @@ def create_sequence_list(api_sequences, cameras):
         azimuth = int(row["cone_azimuth"]) % 360
         emoji = get_annotation_emoji(row.get("is_wildfire"))
 
-        date_str = row["started_at"].strftime("%Y-%m-%d")
-        time_str = row["started_at"].strftime("%H:%M")
+        date_str, time_str = row["started_at_local"].split(" ")
+        time_str = time_str[:5]
 
         header = html.Div(f"📅 {date_str} • ⏱ {time_str}", style={"fontWeight": "bold", "marginBottom": "3px"})
         main_detection = html.Div(

@@ -222,8 +222,6 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
         raise PreventUpdate
 
     logger.info("Start Fetching Sequences")
-    print("New SEqqqqqqqqqqqqqqqqqqqqjbpbpijbpibpijbpbpibpbqqqqqqq")
-
     client = get_client(user_token)
 
     try:
@@ -295,8 +293,6 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
 
     if user_token is None:
         raise PreventUpdate
-
-    print("sequence_id_on_display", sequence_id_on_display)
 
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:

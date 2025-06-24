@@ -360,9 +360,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
 )
 def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     logger.info("update_map_and_alert_info")
-
-    print("sequence_id_on_display", sequence_id_on_display)
-
     if sequence_id_on_display is None:
         raise PreventUpdate
 
