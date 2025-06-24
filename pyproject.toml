@@ -11,10 +11,10 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-dash = ">=2.14.0"
-dash-bootstrap-components = ">=1.5.0"
-dash-leaflet = "^0.1.4"
-dash-extensions= ">=2.0.4"
+dash = "^3.0.2"
+dash-bootstrap-components = "^1.5.0"
+dash-leaflet = "^0.1.28"
+dash-extensions = "^1.0.0"
 pandas = ">=2.1.4"
 pyroclient = { git = "https://github.com/pyronear/pyro-api.git", branch = "main", subdirectory = "client" }
 python-dotenv = ">=1.0.0"
