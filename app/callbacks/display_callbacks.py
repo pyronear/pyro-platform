@@ -347,11 +347,12 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
         Output("alert-camera-value", "children"),
-        Output("camera-location-value", "children"),
         Output("alert-azimuth-value", "children"),
         Output("alert-start-date-value", "children"),
         Output("alert-end-date-value", "children"),
         Output("alert-information", "style"),
+        Output("camera-location-copy-content", "children"),
+        Output("smoke-location-copy-content", "children"),
     ],
     Input("sequence_id_on_display", "data"),
     [State("api_cameras", "data"), State("api_sequences", "data")],
@@ -456,8 +457,9 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
 
     # Info for alert panel
     camera_info = f"{camera_name} : {int(azimuth)}°"
-    location_info = f"{site_lat:.4f}, {site_lon:.4f}"
-    angle_info = f"{int(azimuth_detection)}°"
+    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"  # For Clipboard
+
+    angle_info = f"{int(azimuth_detection) % 360}°"
 
     start_date_info = (
         current_sequence["started_at_local"].split(" ")[-1] if pd.notnull(current_sequence["started_at_local"]) else ""
@@ -492,17 +494,20 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
 
     map_center = [float(x) for x in map_center]
 
+    copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
+
     return (
         cones,
         map_center,
         cones,
         map_center,
         camera_info,
-        location_info,
         angle_info,
         start_date_info,
         end_date_info,
         {"display": "block"},
+        copyable_location,
+        copyable_smoke_location,
     )
 
 

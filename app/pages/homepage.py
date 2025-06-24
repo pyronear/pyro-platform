@@ -250,15 +250,27 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                 ),
                                                 html.Div(
                                                     id="camera-location",
+                                                    style={"display": "flex", "alignItems": "center"},
                                                     children=[
                                                         html.Span(
-                                                            id="camera-location-header",
-                                                            children=translate("camera_location", lang),
+                                                            translate("camera_location", lang),
                                                             className="alert-information-title",
+                                                            style={"margin-right": "6px"},
                                                         ),
                                                         html.Span(
-                                                            id="camera-location-value",
-                                                            children=[],
+                                                            id="camera-location-copy-content",
+                                                            children="",
+                                                            style={"display": "none"},
+                                                        ),
+                                                        dcc.Clipboard(
+                                                            id="clipboard-location",
+                                                            target_id="camera-location-copy-content",
+                                                            title="Copier",
+                                                            style={
+                                                                "border": "none",
+                                                                "background": "transparent",
+                                                                "cursor": "pointer",
+                                                            },
                                                         ),
                                                     ],
                                                 ),
@@ -277,30 +289,66 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-start-date",
+                                                    id="alert-time-range",
+                                                    style={"display": "flex", "alignItems": "center", "gap": "16px"},
                                                     children=[
-                                                        html.Span(
-                                                            id="alert-start-date-header",
-                                                            children=translate("start_time", lang),
-                                                            className="alert-information-title",
+                                                        html.Div(
+                                                            id="alert-start-date",
+                                                            children=[
+                                                                html.Span(
+                                                                    id="alert-start-date-header",
+                                                                    children=translate("start_time", lang),
+                                                                    className="alert-information-title",
+                                                                ),
+                                                                html.Span(
+                                                                    id="alert-start-date-value",
+                                                                    children=[],
+                                                                ),
+                                                            ],
                                                         ),
-                                                        html.Span(
-                                                            id="alert-start-date-value",
-                                                            children=[],
+                                                        html.Div(
+                                                            id="alert-end-date",
+                                                            children=[
+                                                                html.Span(
+                                                                    id="alert-end-date-header",
+                                                                    children=translate("end_time", lang),
+                                                                    className="alert-information-title",
+                                                                ),
+                                                                html.Span(
+                                                                    id="alert-end-date-value",
+                                                                    children=[],
+                                                                ),
+                                                            ],
                                                         ),
                                                     ],
                                                 ),
                                                 html.Div(
-                                                    id="alert-end-date",
+                                                    id="smoke-location",
+                                                    style={
+                                                        "display": "flex",
+                                                        "alignItems": "center",
+                                                        "marginTop": "6px",
+                                                    },
                                                     children=[
                                                         html.Span(
-                                                            id="alert-end-date-header",
-                                                            children=translate("end_time", lang),
+                                                            translate("smoke_location", lang),
                                                             className="alert-information-title",
+                                                            style={"margin-right": "6px"},
                                                         ),
                                                         html.Span(
-                                                            id="alert-end-date-value",
-                                                            children=[],
+                                                            id="smoke-location-copy-content",
+                                                            children="",  # mis à jour par le callback
+                                                            style={"display": "none"},
+                                                        ),
+                                                        dcc.Clipboard(
+                                                            id="clipboard-smoke-location",
+                                                            target_id="smoke-location-copy-content",
+                                                            title="Copier",
+                                                            style={
+                                                                "border": "none",
+                                                                "background": "transparent",
+                                                                "cursor": "pointer",
+                                                            },
                                                         ),
                                                     ],
                                                 ),
