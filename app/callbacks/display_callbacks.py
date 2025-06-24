@@ -165,8 +165,9 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
 
         if seq_id == button_index:
             style["backgroundColor"] = "#feba6a"  # Selected button
-        elif seq_id in overlap_ids:
             style["border"] = "2px solid red"  # Overlapping match
+        elif seq_id in overlap_ids:
+            style["border"] = "1px solid red"  # Overlapping match
 
         styles.append(style)
 
