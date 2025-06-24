@@ -106,7 +106,6 @@ def update_event_list(api_sequences, cameras, selected_date):
     return create_sequence_list(api_sequences, cameras)
 
 
-# Select the event id
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
@@ -125,49 +124,51 @@ def update_event_list(api_sequences, cameras, selected_date):
     prevent_initial_call=True,
 )
 def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-    """
-    Handles event selection through button clicks.
+    import json
+    from io import StringIO
 
-    Parameters:
-    - n_clicks (list): List of click counts for each event button.
-    - button_ids (list): List of button IDs corresponding to events.
-    - local_alerts (json): JSON formatted data containing current alert information.
-    - sequence_id_on_display (int): Currently displayed event ID.
+    import pandas as pd
 
-    Returns:
-    - list: List of styles for event buttons.
-    - int: ID of the event to display.
-    - int: Number of clicks for the auto-move button reset.
-    """
     logger.info("select_event_with_button")
+
     ctx = dash.callback_context
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
         return [[], 0, 1, "reset_zoom"]
 
-    # Extracting the index of the clicked button
+    # Which button triggered the callback
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     if button_id:
         button_index = json.loads(button_id)["index"]
     else:
-        if len(button_ids):
+        if button_ids:
             button_index = button_ids[0]["index"]
         else:
             button_index = 0
 
-    # Highlight the button
+    # Find overlap group(s) of selected sequence
+    selected_row = api_sequences[api_sequences["id"] == button_index]
+    overlap_ids = set()
+    if not selected_row.empty:
+        overlap_groups = selected_row.iloc[0].get("overlap", [])
+        if overlap_groups:
+            for group in overlap_groups:
+                for seq_id in group:
+                    if seq_id != button_index:
+                        overlap_ids.add(seq_id)
+
+    # Build button styles
     styles = []
     for button in button_ids:
-        if button["index"] == button_index:
-            styles.append(
-                {
-                    "backgroundColor": "#feba6a",
-                },
-            )  # Highlight style
-        else:
-            styles.append(
-                {},
-            )  # Default style
+        seq_id = button["index"]
+        style = {}
+
+        if seq_id == button_index:
+            style["backgroundColor"] = "#feba6a"  # Selected button
+        elif seq_id in overlap_ids:
+            style["border"] = "2px solid red"  # Overlapping match
+
+        styles.append(style)
 
     return [styles, button_index, 1, "reset_zoom"]
 
