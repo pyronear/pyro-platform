@@ -233,55 +233,89 @@ def build_alerts_map(api_cameras, id_suffix=""):
 
 def create_sequence_list(api_sequences, cameras):
     """
-    This function builds the list of sequences on the left based on sequence data
+    Create a list of cards, one per sequence, with overlap info listed below if applicable.
+    Uses a Dash button wrapper with sequence ID as component ID.
     """
     if api_sequences.empty:
         return []
 
-    filtered_sequences = api_sequences.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
+    api_sequences = api_sequences.copy()
 
     def get_annotation_emoji(value):
         if value == 1.0:
             return "🔥"
         elif value == 0.0:
             return "🚫"
-        else:
-            return ""
+        return ""
 
     def get_camera_info(cam_id):
         cam = cameras[cameras["id"] == cam_id]
         if cam.empty:
             return "Unknown", 0.0, 0.0
         cam_name = cam["name"].values[0][:-3].replace("_", " ")
-        cam_lat = cam["lat"].values[0]
-        cam_lon = cam["lon"].values[0]
-        return cam_name, cam_lat, cam_lon
+        return cam_name, cam["lat"].values[0], cam["lon"].values[0]
 
-    return [
-        html.Button(
-            id={"type": "event-button", "index": sequence["id"]},
-            children=[
-                html.Div(
-                    (
-                        f"{get_camera_info(sequence['camera_id'])[0]}"
-                        f" : {int(sequence['cone_azimuth']) % 360}°"
-                        f" {get_annotation_emoji(sequence.get('is_wildfire'))}"
-                    ),
-                    style={"fontWeight": "bold"},
-                ),
-                html.Div(
-                    convert_dt_to_local_tz(
-                        lat=get_camera_info(sequence["camera_id"])[1],
-                        lon=get_camera_info(sequence["camera_id"])[2],
-                        str_utc_timestamp=sequence["started_at"],
-                    )
-                ),
-            ],
-            n_clicks=0,
-            className="pyronear-card alert-card",
+    def get_local_time_str(row):
+        name, lat, lon = get_camera_info(row["camera_id"])
+        return convert_dt_to_local_tz(lat=lat, lon=lon, str_utc_timestamp=row["started_at"])
+
+    api_sequences = api_sequences.sort_values("started_at", ascending=False)
+
+    cards = []
+    for _, row in api_sequences.iterrows():
+        cam_name, _, _ = get_camera_info(row["camera_id"])
+        azimuth = int(row["cone_azimuth"]) % 360
+        emoji = get_annotation_emoji(row.get("is_wildfire"))
+
+        date_str = row["started_at"].strftime("%Y-%m-%d")
+        time_str = get_local_time_str(row).split()[-1]
+
+        header = html.Div(f"📅 {date_str} • ⏱ {time_str}", style={"fontWeight": "bold", "marginBottom": "3px"})
+        main_detection = html.Div(
+            f"📷 {cam_name} ({azimuth}°) {emoji}",
+            style={
+                "display": "block",
+                "textAlign": "left",
+                "fontWeight": "bold",
+            },
         )
-        for _, sequence in filtered_sequences.iterrows()
-    ]
+
+        overlaps = []
+        if isinstance(row.get("overlap"), list):
+            for group in row["overlap"]:
+                for sid in group:
+                    if sid == row["id"]:
+                        continue
+                    match = api_sequences[api_sequences["id"] == sid]
+                    if not match.empty:
+                        m = match.iloc[0]
+                        match_name, _, _ = get_camera_info(m["camera_id"])
+                        match_azimuth = int(m["cone_azimuth"]) % 360
+                        match_time = get_local_time_str(m).split()[-1]
+                        overlaps.append(
+                            html.Div(
+                                f"↳ {match_name} ({match_azimuth}°) • {match_time}",
+                                style={
+                                    "fontSize": "12px",
+                                    "paddingLeft": "8px",
+                                    "color": "#555",
+                                    "display": "block",
+                                    "textAlign": "left",
+                                    "verticalAlign": "bottom",
+                                },
+                            )
+                        )
+
+        card = html.Button(
+            id={"type": "event-button", "index": row["id"]},
+            children=[header, main_detection, *overlaps],
+            className="pyronear-card alert-card",
+            style={"marginBottom": "10px"},
+            n_clicks=0,
+        )
+        cards.append(card)
+
+    return cards
 
 
 def bboxes_overlap(b1, b2, iou_threshold=0.1):

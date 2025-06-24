@@ -156,8 +156,8 @@ def sequences_have_changed(df1, df2):
     df1_checked = df1[cols_to_check].copy()
     df2_checked = df2[cols_to_check].copy()
 
-    df1_checked["last_seen_at"] = pd.to_datetime(df1_checked["last_seen_at"])
-    df2_checked["last_seen_at"] = pd.to_datetime(df2_checked["last_seen_at"])
+    df1_checked["last_seen_at"] = pd.to_datetime(df1_checked["last_seen_at"]).dt.round("s")
+    df2_checked["last_seen_at"] = pd.to_datetime(df2_checked["last_seen_at"]).dt.round("s")
 
     df1_checked["is_wildfire"] = df1_checked["is_wildfire"].astype("boolean").fillna(False)
     df2_checked["is_wildfire"] = df2_checked["is_wildfire"].astype("boolean").fillna(False)

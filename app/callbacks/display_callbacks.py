@@ -134,7 +134,14 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     ctx = dash.callback_context
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
-        return [[], 0, 1, "reset_zoom"]
+        return [[], dash.no_update, 1, "reset_zoom"]
+
+    # Default to first ID in api_sequences if nothing triggered
+    if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
+        default_id = api_sequences["id"].iloc[0]
+        num_buttons = len(button_ids)
+        styles = [{} for _ in range(num_buttons)]
+        return [styles, default_id, 1, "reset_zoom"]
 
     # Which button triggered the callback
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
@@ -152,10 +159,11 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
     if not selected_row.empty:
         overlap_groups = selected_row.iloc[0].get("overlap", [])
         if overlap_groups:
-            for group in overlap_groups:
-                for seq_id in group:
-                    if seq_id != button_index:
-                        overlap_ids.add(seq_id)
+            if isinstance(overlap_groups, list):
+                for group in overlap_groups:
+                    for seq_id in group:
+                        if seq_id != button_index:
+                            overlap_ids.add(seq_id)
 
     # Build button styles
     styles = []

@@ -259,7 +259,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            if sequences_have_changed(local_sequences_df, api_sequences):
+            if not sequences_have_changed(api_sequences, api_sequences):
                 logger.info("Skipping update: no significant change detected")
                 return dash.no_update
 
@@ -281,6 +281,8 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
 
     if user_token is None:
         raise PreventUpdate
+
+    print("sequence_id_on_display", sequence_id_on_display)
 
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
@@ -319,9 +321,12 @@ def load_detections(api_sequences, sequence_id_on_display, api_detections, are_d
             api_detections[sequence_id_on_display] = detections.to_json(orient="split")
 
         sequence_on_display = api_detections[sequence_id_on_display]
-        last_seen_at = api_sequences.loc[
-            api_sequences["id"].astype("str") == sequence_id_on_display, "last_seen_at"
-        ].iloc[0]
+        filtered = api_sequences.loc[api_sequences["id"].astype("str") == sequence_id_on_display, "last_seen_at"]
+
+        if filtered.empty:
+            return dash.no_update  # or some fallback value / error handling
+
+        last_seen_at = filtered.iloc[0]
 
         # Ensure last_seen_at is stored as a string
         are_detections_loaded[sequence_id_on_display] = str(last_seen_at)
