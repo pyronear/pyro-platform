@@ -137,7 +137,7 @@ def build_cone_polygon(lat, lon, azimuth, opening_angle, dist_km, r_min_km, reso
         inner_points = [(p.longitude, p.latitude) for p in inner_arc]
         return Polygon(outer_points + inner_points, holes=[inner_points]).buffer(0)
     else:
-        return Polygon([(lon, lat)] + outer_points).buffer(0)
+        return Polygon([(lon, lat), *outer_points]).buffer(0)
 
 
 def project_polygon(polygon):
