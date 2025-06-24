@@ -7,6 +7,7 @@ import ast
 from collections import defaultdict
 from typing import List
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 from geopy.distance import geodesic
@@ -120,108 +121,100 @@ def assign_event_ids(df, time_threshold=30 * 60):
     return df
 
 
+def get_projected_cone(row, R_km, r_min_km):
+    poly = build_cone_polygon(row["lat"], row["lon"], row["cone_azimuth"], row["cone_angle"], R_km, r_min_km)
+    return project_polygon(poly)
+
+
+def build_cone_polygon(lat, lon, azimuth, opening_angle, dist_km, r_min_km, resolution=36):
+    half_angle = opening_angle / 2
+    angles = np.linspace(azimuth - half_angle, azimuth + half_angle, resolution)
+    outer_arc = [geodesic(kilometers=dist_km).destination((lat, lon), az % 360) for az in angles]
+    outer_points = [(p.longitude, p.latitude) for p in outer_arc]
+
+    if r_min_km > 0:
+        inner_arc = [geodesic(kilometers=r_min_km).destination((lat, lon), az % 360) for az in reversed(angles)]
+        inner_points = [(p.longitude, p.latitude) for p in inner_arc]
+        return Polygon(outer_points + inner_points, holes=[inner_points]).buffer(0)
+    else:
+        return Polygon([(lon, lat)] + outer_points).buffer(0)
+
+
+def project_polygon(polygon):
+    transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
+    return shapely_transform(transformer.transform, polygon)
+
+
+def sequences_have_changed(df1, df2):
+    if df1.shape != df2.shape:
+        return True
+
+    cols_to_check = ["last_seen_at", "is_wildfire"]
+    if not all(col in df1.columns and col in df2.columns for col in cols_to_check):
+        return True
+
+    df1_checked = df1[cols_to_check].copy()
+    df2_checked = df2[cols_to_check].copy()
+
+    df1_checked["last_seen_at"] = pd.to_datetime(df1_checked["last_seen_at"])
+    df2_checked["last_seen_at"] = pd.to_datetime(df2_checked["last_seen_at"])
+
+    df1_checked["is_wildfire"] = df1_checked["is_wildfire"].astype("boolean").fillna(False)
+    df2_checked["is_wildfire"] = df2_checked["is_wildfire"].astype("boolean").fillna(False)
+
+    # Sort by id if available, otherwise by index
+    if "id" in df1.columns and "id" in df2.columns:
+        df1_checked = df1_checked.set_index(df1["id"]).sort_index()
+        df2_checked = df2_checked.set_index(df2["id"]).sort_index()
+    else:
+        df1_checked = df1_checked.sort_index()
+        df2_checked = df2_checked.sort_index()
+
+    return not df1_checked.equals(df2_checked)
+
+
 def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     """
-    Compute overlapping field-of-view cones between camera sequences.
+    Compute mutually overlapping cone groups (cliques) between camera sequences.
 
-    Each camera's field of view is modeled as a geodesic cone (a sector of a circle with inner and outer radius)
-    projected onto a map using Web Mercator (EPSG:3857). This function:
-
-    1. Builds a polygon representing each cone based on latitude, longitude, azimuth, and opening angle.
-    2. Projects each polygon to a planar coordinate system for geometric comparison.
-    3. Checks which polygons intersect (i.e., their cones overlap on the ground).
-    4. Constructs a graph of overlapping cones and extracts connected components.
-    5. Maps each sequence ID to the list of overlapping groups it belongs to.
+    Each output group in the 'overlap' column contains only sequences that all overlap pairwise.
 
     Parameters:
-        api_sequences (pd.DataFrame): DataFrame containing at least the following columns:
-            - 'id': unique identifier for each sequence
-            - 'lat': latitude of the camera
-            - 'lon': longitude of the camera
-            - 'cone_azimuth': direction the camera is facing (in degrees)
-            - 'cone_angle': opening angle of the field of view (in degrees)
-        R_km (float): Maximum viewing distance in kilometers for the cone.
-        r_min_km (float): Minimum distance from the origin to start the cone.
+        api_sequences (pd.DataFrame): Must contain:
+            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle'
+            - 'started_at', 'last_seen_at' (datetime-compatible)
+        R_km (float): Maximum detection range of the cone.
+        r_min_km (float): Inner radius of the cone.
 
     Returns:
-        pd.DataFrame: A copy of `api_sequences` with a new column 'overlap' that contains a list of overlapping group tuples (or None).
+        pd.DataFrame: Copy of input with new column 'overlap' containing list of cliques (or None).
     """
+    df = api_sequences.copy()
+    df["started_at"] = pd.to_datetime(df["started_at"])
+    df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    def build_cone_polygon(lat, lon, azimuth, opening_angle, dist_km, r_min_km, resolution=36):
-        """Builds a 2D polygon representing the geodesic cone."""
-        half_angle = opening_angle / 2
-        angles = np.linspace(azimuth - half_angle, azimuth + half_angle, resolution)
+    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df.iterrows()}
 
-        outer_arc = [geodesic(kilometers=dist_km).destination((lat, lon), az % 360) for az in angles]
-        outer_points = [(p.longitude, p.latitude) for p in outer_arc]
-
-        if r_min_km > 0:
-            inner_arc = [geodesic(kilometers=r_min_km).destination((lat, lon), az % 360) for az in reversed(angles)]
-            inner_points = [(p.longitude, p.latitude) for p in inner_arc]
-
-            if len(outer_points + inner_points) >= 4 and len(inner_points) >= 4:
-                return Polygon(outer_points + inner_points, holes=[inner_points]).buffer(0)
-            else:
-                return Polygon(outer_points).buffer(0)
-        else:
-            if len(outer_points) >= 3:
-                return Polygon([(lon, lat)] + outer_points).buffer(0)
-            else:
-                raise ValueError("Not enough points to form a polygon.")
-
-    def project_polygon(polygon):
-        """Projects a geographic polygon to EPSG:3857 (Web Mercator)."""
-        transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
-        return shapely_transform(transformer.transform, polygon)
-
-    def get_projected_cone(row):
-        """Build and project cone polygon from a DataFrame row."""
-        poly = build_cone_polygon(row["lat"], row["lon"], row["cone_azimuth"], row["cone_angle"], R_km, r_min_km)
-        return project_polygon(poly)
-
-    # Step 1: Build and store all projected cones
-    projected_cones = {row["id"]: get_projected_cone(row) for _, row in api_sequences.iterrows()}
-
-    # Step 2: Build adjacency graph based on intersection
-    adjacency = defaultdict(set)
-    ids = api_sequences["id"].tolist()
+    overlapping_pairs = []
+    ids = df["id"].tolist()
 
     for i, id1 in enumerate(ids):
+        row1 = df[df["id"] == id1].iloc[0]
         for id2 in ids[i + 1:]:
+            row2 = df[df["id"] == id2].iloc[0]
+            if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
+                continue
             if projected_cones[id1].intersects(projected_cones[id2]):
-                adjacency[id1].add(id2)
-                adjacency[id2].add(id1)
+                overlapping_pairs.append((id1, id2))
 
-    # Step 3: Find connected components of overlapping cones
-    def find_connected_components(adj):
-        visited = set()
-        components = []
+    G = nx.Graph()
+    G.add_edges_from(overlapping_pairs)
+    cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G) if len(clique) >= 2]
 
-        def dfs(node, comp):
-            visited.add(node)
-            comp.add(node)
-            for neighbor in adj[node]:
-                if neighbor not in visited:
-                    dfs(neighbor, comp)
+    id_to_groups = defaultdict(list)
+    for group in cliques:
+        for sid in group:
+            id_to_groups[sid].append(group)
 
-        for node in adj:
-            if node not in visited:
-                comp = set()
-                dfs(node, comp)
-                components.append(tuple(sorted(comp)))
-
-        return components
-
-    overlap_groups = find_connected_components(adjacency)
-
-    # Step 4: Map each ID to the groups it belongs to
-    id_to_overlaps = defaultdict(list)
-    for group in overlap_groups:
-        for seq_id in group:
-            id_to_overlaps[seq_id].append(group)
-
-    # Step 5: Update the DataFrame with overlap information
-    api_sequences = api_sequences.copy()
-    api_sequences["overlap"] = api_sequences["id"].map(lambda x: id_to_overlaps.get(x, None))
-
-    return api_sequences
+    df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
+    return df

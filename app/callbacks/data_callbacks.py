@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import compute_overlap, process_bbox
+from utils.data import compute_overlap, process_bbox, sequences_have_changed
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -242,10 +242,12 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             api_cameras = pd.read_json(StringIO(api_cameras), orient="split")
 
             api_sequences = api_sequences.merge(
-                api_cameras[["id", "angle_of_view", "lat", "lon"]].rename(columns={"id": "camera_id"}),
+                api_cameras[["id", "name", "angle_of_view", "lat", "lon"]].rename(columns={"id": "camera_id"}),
                 on="camera_id",
                 how="left",
             )
+
+            api_sequences["site_name"] = api_sequences["name"].str.replace(r"-\d{2}$", "", regex=True)
 
             api_sequences = compute_overlap(api_sequences)
 
@@ -257,17 +259,8 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            same_last_seen_at = False
-            same_is_wildfire = False
-
-            if len(local_sequences_df) == len(api_sequences):
-                same_last_seen_at = (
-                    pd.to_datetime(local_sequences_df["last_seen_at"]).values
-                    == pd.to_datetime(api_sequences["last_seen_at"]).values
-                ).all()
-                same_is_wildfire = local_sequences_df["is_wildfire"].sum() == api_sequences["is_wildfire"].sum()
-
-            if same_last_seen_at and same_is_wildfire:
+            if sequences_have_changed(local_sequences_df, api_sequences):
+                logger.info("Skipping update: no significant change detected")
                 return dash.no_update
 
         return api_sequences.to_json(orient="split")
