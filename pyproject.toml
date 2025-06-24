@@ -25,6 +25,10 @@ pytz = ">=2023.3.post1"
 boto3 = "==1.26.158"
 botocore = "==1.29.158"
 opencv-python-headless = ">=4.0.0"
+networkx = ">=3.1"
+numpy = ">=1.24.0"
+shapely = ">=2.0.0"
+pyproj = ">=3.6.0"
 
 [tool.poetry.group.quality]
 optional = true
