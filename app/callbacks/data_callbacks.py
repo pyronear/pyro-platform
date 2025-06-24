@@ -222,6 +222,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
         raise PreventUpdate
 
     logger.info("Start Fetching Sequences")
+    print("New SEqqqqqqqqqqqqqqqqqqqqjbpbpijbpibpijbpbpibpbqqqqqqq")
 
     client = get_client(user_token)
 
@@ -259,7 +260,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
         # Skip update if nothing changed
         if not local_sequences_df.empty and not api_sequences.empty:
-            if not sequences_have_changed(api_sequences, api_sequences):
+            if not sequences_have_changed(api_sequences, local_sequences_df):
                 logger.info("Skipping update: no significant change detected")
                 return dash.no_update
 
