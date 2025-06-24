@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import process_bbox
+from utils.data import compute_overlap, process_bbox
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -238,6 +238,16 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             if not selected_date:
                 today = pd.Timestamp.today().normalize()
                 api_sequences = api_sequences[started_at > today]
+
+            api_cameras = pd.read_json(StringIO(api_cameras), orient="split")
+
+            api_sequences = api_sequences.merge(
+                api_cameras[["id", "angle_of_view", "lat", "lon"]].rename(columns={"id": "camera_id"}),
+                on="camera_id",
+                how="left",
+            )
+
+            api_sequences = compute_overlap(api_sequences)
 
         # Load local sequences safely
         if local_sequences:

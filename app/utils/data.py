@@ -4,9 +4,15 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
+from collections import defaultdict
 from typing import List
 
+import numpy as np
 import pandas as pd
+from geopy.distance import geodesic
+from pyproj import Transformer
+from shapely.geometry import Polygon
+from shapely.ops import transform as shapely_transform
 
 
 def process_bbox(input_str):
@@ -112,3 +118,110 @@ def assign_event_ids(df, time_threshold=30 * 60):
     # Add the event_id column to the DataFrame
     df["event_id"] = event_ids
     return df
+
+
+def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
+    """
+    Compute overlapping field-of-view cones between camera sequences.
+
+    Each camera's field of view is modeled as a geodesic cone (a sector of a circle with inner and outer radius)
+    projected onto a map using Web Mercator (EPSG:3857). This function:
+
+    1. Builds a polygon representing each cone based on latitude, longitude, azimuth, and opening angle.
+    2. Projects each polygon to a planar coordinate system for geometric comparison.
+    3. Checks which polygons intersect (i.e., their cones overlap on the ground).
+    4. Constructs a graph of overlapping cones and extracts connected components.
+    5. Maps each sequence ID to the list of overlapping groups it belongs to.
+
+    Parameters:
+        api_sequences (pd.DataFrame): DataFrame containing at least the following columns:
+            - 'id': unique identifier for each sequence
+            - 'lat': latitude of the camera
+            - 'lon': longitude of the camera
+            - 'cone_azimuth': direction the camera is facing (in degrees)
+            - 'cone_angle': opening angle of the field of view (in degrees)
+        R_km (float): Maximum viewing distance in kilometers for the cone.
+        r_min_km (float): Minimum distance from the origin to start the cone.
+
+    Returns:
+        pd.DataFrame: A copy of `api_sequences` with a new column 'overlap' that contains a list of overlapping group tuples (or None).
+    """
+
+    def build_cone_polygon(lat, lon, azimuth, opening_angle, dist_km, r_min_km, resolution=36):
+        """Builds a 2D polygon representing the geodesic cone."""
+        half_angle = opening_angle / 2
+        angles = np.linspace(azimuth - half_angle, azimuth + half_angle, resolution)
+
+        outer_arc = [geodesic(kilometers=dist_km).destination((lat, lon), az % 360) for az in angles]
+        outer_points = [(p.longitude, p.latitude) for p in outer_arc]
+
+        if r_min_km > 0:
+            inner_arc = [geodesic(kilometers=r_min_km).destination((lat, lon), az % 360) for az in reversed(angles)]
+            inner_points = [(p.longitude, p.latitude) for p in inner_arc]
+
+            if len(outer_points + inner_points) >= 4 and len(inner_points) >= 4:
+                return Polygon(outer_points + inner_points, holes=[inner_points]).buffer(0)
+            else:
+                return Polygon(outer_points).buffer(0)
+        else:
+            if len(outer_points) >= 3:
+                return Polygon([(lon, lat)] + outer_points).buffer(0)
+            else:
+                raise ValueError("Not enough points to form a polygon.")
+
+    def project_polygon(polygon):
+        """Projects a geographic polygon to EPSG:3857 (Web Mercator)."""
+        transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
+        return shapely_transform(transformer.transform, polygon)
+
+    def get_projected_cone(row):
+        """Build and project cone polygon from a DataFrame row."""
+        poly = build_cone_polygon(row["lat"], row["lon"], row["cone_azimuth"], row["cone_angle"], R_km, r_min_km)
+        return project_polygon(poly)
+
+    # Step 1: Build and store all projected cones
+    projected_cones = {row["id"]: get_projected_cone(row) for _, row in api_sequences.iterrows()}
+
+    # Step 2: Build adjacency graph based on intersection
+    adjacency = defaultdict(set)
+    ids = api_sequences["id"].tolist()
+
+    for i, id1 in enumerate(ids):
+        for id2 in ids[i + 1:]:
+            if projected_cones[id1].intersects(projected_cones[id2]):
+                adjacency[id1].add(id2)
+                adjacency[id2].add(id1)
+
+    # Step 3: Find connected components of overlapping cones
+    def find_connected_components(adj):
+        visited = set()
+        components = []
+
+        def dfs(node, comp):
+            visited.add(node)
+            comp.add(node)
+            for neighbor in adj[node]:
+                if neighbor not in visited:
+                    dfs(neighbor, comp)
+
+        for node in adj:
+            if node not in visited:
+                comp = set()
+                dfs(node, comp)
+                components.append(tuple(sorted(comp)))
+
+        return components
+
+    overlap_groups = find_connected_components(adjacency)
+
+    # Step 4: Map each ID to the groups it belongs to
+    id_to_overlaps = defaultdict(list)
+    for group in overlap_groups:
+        for seq_id in group:
+            id_to_overlaps[seq_id].append(group)
+
+    # Step 5: Update the DataFrame with overlap information
+    api_sequences = api_sequences.copy()
+    api_sequences["overlap"] = api_sequences["id"].map(lambda x: id_to_overlaps.get(x, None))
+
+    return api_sequences
