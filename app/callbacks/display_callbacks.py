@@ -19,13 +19,13 @@ from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
+from shapely.geometry import Polygon as ShapelyPolygon
 from translations import translate
 
 import config as cfg
 from services import get_client
 from utils.display import (
     build_vision_polygon,
-    convert_dt_to_local_tz,
     create_sequence_list,
     filter_bboxes_dict,
     prepare_archive,
@@ -119,16 +119,10 @@ def update_event_list(api_sequences, cameras, selected_date):
     [
         State({"type": "event-button", "index": ALL}, "id"),
         State("api_sequences", "data"),
-        State("sequence_id_on_display", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-    import json
-    from io import StringIO
-
-    import pandas as pd
-
+def select_event_with_button(n_clicks, button_ids, api_sequences):
     logger.info("select_event_with_button")
 
     ctx = dash.callback_context
@@ -359,109 +353,156 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("alert-end-date-value", "children"),
         Output("alert-information", "style"),
     ],
-    Input("sequence_on_display", "data"),
-    [State("api_cameras", "data"), State("sequence_id_on_display", "data"), State("api_sequences", "data")],
+    Input("sequence_id_on_display", "data"),
+    [State("api_cameras", "data"), State("api_sequences", "data")],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_on_display, cameras, sequence_id_on_display, api_sequences):
-    """
-    Updates the map's vision polygons, center, and alert information based on the current alert data.
-
-    Parameters:
-    - alert_data (json): JSON formatted data for the selected event.
-
-    Returns:
-    - list: List of vision polygon elements to be displayed on the map.
-    - list: New center coordinates for the map.
-    - list: List of vision polygon elements to be displayed on the modal map.
-    - list: New center coordinates for the modal map.
-    - str: Camera information for the alert.
-    - str: Camera location for the alert.
-    - str: Detection angle for the alert.
-    - str: Date of the alert.
-    - dict: Style settings for alert information.
-    - dict: Style settings for the slider container.
-    """
+def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     logger.info("update_map_and_alert_info")
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
 
-    if not sequence_on_display.empty:
-        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
-        sequence_on_display["bboxes"] = sequence_on_display["bboxes"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-        )
+    print("sequence_id_on_display", sequence_id_on_display)
 
-        # Filter out rows where 'bboxes' is not empty and get the last one.
-        # If all are empty, then simply get the last row of the DataFrame.
-        def get_confidence(bboxes):
-            if not bboxes:
-                return -1  # or np.nan if you prefer
-            return max(bbox[-1] for bbox in bboxes)
+    if sequence_id_on_display is None:
+        raise PreventUpdate
 
-        # Compute confidence for each row
-        sequence_on_display["max_conf"] = sequence_on_display["bboxes"].apply(get_confidence)
+    df_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    df_cameras = pd.read_json(StringIO(cameras), orient="split")
+    sequence_id_on_display = str(sequence_id_on_display)
 
-        # Filter out rows where bboxes is not empty
-        non_empty = sequence_on_display[sequence_on_display["bboxes"].astype(bool)]
-
-        # Get row with highest confidence or fallback to last row
-        if not non_empty.empty:
-            row_with_bboxes = non_empty.loc[non_empty["max_conf"].idxmax()]
-        else:
-            row_with_bboxes = sequence_on_display.iloc[-1]
-
-        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
-        lat, lon, angle_of_view = (
-            row_cam[["lat"]].values.item(),
-            row_cam[["lon"]].values.item(),
-            row_cam[["angle_of_view"]].values.item(),
-        )
-
-        polygon, detection_azimuth = build_vision_polygon(
-            site_lat=lat,
-            site_lon=lon,
-            azimuth=row_with_bboxes["azimuth"],
-            opening_angle=angle_of_view,
-            dist_km=cfg.CAM_RANGE_KM,
-            bboxes=row_with_bboxes["bboxes"],
-        )
-
-        current_sequence = api_sequences[api_sequences["id"] == sequence_id_on_display].iloc[0]
-        start_date_info = convert_dt_to_local_tz(lat, lon, current_sequence["started_at"]).split(" ")[-1]
-        end_date_info = convert_dt_to_local_tz(lat, lon, current_sequence["last_seen_at"]).split(" ")[-1]
-        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
-
-        camera_info = f"{cam_name}"
-        location_info = f"{lat:.4f}, {lon:.4f}"
-        azimuth = int(current_sequence["cone_azimuth"])
-        angle_info = f"{azimuth}°"
-
+    # Check sequence exists
+    if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
         return (
-            polygon,
-            [lat, lon],
-            polygon,
-            [lat, lon],
-            camera_info,
-            location_info,
-            angle_info,
-            start_date_info,
-            end_date_info,
-            {"display": "block"},
+            [],
+            dash.no_update,
+            [],
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            {"display": "none"},
         )
+
+    # Get current sequence
+    current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
+
+    site_lat = current_sequence["lat"]
+    site_lon = current_sequence["lon"]
+    azimuth = float(current_sequence["azimuth"])
+    azimuth_detection = float(current_sequence["cone_azimuth"])
+    opening_angle = float(current_sequence["cone_angle"])
+
+    # Vision polygon principal
+    polygon_detection = build_vision_polygon(
+        site_lat=site_lat,
+        site_lon=site_lon,
+        azimuth=azimuth_detection,
+        opening_angle=opening_angle,
+        dist_km=cfg.CAM_RANGE_KM,
+    )
+
+    cones = [polygon_detection]
+
+    # Vérifie s'il y a un tuple d'overlap contenant cette séquence
+
+    overlapping_ids = set()
+
+    if "overlap" in df_sequences.columns:
+        for overlaps in df_sequences["overlap"].dropna():
+            try:
+                # Supporte les listes ou tuples contenant des listes/tuples de taille >= 2
+                if isinstance(overlaps, (list, tuple)):
+                    for group in overlaps:
+                        if isinstance(group, (list, tuple)) and len(group) >= 2:
+                            group_str = list(map(str, group))
+                            if sequence_id_on_display in group_str:
+                                overlapping_ids.update(group_str)
+                elif isinstance(overlaps, str):
+                    import ast
+
+                    parsed = ast.literal_eval(overlaps)
+                    if isinstance(parsed, (list, tuple)):
+                        for group in parsed:
+                            if isinstance(group, (list, tuple)) and len(group) >= 2:
+                                group_str = list(map(str, group))
+                                if sequence_id_on_display in group_str:
+                                    overlapping_ids.update(group_str)
+            except Exception as e:
+                logger.warning(f"Invalid overlap entry: {overlaps} ({e})")
+
+        overlapping_ids.discard(sequence_id_on_display)
+
+        for other_id in overlapping_ids:
+            if other_id in df_sequences["id"].astype(str).values:
+                other_seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
+
+                poly = build_vision_polygon(
+                    site_lat=other_seq["lat"],
+                    site_lon=other_seq["lon"],
+                    azimuth=float(other_seq["cone_azimuth"]),
+                    opening_angle=float(other_seq["cone_angle"]),
+                    dist_km=cfg.CAM_RANGE_KM,
+                )
+                cones.append(poly)
+
+    # Get matching camera row
+    camera_id = current_sequence["camera_id"]
+    if camera_id in df_cameras["id"].values:
+        camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
+        camera_name = camera_row["name"].rsplit("-", 1)[0].replace("_", " ")
+    else:
+        camera_name = "Caméra inconnue"
+
+    # Info for alert panel
+    camera_info = f"{camera_name} : {int(azimuth)}°"
+    location_info = f"{site_lat:.4f}, {site_lon:.4f}"
+    angle_info = f"{int(azimuth_detection)}°"
+
+    start_date_info = (
+        current_sequence["started_at_local"].split(" ")[-1] if pd.notnull(current_sequence["started_at_local"]) else ""
+    )
+    end_date_info = (
+        current_sequence["last_seen_at_local"].split(" ")[-1]
+        if pd.notnull(current_sequence["last_seen_at_local"])
+        else ""
+    )
+
+    # Extraire les points de chaque cone Dash → Shapely
+    shapely_polys = []
+    for cone in cones:
+        positions = getattr(cone, "positions", None)
+        if positions and len(positions) >= 3:
+            shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
+
+    # Calcul de l'intersection des polygones
+    if shapely_polys:
+        intersection = shapely_polys[0]
+        for poly in shapely_polys[1:]:
+            intersection = intersection.intersection(poly)
+
+        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
+            centroid = intersection.centroid
+            map_center = [centroid.y, centroid.x]
+        else:
+            # fallback (si pas d'intersection)
+            map_center = [site_lat, site_lon]
+    else:
+        map_center = [site_lat, site_lon]
+
+    map_center = [float(x) for x in map_center]
 
     return (
-        [],
-        dash.no_update,
-        [],
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        {"display": "none"},
+        cones,
+        map_center,
+        cones,
+        map_center,
+        camera_info,
+        location_info,
+        angle_info,
+        start_date_info,
+        end_date_info,
+        {"display": "block"},
     )
 
 

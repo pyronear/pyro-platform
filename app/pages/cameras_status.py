@@ -10,7 +10,6 @@ from dash import html
 from translations import translate
 
 import config as cfg
-from utils.display import convert_dt_to_local_tz
 
 
 def display_cam_cards(cameras):
@@ -47,7 +46,7 @@ def display_cam_cards(cameras):
                                         style={"width": "20px", "height": "20px", "marginRight": "5px"},
                                     ),
                                     html.P(
-                                        f"{convert_dt_to_local_tz(row['lat'], row['lon'], row['last_active_at'])}",
+                                        f"{row['last_active_at']}",
                                         style=last_active_at_style,
                                     ),
                                 ],

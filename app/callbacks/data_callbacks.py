@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import compute_overlap, process_bbox, sequences_have_changed
+from utils.data import compute_overlap, convert_dt_to_local_tz, process_bbox, sequences_have_changed
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -249,6 +249,19 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             )
 
             api_sequences["site_name"] = api_sequences["name"].str.replace(r"-\d{2}$", "", regex=True)
+
+            api_sequences["started_at_local"] = api_sequences.apply(
+                lambda row: convert_dt_to_local_tz(row["lat"], row["lon"], row["started_at"])
+                if pd.notnull(row["started_at"])
+                else None,
+                axis=1,
+            )
+            api_sequences["last_seen_at_local"] = api_sequences.apply(
+                lambda row: convert_dt_to_local_tz(row["lat"], row["lon"], row["last_seen_at"])
+                if pd.notnull(row["last_seen_at"])
+                else None,
+                axis=1,
+            )
 
             api_sequences = compute_overlap(api_sequences)
 
