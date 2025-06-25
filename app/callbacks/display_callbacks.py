@@ -367,7 +367,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     df_cameras = pd.read_json(StringIO(cameras), orient="split")
     sequence_id_on_display = str(sequence_id_on_display)
 
-    # Check sequence exists
+    # Check if the sequence exists
     if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
         return (
             [],
@@ -382,7 +382,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             {"display": "none"},
         )
 
-    # Get current sequence
+    # Retrieve current sequence data
     current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
 
     site_lat = current_sequence["lat"]
@@ -391,7 +391,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     azimuth_detection = float(current_sequence["cone_azimuth"])
     opening_angle = float(current_sequence["cone_angle"])
 
-    # Vision polygon principal
+    # Main detection vision cone
     polygon_detection = build_vision_polygon(
         site_lat=site_lat,
         site_lon=site_lon,
@@ -402,14 +402,12 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
 
     cones = [polygon_detection]
 
-    # Vérifie s'il y a un tuple d'overlap contenant cette séquence
-
     overlapping_ids = set()
 
     if "overlap" in df_sequences.columns:
         for overlaps in df_sequences["overlap"].dropna():
             try:
-                # Supporte les listes ou tuples contenant des listes/tuples de taille >= 2
+                # Supports lists or tuples containing groups of size >= 2
                 if isinstance(overlaps, (list, tuple)):
                     for group in overlaps:
                         if isinstance(group, (list, tuple)) and len(group) >= 2:
@@ -444,17 +442,17 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
                 )
                 cones.append(poly)
 
-    # Get matching camera row
+    # Match the sequence to a camera
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
         camera_name = camera_row["name"].rsplit("-", 1)[0].replace("_", " ")
     else:
-        camera_name = "Caméra inconnue"
+        camera_name = "Unknown camera"
 
-    # Info for alert panel
+    # Alert panel information
     camera_info = f"{camera_name} : {int(azimuth)}°"
-    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"  # For Clipboard
+    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
 
     angle_info = f"{int(azimuth_detection) % 360}°"
 
@@ -467,14 +465,14 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         else ""
     )
 
-    # Extraire les points de chaque cone Dash → Shapely
+    # Convert cones to Shapely polygons
     shapely_polys = []
     for cone in cones:
         positions = getattr(cone, "positions", None)
         if positions and len(positions) >= 3:
             shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
 
-    # Calcul de l'intersection des polygones
+    # Compute intersection between cones
     if shapely_polys:
         intersection = shapely_polys[0]
         for poly in shapely_polys[1:]:
@@ -484,7 +482,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             centroid = intersection.centroid
             map_center = [centroid.y, centroid.x]
         else:
-            # fallback (si pas d'intersection)
+            # fallback if no intersection
             map_center = [site_lat, site_lon]
     else:
         map_center = [site_lat, site_lon]
