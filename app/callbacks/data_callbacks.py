@@ -184,8 +184,19 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
 
     client = get_client(user_token)
     cameras = pd.DataFrame(client.fetch_cameras().json())
-    cameras["last_active_at"] = pd.to_datetime(cameras["last_active_at"]).dt.strftime("%Y-%m-%d %H:%M")
-    cameras = cameras.sort_values("name")
+
+    if not cameras.empty:
+        cameras["last_active_at"] = pd.to_datetime(cameras["last_active_at"])
+
+        # Apply the local datetime transformation and formatting at once
+        cameras["last_active_at_local"] = cameras.apply(
+            lambda row: convert_dt_to_local_tz(row["lat"], row["lon"], row["last_active_at"])
+            if pd.notnull(row["last_active_at"])
+            else None,
+            axis=1,
+        )
+
+        cameras = cameras.sort_values("name")
 
     return display_cam_cards(cameras)
 
