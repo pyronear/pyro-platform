@@ -247,7 +247,7 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
 
     for i, id1 in enumerate(ids):
         row1 = df[df["id"] == id1].iloc[0]
-        for id2 in ids[i + 1:]:
+        for id2 in ids[i + 1: ]:
             row2 = df[df["id"] == id2].iloc[0]
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
