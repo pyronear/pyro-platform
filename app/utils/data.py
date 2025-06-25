@@ -8,14 +8,14 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List
 
-import networkx as nx
+import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
 import pytz
 from geopy.distance import geodesic
 from pyproj import Transformer
-from shapely.geometry import Polygon
-from shapely.ops import transform as shapely_transform
+from shapely.geometry import Polygon  # type: ignore
+from shapely.ops import transform as shapely_transform  # type: ignore
 from timezonefinder import TimezoneFinder
 
 tf = TimezoneFinder()
@@ -185,7 +185,10 @@ def project_polygon(polygon):
     return shapely_transform(transformer.transform, polygon)
 
 
-def sequences_have_changed(df1, df2, cols_to_check=["last_seen_at_local", "is_wildfire"]):
+def sequences_have_changed(df1, df2, cols_to_check=None):
+    if cols_to_check is None:
+        cols_to_check = ["last_seen_at_local", "is_wildfire"]
+
     if df1.shape != df2.shape:
         return True
 

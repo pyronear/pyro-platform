@@ -9,7 +9,7 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO, StringIO
 
-import boto3
+import boto3  # type: ignore
 import dash
 import logging_config
 import pandas as pd
@@ -19,7 +19,7 @@ from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
-from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import Polygon as ShapelyPolygon  # type: ignore
 from translations import translate
 
 import config as cfg
