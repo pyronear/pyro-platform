@@ -128,7 +128,7 @@ def select_event_with_button(n_clicks, button_ids, api_sequences):
     ctx = dash.callback_context
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     if api_sequences.empty:
-        return [[], dash.no_update, 1, "reset_zoom"]
+        return [[{} for _ in button_ids], dash.no_update, 1, "reset_zoom"]
 
     # Default to first ID in api_sequences if nothing triggered
     if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
