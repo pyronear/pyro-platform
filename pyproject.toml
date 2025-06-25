@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry>=1.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "pyro-platform"
@@ -39,6 +39,10 @@ mypy = "==1.6.1"
 types-requests = ">=2.0.0"
 pandas-stubs = ">=1.5.2"
 pre-commit = "^2.17.0"
+boto3-stubs = "*"
+types-botocore = "*"
+shapely-stubs = "*"
+types-networkx = "*"
 
 [tool.ruff]
 select = [
@@ -49,7 +53,7 @@ select = [
 ignore = [
     "E501", "B008", "B904", "C901", "F403", "E731", "C416"
 ]
-extend-ignore = ["E111", "E114", "E117", "ISC001", "W191"]
+extend-ignore = ["E111", "E114", "E117", "E203", "ISC001", "W191"]
 exclude = [".git"]
 line-length = 120
 target-version = "py311"
@@ -87,5 +91,9 @@ module = [
     "geopy.*",
     "pyroclient.*",
     "flask_caching.*",
+    "shapely.*",
+    "boto3.*",
+    "botocore.*",
+    "networkx.*"
 ]
 ignore_missing_imports = true
