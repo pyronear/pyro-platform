@@ -9,7 +9,7 @@ from io import StringIO
 import dash
 import logging_config
 import pandas as pd
-from dash import callback_context, dcc, html
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
@@ -294,91 +294,92 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
 
 
 @app.callback(
-    [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
-    [Input("api_sequences", "data"), Input("sequence_id_on_display", "data"), Input("api_detections", "data")],
-    [State("are_detections_loaded", "data"), State("user_token", "data")],
+    Output("sub_api_sequences", "data"),
+    Input("api_sequences", "data"),
+    State("sub_api_sequences", "data"),
     prevent_initial_call=True,
 )
-def load_detections(api_sequences, sequence_id_on_display, api_detections, are_detections_loaded, user_token):
-    # Deserialize data
+def update_sub_api_sequences(api_sequences, local_sub_sequences):
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
 
-    if user_token is None:
+    if api_sequences.empty:
+        logger.info("api_sequences is empty, skipping update")
+        return dash.no_update
+
+    logger.info("update_sub_api_sequences triggered")
+
+    # Colonnes qu'on veut conserver
+    cols = ["id", "camera_id", "cone_azimuth", "is_wildfire", "started_at", "started_at_local", "overlap"]
+    sub_api_sequences = api_sequences[cols].copy()
+
+    # Cas où aucune valeur locale n'existe encore
+    if not local_sub_sequences:
+        logger.info("No previous local_sub_sequences, sending initial data")
+        return sub_api_sequences.to_json(orient="split")
+
+    local_sub_sequences_df = pd.read_json(StringIO(local_sub_sequences), orient="split")
+
+    if local_sub_sequences_df.empty:
+        logger.info("local_sub_sequences_df is empty, sending data")
+        return sub_api_sequences.to_json(orient="split")
+
+    if not sequences_have_changed(sub_api_sequences, local_sub_sequences_df, ["started_at_local", "is_wildfire"]):
+        logger.info("No change in sub_api_sequences, skipping update")
+        return dash.no_update
+
+    logger.info("Change detected in sub_api_sequences")
+    return sub_api_sequences.to_json(orient="split")
+
+
+@app.callback(
+    [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
+    [Input("sequence_id_on_display", "data")],
+    [
+        State("api_sequences", "data"),
+        State("api_detections", "data"),
+        State("are_detections_loaded", "data"),
+        State("user_token", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def load_detections(sequence_id_on_display, api_sequences, api_detections, are_detections_loaded, user_token):
+    if user_token is None or sequence_id_on_display is None:
         raise PreventUpdate
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    try:
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+        api_detections = dict(json.loads(api_detections))
+        are_detections_loaded = dict(json.loads(are_detections_loaded))
+        sequence_id_on_display = str(sequence_id_on_display)
+    except Exception as e:
+        logger.error(f"Deserialization error: {e}")
+        return dash.no_update, dash.no_update, dash.no_update
+
     if api_sequences.empty:
         return dash.no_update, dash.no_update, dash.no_update
 
-    sequence_id_on_display = str(sequence_id_on_display)
-    are_detections_loaded = json.loads(are_detections_loaded)
-    api_detections = json.loads(api_detections)
-
-    # Initialize sequence_on_display
     sequence_on_display = pd.DataFrame().to_json(orient="split")
-
-    # Identify which input triggered the callback
-    ctx = callback_context
-    if not ctx.triggered:
-        raise PreventUpdate
-
-    triggered_input = ctx.triggered[0]["prop_id"].split(".")[0]
-
     client = get_client(user_token)
 
-    if triggered_input == "sequence_id_on_display":
-        # If the displayed sequence changes, load its detections if not already loaded
-        if sequence_id_on_display not in api_detections:
+    if sequence_id_on_display not in api_detections:
+        try:
             response = client.fetch_sequences_detections(sequence_id_on_display)
             data = response.json()
-            if isinstance(data, list):
-                detections = pd.DataFrame(data)
-            else:
-                detections = pd.DataFrame()
-                logger.error("Error Reading detection")
-
+            detections = pd.DataFrame(data) if isinstance(data, list) else pd.DataFrame()
             if not detections.empty and "bboxes" in detections.columns:
                 detections = detections.iloc[::-1].reset_index(drop=True)
                 detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
             api_detections[sequence_id_on_display] = detections.to_json(orient="split")
+        except Exception as e:
+            logger.error(f"Error fetching detections for {sequence_id_on_display}: {e}")
+            return dash.no_update, dash.no_update, dash.no_update
 
-        sequence_on_display = api_detections[sequence_id_on_display]
-        filtered = api_sequences.loc[api_sequences["id"].astype("str") == sequence_id_on_display, "last_seen_at"]
+    sequence_on_display = api_detections[sequence_id_on_display]
+    filtered = api_sequences.loc[api_sequences["id"].astype(str) == sequence_id_on_display, "last_seen_at"]
 
-        if filtered.empty:
-            return dash.no_update  # or some fallback value / error handling
+    if filtered.empty:
+        return dash.no_update, dash.no_update, dash.no_update
 
-        last_seen_at = filtered.iloc[0]
+    are_detections_loaded[sequence_id_on_display] = str(filtered.iloc[0])
 
-        # Ensure last_seen_at is stored as a string
-        are_detections_loaded[sequence_id_on_display] = str(last_seen_at)
-
-    else:
-        # If no specific sequence is triggered, load detections for the first missing sequence
-        for _, row in api_sequences.iterrows():
-            sequence_id = str(row["id"])
-            last_seen_at = row["last_seen_at"]
-
-            if sequence_id not in are_detections_loaded or are_detections_loaded[sequence_id] != str(last_seen_at):
-                response = client.fetch_sequences_detections(sequence_id)
-                data = response.json()
-                if isinstance(data, list):
-                    detections = pd.DataFrame(data)
-                else:
-                    detections = pd.DataFrame()
-                    logger.error("Error Reading detection")
-
-                if not detections.empty and "bboxes" in detections.columns:
-                    detections = detections.iloc[::-1].reset_index(drop=True)
-                    detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
-                api_detections[sequence_id] = detections.to_json(orient="split")
-                are_detections_loaded[sequence_id] = str(last_seen_at)
-                break
-
-        # Clean up old sequences that are no longer in api_sequences
-        sequences_in_api = api_sequences["id"].astype("str").values
-        to_drop = [key for key in are_detections_loaded if key not in sequences_in_api]
-        for key in to_drop:
-            are_detections_loaded.pop(key, None)
-
-    # Serialize and return data
     return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)

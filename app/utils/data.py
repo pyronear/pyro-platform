@@ -185,27 +185,31 @@ def project_polygon(polygon):
     return shapely_transform(transformer.transform, polygon)
 
 
-def sequences_have_changed(df1, df2):
+def sequences_have_changed(df1, df2, cols_to_check=["last_seen_at_local", "is_wildfire"]):
     if df1.shape != df2.shape:
         return True
 
-    cols_to_check = ["last_seen_at_local", "is_wildfire"]
     if not all(col in df1.columns and col in df2.columns for col in cols_to_check):
         return True
 
     df1_checked = df1[cols_to_check].copy()
     df2_checked = df2[cols_to_check].copy()
 
-    df1_checked["last_seen_at_local"] = pd.to_datetime(df1_checked["last_seen_at_local"]).dt.round("s")
-    df2_checked["last_seen_at_local"] = pd.to_datetime(df2_checked["last_seen_at_local"]).dt.round("s")
+    # Traitements spécifiques pour certaines colonnes
+    for col in cols_to_check:
+        if "datetime" in str(df1_checked[col].dtype) or "date" in col:
+            df1_checked[col] = pd.to_datetime(df1_checked[col], errors="coerce").dt.round("s")
+            df2_checked[col] = pd.to_datetime(df2_checked[col], errors="coerce").dt.round("s")
+        elif col == "is_wildfire":
+            df1_checked[col] = df1_checked[col].astype("boolean").fillna(False)
+            df2_checked[col] = df2_checked[col].astype("boolean").fillna(False)
 
-    df1_checked["is_wildfire"] = df1_checked["is_wildfire"].astype("boolean").fillna(False)
-    df2_checked["is_wildfire"] = df2_checked["is_wildfire"].astype("boolean").fillna(False)
-
-    # Sort by id if available, otherwise by index
+    # Sort by id if available
     if "id" in df1.columns and "id" in df2.columns:
-        df1_checked = df1_checked.set_index(df1["id"]).sort_index()
-        df2_checked = df2_checked.set_index(df2["id"]).sort_index()
+        df1_checked.index = df1["id"]
+        df2_checked.index = df2["id"]
+        df1_checked = df1_checked.sort_index()
+        df2_checked = df2_checked.sort_index()
     else:
         df1_checked = df1_checked.sort_index()
         df2_checked = df2_checked.sort_index()

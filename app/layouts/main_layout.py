@@ -42,6 +42,11 @@ def get_main_layout():
                 data=pd.DataFrame().to_json(orient="split"),
             ),
             dcc.Store(
+                id="sub_api_sequences",
+                storage_type="session",
+                data=pd.DataFrame().to_json(orient="split"),
+            ),
+            dcc.Store(
                 id="api_detections",
                 storage_type="session",
                 data=json.dumps({}),

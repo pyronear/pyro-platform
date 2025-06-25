@@ -83,7 +83,7 @@ def update_language_store(selected_lang):
 @app.callback(
     Output("sequence-list-container", "children"),
     [
-        Input("api_sequences", "data"),
+        Input("sub_api_sequences", "data"),
     ],
     State("api_cameras", "data"),
     State("my-date-picker-single", "date"),
