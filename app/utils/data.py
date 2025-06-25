@@ -189,15 +189,15 @@ def sequences_have_changed(df1, df2):
     if df1.shape != df2.shape:
         return True
 
-    cols_to_check = ["last_seen_at", "is_wildfire"]
+    cols_to_check = ["last_seen_at_local", "is_wildfire"]
     if not all(col in df1.columns and col in df2.columns for col in cols_to_check):
         return True
 
     df1_checked = df1[cols_to_check].copy()
     df2_checked = df2[cols_to_check].copy()
 
-    df1_checked["last_seen_at"] = pd.to_datetime(df1_checked["last_seen_at"]).dt.round("s")
-    df2_checked["last_seen_at"] = pd.to_datetime(df2_checked["last_seen_at"]).dt.round("s")
+    df1_checked["last_seen_at_local"] = pd.to_datetime(df1_checked["last_seen_at_local"]).dt.round("s")
+    df2_checked["last_seen_at_local"] = pd.to_datetime(df2_checked["last_seen_at_local"]).dt.round("s")
 
     df1_checked["is_wildfire"] = df1_checked["is_wildfire"].astype("boolean").fillna(False)
     df2_checked["is_wildfire"] = df2_checked["is_wildfire"].astype("boolean").fillna(False)
