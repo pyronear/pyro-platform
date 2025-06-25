@@ -51,7 +51,7 @@ def display_cam_cards(cameras):
                                         style={"width": "20px", "height": "20px", "marginRight": "5px"},
                                     ),
                                     html.P(
-                                        f"{row["last_active_at_local"]}",
+                                        f"{row['last_active_at_local']}",
                                         style=last_active_at_style,
                                     ),
                                 ],
