@@ -380,6 +380,8 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             dash.no_update,
             dash.no_update,
             {"display": "none"},
+            dash.no_update,
+            dash.no_update,
         )
 
     # Retrieve current sequence data
