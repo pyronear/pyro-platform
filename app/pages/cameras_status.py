@@ -10,29 +10,33 @@ from dash import html
 from translations import translate
 
 import config as cfg
-from utils.display import convert_dt_to_local_tz
 
 
 def display_cam_cards(cameras):
     no_cam_img_url = "assets/images/no-image.svg"
 
     cards = []
+    print(cameras)
     for _, row in cameras.iterrows():
         clock_image_src_issue = "assets/images/clock-error.svg"
         last_active_at_style_issue = {"margin": "0", "color": "#f44336"}
 
-        if str(row["last_active_at"]) == "nan":
+        if not row["last_active_at_local"]:
             clock_image_src = clock_image_src_issue
             last_active_at_style = last_active_at_style_issue
         else:
-            if datetime.now() - datetime.strptime(row["last_active_at"], "%Y-%m-%d %H:%M") > timedelta(
-                minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES
-            ):
+            try:
+                dt_local = datetime.strptime(row["last_active_at_local"], "%Y-%m-%d %H:%M")
+                if datetime.now() - dt_local > timedelta(minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES):
+                    clock_image_src = clock_image_src_issue
+                    last_active_at_style = last_active_at_style_issue
+                else:
+                    clock_image_src = "assets/images/clock.svg"
+                    last_active_at_style = {"margin": "0"}
+            except Exception:
+                # In case parsing fails
                 clock_image_src = clock_image_src_issue
                 last_active_at_style = last_active_at_style_issue
-            else:
-                clock_image_src = "assets/images/clock.svg"
-                last_active_at_style = {"margin": "0"}
 
         card = dbc.Col(
             dbc.Card(
@@ -47,7 +51,7 @@ def display_cam_cards(cameras):
                                         style={"width": "20px", "height": "20px", "marginRight": "5px"},
                                     ),
                                     html.P(
-                                        f"{convert_dt_to_local_tz(row['lat'], row['lon'], row['last_active_at'])}",
+                                        f"{row['last_active_at_local']}",
                                         style=last_active_at_style,
                                     ),
                                 ],

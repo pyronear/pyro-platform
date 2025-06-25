@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry>=1.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "pyro-platform"
@@ -11,10 +11,10 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-dash = ">=2.14.0"
-dash-bootstrap-components = ">=1.5.0"
-dash-leaflet = "^0.1.4"
-dash-extensions= ">=2.0.4"
+dash = "^3.0.2"
+dash-bootstrap-components = "^1.5.0"
+dash-leaflet = "^0.1.28"
+dash-extensions = "^1.0.0"
 pandas = ">=2.1.4"
 pyroclient = { git = "https://github.com/pyronear/pyro-api.git", branch = "main", subdirectory = "client" }
 python-dotenv = ">=1.0.0"
@@ -25,6 +25,10 @@ pytz = ">=2023.3.post1"
 boto3 = "==1.26.158"
 botocore = "==1.29.158"
 opencv-python-headless = ">=4.0.0"
+networkx = ">=3.1"
+numpy = ">=1.24.0"
+shapely = ">=2.0.0"
+pyproj = ">=3.6.0"
 
 [tool.poetry.group.quality]
 optional = true
@@ -35,6 +39,9 @@ mypy = "==1.6.1"
 types-requests = ">=2.0.0"
 pandas-stubs = ">=1.5.2"
 pre-commit = "^2.17.0"
+boto3-stubs = "*"
+types-botocore = "*"
+types-networkx = "*"
 
 [tool.ruff]
 select = [
@@ -45,7 +52,7 @@ select = [
 ignore = [
     "E501", "B008", "B904", "C901", "F403", "E731", "C416"
 ]
-extend-ignore = ["E111", "E114", "E117", "ISC001", "W191"]
+extend-ignore = ["E111", "E114", "E117", "E203", "ISC001", "W191"]
 exclude = [".git"]
 line-length = 120
 target-version = "py311"
@@ -83,5 +90,8 @@ module = [
     "geopy.*",
     "pyroclient.*",
     "flask_caching.*",
+    "boto3.*",
+    "botocore.*",
+    "networkx.*"
 ]
 ignore_missing_imports = true

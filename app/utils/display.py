@@ -15,54 +15,14 @@ import cv2
 import dash_leaflet as dl
 import numpy as np
 import pandas as pd
-import pytz
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
-from timezonefinder import TimezoneFinder
 
 import config as cfg
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
-
-
-tf = TimezoneFinder()
-
-
-def convert_dt_to_local_tz(lat, lon, str_utc_timestamp):
-    """
-    Convert a UTC timestamp string to a local timezone string based on latitude and longitude.
-
-    Parameters:
-    lat (float): Latitude of the location.
-    lon (float): Longitude of the location.
-    str_utc_timestamp (str): UTC timestamp string in ISO 8601 format (e.g., "2023-10-01T12:34:56").
-
-    Returns:
-    str: Local timezone string in the format "%Y-%m-%d %H:%M" or None if the input timestamp is invalid.
-
-    Example:
-    >>> convert_dt_to_local_tz(48.8566, 2.3522, "2023-10-01T12:34:56")
-    '2023-10-01 14:34'
-    """
-    lat = round(lat, 4)
-    lon = round(lon, 4)
-
-    # Convert str_utc_timestamp to a timezone-aware datetime object assuming it's in UTC
-    try:
-        ts_utc = datetime.fromisoformat(str(str_utc_timestamp)).replace(tzinfo=pytz.utc)
-    except ValueError:
-        return None  # Handle invalid datetime format
-
-    # Find the local timezone
-    timezone_str = tf.timezone_at(lat=lat, lng=lon)
-    if timezone_str is None:  # If the timezone is not found, handle it appropriately
-        timezone_str = "UTC"  # Fallback to UTC
-    timezone = pytz.timezone(timezone_str)
-
-    # Convert ts_utc to the local timezone
-    return ts_utc.astimezone(timezone).strftime("%Y-%m-%d %H:%M")
 
 
 def build_departments_geojson():
@@ -162,30 +122,40 @@ def build_sites_markers(api_cameras):
     return markers, client_sites
 
 
-def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=None):
+def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
-    """
-    if bboxes is not None:
-        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, bboxes[0])
 
-    # The center corresponds the point from which the vision angle "starts"
+    Parameters:
+        site_lat (float): Latitude of the camera.
+        site_lon (float): Longitude of the camera.
+        azimuth (float): Central direction of the camera in degrees.
+        opening_angle (float): Field of view in degrees.
+        dist_km (float): Distance to project the polygon edges.
+
+    Returns:
+        polygon (dl.Polygon): The vision cone polygon.
+        azimuth (float): The original azimuth value (unchanged).
+    """
     center = [site_lat, site_lon]
+
+    # Convert float angle to an integer for iteration
+    n_steps = max(1, round(opening_angle))  # avoid range(1,1)
 
     points1 = []
     points2 = []
 
-    for i in reversed(range(1, opening_angle + 1)):
+    for i in reversed(range(1, n_steps + 1)):
         azimuth1 = (azimuth - i / 2) % 360
         azimuth2 = (azimuth + i / 2) % 360
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth1)
-        points1.append([point.latitude, point.longitude])
+        point1 = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth1)
+        point2 = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
-        points2.append([point.latitude, point.longitude])
+        points1.append([point1.latitude, point1.longitude])
+        points2.append([point2.latitude, point2.longitude])
 
-    points = [center, *points1, *list(reversed(points2))]
+    points = [center, *points1, *reversed(points2)]
 
     polygon = dl.Polygon(
         id="vision_polygon",
@@ -194,7 +164,7 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bb
         positions=points,
     )
 
-    return polygon, azimuth
+    return polygon
 
 
 def build_alerts_map(api_cameras, id_suffix=""):
@@ -233,55 +203,85 @@ def build_alerts_map(api_cameras, id_suffix=""):
 
 def create_sequence_list(api_sequences, cameras):
     """
-    This function builds the list of sequences on the left based on sequence data
+    Create a list of cards, one per sequence, with overlap info listed below if applicable.
+    Uses a Dash button wrapper with sequence ID as component ID.
     """
     if api_sequences.empty:
         return []
 
-    filtered_sequences = api_sequences.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
+    api_sequences = api_sequences.copy()
 
     def get_annotation_emoji(value):
         if value == 1.0:
             return "🔥"
         elif value == 0.0:
             return "🚫"
-        else:
-            return ""
+        return ""
 
     def get_camera_info(cam_id):
         cam = cameras[cameras["id"] == cam_id]
         if cam.empty:
             return "Unknown", 0.0, 0.0
         cam_name = cam["name"].values[0][:-3].replace("_", " ")
-        cam_lat = cam["lat"].values[0]
-        cam_lon = cam["lon"].values[0]
-        return cam_name, cam_lat, cam_lon
+        return cam_name, cam["lat"].values[0], cam["lon"].values[0]
 
-    return [
-        html.Button(
-            id={"type": "event-button", "index": sequence["id"]},
-            children=[
-                html.Div(
-                    (
-                        f"{get_camera_info(sequence['camera_id'])[0]}"
-                        f" : {int(sequence['cone_azimuth']) % 360}°"
-                        f" {get_annotation_emoji(sequence.get('is_wildfire'))}"
-                    ),
-                    style={"fontWeight": "bold"},
-                ),
-                html.Div(
-                    convert_dt_to_local_tz(
-                        lat=get_camera_info(sequence["camera_id"])[1],
-                        lon=get_camera_info(sequence["camera_id"])[2],
-                        str_utc_timestamp=sequence["started_at"],
-                    )
-                ),
-            ],
-            n_clicks=0,
-            className="pyronear-card alert-card",
+    api_sequences = api_sequences.sort_values("started_at", ascending=False)
+
+    cards = []
+    for _, row in api_sequences.iterrows():
+        cam_name, _, _ = get_camera_info(row["camera_id"])
+        azimuth = int(row["cone_azimuth"]) % 360
+        emoji = get_annotation_emoji(row.get("is_wildfire"))
+
+        date_str, time_str = row["started_at_local"].split(" ")
+        time_str = time_str[:5]
+
+        header = html.Div(f"📅 {date_str} • ⏱ {time_str}", style={"fontWeight": "bold", "marginBottom": "3px"})
+        main_detection = html.Div(
+            f"📷 {cam_name} ({azimuth}°) {emoji}",
+            style={
+                "display": "block",
+                "textAlign": "left",
+                "fontWeight": "bold",
+            },
         )
-        for _, sequence in filtered_sequences.iterrows()
-    ]
+
+        overlaps = []
+        if isinstance(row.get("overlap"), list):
+            for group in row["overlap"]:
+                for sid in group:
+                    if sid == row["id"]:
+                        continue
+                    match = api_sequences[api_sequences["id"] == sid]
+                    if not match.empty:
+                        m = match.iloc[0]
+                        match_name, _, _ = get_camera_info(m["camera_id"])
+                        match_azimuth = int(m["cone_azimuth"]) % 360
+                        match_time = row["started_at"].strftime("%H:%M")
+                        overlaps.append(
+                            html.Div(
+                                f"↳ {match_name} ({match_azimuth}°) • {match_time}",
+                                style={
+                                    "fontSize": "12px",
+                                    "paddingLeft": "8px",
+                                    "color": "#555",
+                                    "display": "block",
+                                    "textAlign": "left",
+                                    "verticalAlign": "bottom",
+                                },
+                            )
+                        )
+
+        card = html.Button(
+            id={"type": "event-button", "index": row["id"]},
+            children=[header, main_detection, *overlaps],
+            className="pyronear-card alert-card",
+            style={"marginBottom": "10px"},
+            n_clicks=0,
+        )
+        cards.append(card)
+
+    return cards
 
 
 def bboxes_overlap(b1, b2, iou_threshold=0.1):

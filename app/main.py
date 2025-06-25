@@ -49,7 +49,6 @@ server = app.server  # Gunicorn will be looking for the server attribute of this
 def download_file(filename):
     zip_dir = os.path.join(os.getcwd(), "zips")  # Full path to the zips folder
     file_path = os.path.join(zip_dir, filename)
-    print("file_path")
 
     if not os.path.exists(file_path):
         return f"File {filename} not found.", 404

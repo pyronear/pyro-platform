@@ -4,9 +4,56 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
+from collections import defaultdict
+from datetime import datetime
 from typing import List
 
+import networkx as nx  # type: ignore
+import numpy as np
 import pandas as pd
+import pytz
+from geopy.distance import geodesic
+from pyproj import Transformer
+from shapely.geometry import Polygon  # type: ignore
+from shapely.ops import transform as shapely_transform  # type: ignore
+from timezonefinder import TimezoneFinder
+
+tf = TimezoneFinder()
+
+
+def convert_dt_to_local_tz(lat, lon, str_utc_timestamp):
+    """
+    Convert a UTC timestamp string to a local timezone string based on latitude and longitude.
+
+    Parameters:
+    lat (float): Latitude of the location.
+    lon (float): Longitude of the location.
+    str_utc_timestamp (str): UTC timestamp string in ISO 8601 format (e.g., "2023-10-01T12:34:56").
+
+    Returns:
+    str: Local timezone string in the format "%Y-%m-%d %H:%M" or None if the input timestamp is invalid.
+
+    Example:
+    >>> convert_dt_to_local_tz(48.8566, 2.3522, "2023-10-01T12:34:56")
+    '2023-10-01 14:34'
+    """
+    lat = round(lat, 4)
+    lon = round(lon, 4)
+
+    # Convert str_utc_timestamp to a timezone-aware datetime object assuming it's in UTC
+    try:
+        ts_utc = datetime.fromisoformat(str(str_utc_timestamp)).replace(tzinfo=pytz.utc)
+    except ValueError:
+        return None  # Handle invalid datetime format
+
+    # Find the local timezone
+    timezone_str = tf.timezone_at(lat=lat, lng=lon)
+    if timezone_str is None:  # If the timezone is not found, handle it appropriately
+        timezone_str = "UTC"  # Fallback to UTC
+    timezone = pytz.timezone(timezone_str)
+
+    # Convert ts_utc to the local timezone
+    return ts_utc.astimezone(timezone).strftime("%Y-%m-%d %H:%M")
 
 
 def process_bbox(input_str):
@@ -111,4 +158,110 @@ def assign_event_ids(df, time_threshold=30 * 60):
 
     # Add the event_id column to the DataFrame
     df["event_id"] = event_ids
+    return df
+
+
+def get_projected_cone(row, R_km, r_min_km):
+    poly = build_cone_polygon(row["lat"], row["lon"], row["cone_azimuth"], row["cone_angle"], R_km, r_min_km)
+    return project_polygon(poly)
+
+
+def build_cone_polygon(lat, lon, azimuth, opening_angle, dist_km, r_min_km, resolution=36):
+    half_angle = opening_angle / 2
+    angles = np.linspace(azimuth - half_angle, azimuth + half_angle, resolution)
+    outer_arc = [geodesic(kilometers=dist_km).destination((lat, lon), az % 360) for az in angles]
+    outer_points = [(p.longitude, p.latitude) for p in outer_arc]
+
+    if r_min_km > 0:
+        inner_arc = [geodesic(kilometers=r_min_km).destination((lat, lon), az % 360) for az in reversed(angles)]
+        inner_points = [(p.longitude, p.latitude) for p in inner_arc]
+        return Polygon(outer_points + inner_points, holes=[inner_points]).buffer(0)
+    else:
+        return Polygon([(lon, lat), *outer_points]).buffer(0)
+
+
+def project_polygon(polygon):
+    transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
+    return shapely_transform(transformer.transform, polygon)
+
+
+def sequences_have_changed(df1, df2, cols_to_check=None):
+    if cols_to_check is None:
+        cols_to_check = ["last_seen_at_local", "is_wildfire"]
+
+    if df1.shape != df2.shape:
+        return True
+
+    if not all(col in df1.columns and col in df2.columns for col in cols_to_check):
+        return True
+
+    df1_checked = df1[cols_to_check].copy()
+    df2_checked = df2[cols_to_check].copy()
+
+    # Traitements spécifiques pour certaines colonnes
+    for col in cols_to_check:
+        if "datetime" in str(df1_checked[col].dtype) or "date" in col:
+            df1_checked[col] = pd.to_datetime(df1_checked[col], errors="coerce").dt.round("s")
+            df2_checked[col] = pd.to_datetime(df2_checked[col], errors="coerce").dt.round("s")
+        elif col == "is_wildfire":
+            df1_checked[col] = df1_checked[col].astype("boolean").fillna(False)
+            df2_checked[col] = df2_checked[col].astype("boolean").fillna(False)
+
+    # Sort by id if available
+    if "id" in df1.columns and "id" in df2.columns:
+        df1_checked.index = df1["id"]
+        df2_checked.index = df2["id"]
+        df1_checked = df1_checked.sort_index()
+        df2_checked = df2_checked.sort_index()
+    else:
+        df1_checked = df1_checked.sort_index()
+        df2_checked = df2_checked.sort_index()
+
+    return not df1_checked.equals(df2_checked)
+
+
+def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
+    """
+    Compute mutually overlapping cone groups (cliques) between camera sequences.
+
+    Each output group in the 'overlap' column contains only sequences that all overlap pairwise.
+
+    Parameters:
+        api_sequences (pd.DataFrame): Must contain:
+            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle'
+            - 'started_at', 'last_seen_at' (datetime-compatible)
+        R_km (float): Maximum detection range of the cone.
+        r_min_km (float): Inner radius of the cone.
+
+    Returns:
+        pd.DataFrame: Copy of input with new column 'overlap' containing list of cliques (or None).
+    """
+    df = api_sequences.copy()
+    df["started_at"] = pd.to_datetime(df["started_at"])
+    df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
+
+    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df.iterrows()}
+
+    overlapping_pairs = []
+    ids = df["id"].tolist()
+
+    for i, id1 in enumerate(ids):
+        row1 = df[df["id"] == id1].iloc[0]
+        for id2 in ids[i + 1 :]:
+            row2 = df[df["id"] == id2].iloc[0]
+            if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
+                continue
+            if projected_cones[id1].intersects(projected_cones[id2]):
+                overlapping_pairs.append((id1, id2))
+
+    G = nx.Graph()
+    G.add_edges_from(overlapping_pairs)
+    cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G) if len(clique) >= 2]
+
+    id_to_groups = defaultdict(list)
+    for group in cliques:
+        for sid in group:
+            id_to_groups[sid].append(group)
+
+    df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
     return df
