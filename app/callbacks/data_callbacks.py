@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import convert_dt_to_local_tz, process_bbox, sequences_have_changed
+from utils.data import convert_dt_to_local_tz, process_bbox, sequences_have_changed, compute_overlap
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -272,8 +272,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
                 axis=1,
             )
 
-            # api_sequences = compute_overlap(api_sequences)
-            api_sequences["overlap"] = [None] * len(api_sequences)
+            api_sequences = compute_overlap(api_sequences)
 
         # Load local sequences safely
         if local_sequences:
