@@ -301,19 +301,19 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
     prevent_initial_call=True,
 )
 def update_sub_api_sequences(api_sequences, local_sub_sequences):
+    cols = ["id", "camera_id", "cone_azimuth", "is_wildfire", "started_at", "started_at_local", "overlap"]
+
     api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
 
     if api_sequences.empty:
-        logger.info("api_sequences is empty, skipping update")
-        return dash.no_update
+        logger.info("api_sequences is empty, returning empty DataFrame with expected columns")
+        empty_df = pd.DataFrame(columns=cols)
+        return empty_df.to_json(orient="split")
 
     logger.info("update_sub_api_sequences triggered")
 
-    # Colonnes qu'on veut conserver
-    cols = ["id", "camera_id", "cone_azimuth", "is_wildfire", "started_at", "started_at_local", "overlap"]
     sub_api_sequences = api_sequences[cols].copy()
 
-    # Cas où aucune valeur locale n'existe encore
     if not local_sub_sequences:
         logger.info("No previous local_sub_sequences, sending initial data")
         return sub_api_sequences.to_json(orient="split")
