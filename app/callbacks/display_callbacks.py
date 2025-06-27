@@ -447,7 +447,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
-        camera_name = camera_row["name"].rsplit("-", 1)[0].replace("_", " ")
+        camera_name = camera_row["name"].replace("_", " ")
     else:
         camera_name = "Unknown camera"
 
