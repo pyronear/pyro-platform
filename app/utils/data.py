@@ -224,11 +224,11 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     """
     Compute mutually overlapping cone groups (cliques) between camera sequences.
 
-    Each output group in the 'overlap' column contains only sequences that all overlap pairwise.
+    Sequences with is_wildfire == 0.0 are excluded from overlap computation.
 
     Parameters:
         api_sequences (pd.DataFrame): Must contain:
-            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle'
+            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle', 'is_wildfire'
             - 'started_at', 'last_seen_at' (datetime-compatible)
         R_km (float): Maximum detection range of the cone.
         r_min_km (float): Inner radius of the cone.
@@ -240,15 +240,21 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df.iterrows()}
+    # Only keep sequences for overlap computation if is_wildfire != 0.0
+    df_valid = df[df["is_wildfire"] != 0.0]
+
+    projected_cones = {
+        row["id"]: get_projected_cone(row, R_km, r_min_km)
+        for _, row in df_valid.iterrows()
+    }
 
     overlapping_pairs = []
-    ids = df["id"].tolist()
+    ids = df_valid["id"].tolist()
 
     for i, id1 in enumerate(ids):
-        row1 = df[df["id"] == id1].iloc[0]
-        for id2 in ids[i + 1 :]:
-            row2 = df[df["id"] == id2].iloc[0]
+        row1 = df_valid[df_valid["id"] == id1].iloc[0]
+        for id2 in ids[i + 1:]:
+            row2 = df_valid[df_valid["id"] == id2].iloc[0]
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
             if projected_cones[id1].intersects(projected_cones[id2]):
@@ -265,3 +271,4 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
 
     df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
     return df
+
