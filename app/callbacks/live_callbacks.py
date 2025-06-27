@@ -403,7 +403,7 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
             f"[update_cone_and_center] Drawing cone for '{cam_name}' at azimuth={adjusted_azimuth:.2f}° (FOV={opening_angle:.2f}°)"
         )
 
-        cone, _ = build_vision_polygon(
+        cone = build_vision_polygon(
             site_lat=site_lat,
             site_lon=site_lon,
             azimuth=adjusted_azimuth,
