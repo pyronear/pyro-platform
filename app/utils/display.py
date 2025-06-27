@@ -236,9 +236,9 @@ def create_sequence_list(api_sequences, cameras):
         date_str, time_str = row["started_at_local"].split(" ")
         time_str = time_str[:5]
 
-        header = html.Div(f"📅 {date_str} • ⏱ {time_str}", style={"fontWeight": "bold", "marginBottom": "3px"})
+        header = html.Div(f"📅 {date_str} ⏱ {time_str} {emoji}", style={"fontWeight": "bold", "textAlign": "left", "marginBottom": "3px"})
         main_detection = html.Div(
-            f"📷 {cam_name} ({azimuth}°) {emoji}",
+            f"📷 {cam_name} ({azimuth}°)",
             style={
                 "display": "block",
                 "textAlign": "left",
@@ -257,7 +257,7 @@ def create_sequence_list(api_sequences, cameras):
                         m = match.iloc[0]
                         match_name, _, _ = get_camera_info(m["camera_id"])
                         match_azimuth = int(m["cone_azimuth"]) % 360
-                        match_time = row["started_at"].strftime("%H:%M")
+                        match_time = m["started_at_local"].split(" ")[1]
                         overlaps.append(
                             html.Div(
                                 f"↳ {match_name} ({match_azimuth}°) • {match_time}",
