@@ -522,9 +522,8 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     Input("smoke-location-copy-content", "children"),
 )
 def update_fire_markers(smoke_location_str):
-    print("update", smoke_location_str)
+    logger.info("update", smoke_location_str)
     if not smoke_location_str:
-        print("no update")
         return [dash.no_update, 0, "", dash.no_update, 0, ""]
 
     try:
@@ -532,7 +531,7 @@ def update_fire_markers(smoke_location_str):
         lat = float(lat_str.strip())
         lon = float(lon_str.strip())
     except Exception as e:
-        print("Invalid smoke_location_str:", smoke_location_str, "Error:", e)
+        logger.error("Invalid smoke_location_str:", smoke_location_str, "Error:", e)
         return [dash.no_update, 0, "", dash.no_update, 0, ""]
 
     pos = [lat, lon]
