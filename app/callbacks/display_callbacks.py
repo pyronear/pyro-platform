@@ -363,6 +363,7 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("alert-information", "style"),
         Output("camera-location-copy-content", "children"),
         Output("smoke-location-copy-content", "children"),
+        Output("smoke-location", "style"),
     ],
     Input("sequence_id_on_display", "data"),
     [
@@ -393,6 +394,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             dash.no_update,
             dash.no_update,
             {"display": "none"},
+            dash.no_update,
             dash.no_update,
             dash.no_update,
         )
@@ -470,12 +472,14 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         map_center = [site_lat, site_lon]
 
     # Default center and smoke location: use the current sequence location
+    smoke_location_style = {"display": "none"}
     map_center = [site_lat, site_lon]
     copyable_smoke_location = ""
 
     # Only attempt triangulation if more than one cone
     if len(shapely_polys) > 1:
         intersection = shapely_polys[0]
+
         for poly in shapely_polys[1:]:
             intersection = intersection.intersection(poly)
 
@@ -483,6 +487,12 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             centroid = intersection.centroid
             map_center = [centroid.y, centroid.x]
             copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
+
+            smoke_location_style = {
+                "display": "flex",
+                "alignItems": "center",
+                "marginTop": "6px",
+            }
 
     return (
         cones,
@@ -496,6 +506,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         {"display": "block"},
         copyable_location,
         copyable_smoke_location,
+        smoke_location_style,
     )
 
 
