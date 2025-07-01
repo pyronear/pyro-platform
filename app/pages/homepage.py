@@ -342,31 +342,33 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                             ),
                                             html.Div(
                                                 id="smoke-location",
-                                                style={
-                                                    "display": "flex",
-                                                    "alignItems": "center",
-                                                    "marginTop": "6px",
-                                                },
+                                                style={"marginTop": "6px"},
                                                 children=[
                                                     html.Span(
                                                         translate("smoke_location", lang),
                                                         className="alert-information-title",
-                                                        style={"margin-right": "6px"},
+                                                        style={"display": "block", "marginBottom": "4px"},
                                                     ),
-                                                    html.Span(
-                                                        id="smoke-location-copy-content",
-                                                        children="",  # mis à jour par le callback
-                                                        style={"display": "none"},
-                                                    ),
-                                                    dcc.Clipboard(
-                                                        id="clipboard-smoke-location",
-                                                        target_id="smoke-location-copy-content",
-                                                        title="Copier",
-                                                        style={
-                                                            "border": "none",
-                                                            "background": "transparent",
-                                                            "cursor": "pointer",
-                                                        },
+                                                    html.Div(
+                                                        style={"display": "flex", "alignItems": "center"},
+                                                        children=[
+                                                            html.Span(
+                                                                id="smoke-location-copy-content",
+                                                                children="48.5595, 2.5468",  # Or dynamically updated
+                                                                style={"marginRight": "6px", "whiteSpace": "nowrap"},
+                                                            ),
+                                                            dcc.Clipboard(
+                                                                id="clipboard-smoke-location",
+                                                                target_id="smoke-location-copy-content",
+                                                                title="Copier",
+                                                                style={
+                                                                    "border": "none",
+                                                                    "background": "transparent",
+                                                                    "cursor": "pointer",
+                                                                    "padding": 0,
+                                                                },
+                                                            ),
+                                                        ],
                                                     ),
                                                 ],
                                             ),
