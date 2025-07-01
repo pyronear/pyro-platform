@@ -231,18 +231,21 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     Parameters:
         api_sequences (pd.DataFrame): Must contain:
             - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle', 'is_wildfire'
-            - 'started_at', 'last_seen_at' (datetime-compatible)
+            - 'started_at', 'last_seen_at', 'started_at_local' (datetime-compatible or str)
         R_km (float): Maximum detection range of the cone.
         r_min_km (float): Inner radius of the cone.
 
     Returns:
-        pd.DataFrame: Copy of input with new column 'overlap' containing list of cliques (or None).
+        Tuple[pd.DataFrame, pd.DataFrame]:
+            - DataFrame with 'overlap' column per sequence
+            - Event table with 'event_id', 'sequences', 'time'
     """
     df = api_sequences.copy()
+    df["id"] = df["id"].astype(int)
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    # Only keep sequences for overlap computation if is_wildfire != 0.0
+    # Only keep sequences with non-zero is_wildfire
     df_valid = df[df["is_wildfire"] != 0.0]
 
     projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
@@ -269,4 +272,31 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
             id_to_groups[sid].append(group)
 
     df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
-    return df
+
+    # Create a table with one row per event (overlapping group or standalone)
+    event_records = []
+    event_counter = 0
+    added_ids = set()
+
+    # First, record all cliques
+    for group in cliques:
+        group_ids = sorted(int(sid) for sid in group)
+        group_df = df[df["id"].isin(group_ids)]
+        group_time = group_df["started_at_local"].min()
+        event_records.append({"event_id": f"event_{event_counter}", "sequences": group_ids, "time": group_time})
+        added_ids.update(group_ids)
+        event_counter += 1
+
+    # Then, add standalone sequences
+    all_ids = set(df["id"])
+    for sid in sorted(all_ids - added_ids):
+        row = df[df["id"] == sid].iloc[0]
+        event_records.append({
+            "event_id": f"event_{event_counter}",
+            "sequences": [int(sid)],
+            "time": row["started_at_local"],
+        })
+        event_counter += 1
+
+    event_id_table = pd.DataFrame(event_records)
+    return df, event_id_table

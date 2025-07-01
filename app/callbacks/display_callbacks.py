@@ -79,31 +79,24 @@ def update_language_store(selected_lang):
     return selected_lang
 
 
-# Create event list
 @app.callback(
     Output("sequence-list-container", "children"),
-    [
-        Input("sub_api_sequences", "data"),
-    ],
+    Input("sub_api_sequences", "data"),
     State("api_cameras", "data"),
-    State("my-date-picker-single", "date"),
+    State("event_id_table", "data"),
 )
-def update_event_list(api_sequences, cameras, selected_date):
-    """
-    Updates the event list based on changes in the events data
-
-    Parameters:
-    - api_detections (json): JSON formatted data containing current alerts information.
-
-    Returns:
-    - html.Div: A Div containing the updated list of alerts.
-    """
+def update_event_list(api_sequences, cameras, event_id_table):
     logger.info("update_event_list")
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
+    # Deserialize all inputs safely
+    if isinstance(api_sequences, str):
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if isinstance(cameras, str):
+        cameras = pd.read_json(StringIO(cameras), orient="split")
+    if isinstance(event_id_table, str):
+        event_id_table = pd.read_json(StringIO(event_id_table), orient="split")
 
-    return create_sequence_list(api_sequences, cameras)
+    return create_sequence_list(api_sequences, cameras, event_id_table)
 
 
 @app.callback(
