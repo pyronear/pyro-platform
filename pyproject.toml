@@ -44,6 +44,12 @@ types-botocore = "*"
 types-networkx = "*"
 
 [tool.ruff]
+exclude = [".git"]
+line-length = 120
+target-version = "py311"
+preview = true
+
+[tool.ruff.lint]
 select = [
     "E", "W",
     "D201", "D202", "D207", "D208", "D214", "D215", "D300", "D301", "D419",
@@ -53,18 +59,15 @@ ignore = [
     "E501", "B008", "B904", "C901", "F403", "E731", "C416"
 ]
 extend-ignore = ["E111", "E114", "E117", "E203", "ISC001", "W191"]
-exclude = [".git"]
-line-length = 120
-target-version = "py311"
-preview = true
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["I001", "F401", "CPY001"]
 ".github/**.py" = ["D"]
 "app/index.py" = ["F401"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["config", "pages", "components", "utils", "services"]
+
 
 [tool.mypy]
 python_version = "3.11"
