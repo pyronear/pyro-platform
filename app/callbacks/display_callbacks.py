@@ -520,11 +520,13 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         Output("fire-marker-coords-md", "children"),
     ],
     Input("smoke-location-copy-content", "children"),
+    State("api_sequences", "data"),
 )
-def update_fire_markers(smoke_location_str):
+def update_fire_markers(smoke_location_str, api_sequences):
     logger.info(f"update {smoke_location_str}")
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
 
-    if not smoke_location_str:
+    if not smoke_location_str or api_sequences.empty:
         return [dash.no_update, 0, "", dash.no_update, 0, ""]
 
     try:
@@ -740,25 +742,26 @@ def update_datepicker(open_clicks, selected_date):
 @app.callback(
     Output("selected-camera-info", "data"),
     Input("start-live-stream", "n_clicks"),
+    State("alert-azimuth-value", "children"),
     State("alert-camera-value", "children"),
     State("alert-azimuth-value", "children"),
     prevent_initial_call=True,
 )
-def pick_live_stream_camera(n_clicks, camera_label, azimuth_label):
+def pick_live_stream_camera(n_clicks, azimuth, camera_label, azimuth_label):
     logger.info("pick_live_stream_camera")
 
     if not camera_label or not azimuth_label:
         raise PreventUpdate
     try:
-        cam_name, _, azimuth_camera = camera_label.split(" ")
-        azimuth_camera = int(azimuth_camera.replace("°", ""))
+        cam_name, _, _ = camera_label.split(" ")
+        azimuth = int(azimuth.replace("°", ""))
         # detection_azimuth = int(azimuth_label.replace("°", "").strip()) Need azimuth refine first
     except Exception as e:
         logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
         raise PreventUpdate
 
-    logger.info(f"Selected camera={cam_name}, azimuth={azimuth_camera}")
-    return (cam_name, azimuth_camera)
+    logger.info(f"Selected camera={cam_name}, azimuth={azimuth}")
+    return (cam_name, azimuth)
 
 
 @app.callback(
