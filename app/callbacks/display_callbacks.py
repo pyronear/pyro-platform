@@ -15,7 +15,7 @@ import logging_config
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
-from dash.dependencies import ALL, Input, Output
+from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
