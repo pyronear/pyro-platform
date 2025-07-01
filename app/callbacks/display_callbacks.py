@@ -79,101 +79,111 @@ def update_language_store(selected_lang):
     return selected_lang
 
 
-# Create event list
 @app.callback(
     Output("sequence-list-container", "children"),
-    [
-        Input("sub_api_sequences", "data"),
-    ],
+    Input("sub_api_sequences", "data"),
     State("api_cameras", "data"),
-    State("my-date-picker-single", "date"),
+    State("event_id_table", "data"),
 )
-def update_event_list(api_sequences, cameras, selected_date):
-    """
-    Updates the event list based on changes in the events data
-
-    Parameters:
-    - api_detections (json): JSON formatted data containing current alerts information.
-
-    Returns:
-    - html.Div: A Div containing the updated list of alerts.
-    """
+def update_event_list(api_sequences, cameras, event_id_table):
     logger.info("update_event_list")
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
+    # Deserialize all inputs safely
+    if isinstance(api_sequences, str):
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if isinstance(cameras, str):
+        cameras = pd.read_json(StringIO(cameras), orient="split")
+    if isinstance(event_id_table, str):
+        event_id_table = pd.read_json(StringIO(event_id_table), orient="split")
 
-    return create_sequence_list(api_sequences, cameras)
+    return create_sequence_list(api_sequences, cameras, event_id_table)
 
 
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
-        Output("sequence_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
         Output("custom_js_trigger", "title"),
+        Output("sequence_dropdown", "options"),
+        Output("sequence_dropdown", "value"),  # new: pre-select first
+        Output("sequence_dropdown_container", "style"),
     ],
-    [
-        Input({"type": "event-button", "index": ALL}, "n_clicks"),
-    ],
+    Input({"type": "event-button", "index": ALL}, "n_clicks"),
     [
         State({"type": "event-button", "index": ALL}, "id"),
+        State("event_id_table", "data"),
         State("api_sequences", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, api_sequences):
+def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequences_json):
     logger.info("select_event_with_button")
 
     ctx = dash.callback_context
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    if api_sequences.empty:
-        return [[{} for _ in button_ids], dash.no_update, 1, "reset_zoom"]
-
-    # Default to first ID in api_sequences if nothing triggered
     if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
-        default_id = api_sequences["id"].iloc[0]
-        num_buttons = len(button_ids)
-        styles = [{} for _ in range(num_buttons)]
-        return [styles, default_id, 1, "reset_zoom"]
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
 
-    # Which button triggered the callback
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if button_id:
-        button_index = json.loads(button_id)["index"]
-    else:
-        if button_ids:
-            button_index = button_ids[0]["index"]
-        else:
-            button_index = 0
+    selected_event_id = json.loads(button_id)["index"]
 
-    # Find overlap group(s) of selected sequence
-    selected_row = api_sequences[api_sequences["id"] == button_index]
-    overlap_ids = set()
-    if not selected_row.empty:
-        overlap_groups = selected_row.iloc[0].get("overlap", [])
-        if overlap_groups:
-            if isinstance(overlap_groups, list):
-                for group in overlap_groups:
-                    for seq_id in group:
-                        if seq_id != button_index:
-                            overlap_ids.add(seq_id)
+    event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
+    api_sequences = pd.read_json(StringIO(api_sequences_json), orient="split")
 
-    # Build button styles
+    selected_event = event_id_table[event_id_table["event_id"] == selected_event_id]
+    if selected_event.empty or api_sequences.empty:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    sequence_ids = selected_event.iloc[0]["sequences"]
+    if not isinstance(sequence_ids, list) or not sequence_ids:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    dropdown_options = []
+    for sid in sequence_ids:
+        match = api_sequences[api_sequences["id"] == sid]
+        if not match.empty:
+            row = match.iloc[0]
+            name = str(row.get("name", "Unknown")).replace("_", " ").replace("-", " ")
+            azimuth = int(float(row.get("cone_azimuth", 0.0))) % 360
+            label = f"{name} ({azimuth}°)"
+            dropdown_options.append({"label": label, "value": sid})
+
+    dropdown_visible_style = {
+        "padding": "10px 20px",
+        "borderRadius": "8px",
+        "backgroundColor": "#f5f9f8",
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "10px",
+    }
+
     styles = []
     for button in button_ids:
-        seq_id = button["index"]
         style = {}
-
-        if seq_id == button_index:
-            style["backgroundColor"] = "#feba6a"  # Selected button
-            style["border"] = "2px solid red"  # Overlapping match
-        elif seq_id in overlap_ids:
-            style["border"] = "1px solid red"  # Overlapping match
-
+        if button["index"] == selected_event_id:
+            style["backgroundColor"] = "#feba6a"
+            style["border"] = "2px solid red"
         styles.append(style)
 
-    return [styles, button_index, 1, "reset_zoom"]
+    # Set first option as default value
+    default_value = dropdown_options[0]["value"] if dropdown_options else None
+
+    return [
+        styles,
+        1,
+        "reset_zoom",
+        dropdown_options,
+        default_value,
+        dropdown_visible_style,
+    ]
+
+
+@app.callback(
+    Output("sequence_id_on_display", "data"),
+    Input("sequence_dropdown", "value"),
+)
+def update_sequence_on_dropdown_change(selected_sequence_id):
+    logger.info(f"Dropdown selected sequence {selected_sequence_id}")
+    return selected_sequence_id
 
 
 @app.callback(
@@ -353,13 +363,19 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("alert-information", "style"),
         Output("camera-location-copy-content", "children"),
         Output("smoke-location-copy-content", "children"),
+        Output("smoke-location", "style"),
     ],
     Input("sequence_id_on_display", "data"),
-    [State("api_cameras", "data"), State("api_sequences", "data")],
+    [
+        State("api_cameras", "data"),
+        State("api_sequences", "data"),
+        State("sequence_dropdown", "options"),
+    ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
+def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options):
     logger.info("update_map_and_alert_info")
+
     if sequence_id_on_display is None:
         raise PreventUpdate
 
@@ -367,7 +383,6 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     df_cameras = pd.read_json(StringIO(cameras), orient="split")
     sequence_id_on_display = str(sequence_id_on_display)
 
-    # Check if the sequence exists
     if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
         return (
             [],
@@ -381,18 +396,17 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             {"display": "none"},
             dash.no_update,
             dash.no_update,
+            dash.no_update,
         )
 
-    # Retrieve current sequence data
+    # Séquence principale
     current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
-
     site_lat = current_sequence["lat"]
     site_lon = current_sequence["lon"]
     azimuth = float(current_sequence["azimuth"])
     azimuth_detection = float(current_sequence["cone_azimuth"])
     opening_angle = float(current_sequence["cone_angle"])
 
-    # Main detection vision cone
     polygon_detection = build_vision_polygon(
         site_lat=site_lat,
         site_lon=site_lon,
@@ -400,50 +414,23 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         opening_angle=opening_angle,
         dist_km=cfg.CAM_RANGE_KM,
     )
-
     cones = [polygon_detection]
 
-    overlapping_ids = set()
+    # Autres séquences listées dans le dropdown
+    other_ids = [str(opt["value"]) for opt in dropdown_options if str(opt["value"]) != sequence_id_on_display]
+    for other_id in other_ids:
+        if other_id in df_sequences["id"].astype(str).values:
+            seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
+            poly = build_vision_polygon(
+                site_lat=seq["lat"],
+                site_lon=seq["lon"],
+                azimuth=float(seq["cone_azimuth"]),
+                opening_angle=float(seq["cone_angle"]),
+                dist_km=cfg.CAM_RANGE_KM,
+            )
+            cones.append(poly)
 
-    if "overlap" in df_sequences.columns:
-        for overlaps in df_sequences["overlap"].dropna():
-            try:
-                # Supports lists or tuples containing groups of size >= 2
-                if isinstance(overlaps, (list, tuple)):
-                    for group in overlaps:
-                        if isinstance(group, (list, tuple)) and len(group) >= 2:
-                            group_str = list(map(str, group))
-                            if sequence_id_on_display in group_str:
-                                overlapping_ids.update(group_str)
-                elif isinstance(overlaps, str):
-                    import ast
-
-                    parsed = ast.literal_eval(overlaps)
-                    if isinstance(parsed, (list, tuple)):
-                        for group in parsed:
-                            if isinstance(group, (list, tuple)) and len(group) >= 2:
-                                group_str = list(map(str, group))
-                                if sequence_id_on_display in group_str:
-                                    overlapping_ids.update(group_str)
-            except Exception as e:
-                logger.warning(f"Invalid overlap entry: {overlaps} ({e})")
-
-        overlapping_ids.discard(sequence_id_on_display)
-
-        for other_id in overlapping_ids:
-            if other_id in df_sequences["id"].astype(str).values:
-                other_seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
-
-                poly = build_vision_polygon(
-                    site_lat=other_seq["lat"],
-                    site_lon=other_seq["lon"],
-                    azimuth=float(other_seq["cone_azimuth"]),
-                    opening_angle=float(other_seq["cone_angle"]),
-                    dist_km=cfg.CAM_RANGE_KM,
-                )
-                cones.append(poly)
-
-    # Match the sequence to a camera
+    # Nom de la caméra
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
@@ -451,11 +438,9 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     else:
         camera_name = "Unknown camera"
 
-    # Alert panel information
     camera_info = f"{camera_name} : {int(azimuth)}°"
-    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
-
     angle_info = f"{int(azimuth_detection) % 360}°"
+    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
 
     start_date_info = (
         current_sequence["started_at_local"].split(" ")[-1] if pd.notnull(current_sequence["started_at_local"]) else ""
@@ -466,14 +451,13 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         else ""
     )
 
-    # Convert cones to Shapely polygons
+    # Intersection éventuelle des cônes
     shapely_polys = []
     for cone in cones:
         positions = getattr(cone, "positions", None)
         if positions and len(positions) >= 3:
             shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
 
-    # Compute intersection between cones
     if shapely_polys:
         intersection = shapely_polys[0]
         for poly in shapely_polys[1:]:
@@ -483,14 +467,32 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             centroid = intersection.centroid
             map_center = [centroid.y, centroid.x]
         else:
-            # fallback if no intersection
             map_center = [site_lat, site_lon]
     else:
         map_center = [site_lat, site_lon]
 
-    map_center = [float(x) for x in map_center]
+    # Default center and smoke location: use the current sequence location
+    smoke_location_style = {"display": "none"}
+    map_center = [site_lat, site_lon]
+    copyable_smoke_location = ""
 
-    copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
+    # Only attempt triangulation if more than one cone
+    if len(shapely_polys) > 1:
+        intersection = shapely_polys[0]
+
+        for poly in shapely_polys[1:]:
+            intersection = intersection.intersection(poly)
+
+        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
+            centroid = intersection.centroid
+            map_center = [centroid.y, centroid.x]
+            copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
+
+            smoke_location_style = {
+                "display": "flex",
+                "alignItems": "center",
+                "marginTop": "6px",
+            }
 
     return (
         cones,
@@ -504,7 +506,38 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         {"display": "block"},
         copyable_location,
         copyable_smoke_location,
+        smoke_location_style,
     )
+
+
+@app.callback(
+    [
+        Output("fire-location-marker", "position"),
+        Output("fire-location-marker", "opacity"),
+        Output("fire-marker-coords", "children"),
+        Output("fire-location-marker-md", "position"),
+        Output("fire-location-marker-md", "opacity"),
+        Output("fire-marker-coords-md", "children"),
+    ],
+    Input("smoke-location-copy-content", "children"),
+)
+def update_fire_markers(smoke_location_str):
+    logger.info("update", smoke_location_str)
+    if not smoke_location_str:
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    try:
+        lat_str, lon_str = smoke_location_str.split(", ")
+        lat = float(lat_str.strip())
+        lon = float(lon_str.strip())
+    except Exception as e:
+        logger.error("Invalid smoke_location_str:", smoke_location_str, "Error:", e)
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    pos = [lat, lon]
+    coords_str = f"{lat:.4f}, {lon:.4f}"
+
+    return [pos, 1, coords_str, pos, 1, coords_str]
 
 
 @app.callback(
@@ -612,7 +645,7 @@ def reset_zoom(n_clicks):
     - int: Reset zoom level for the map.
     """
     if n_clicks:
-        return 10  # Reset zoom level to 10
+        return 9  # Reset zoom level to 9
     return dash.no_update
 
 

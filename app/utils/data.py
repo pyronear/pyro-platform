@@ -198,25 +198,27 @@ def sequences_have_changed(df1, df2, cols_to_check=None):
     df1_checked = df1[cols_to_check].copy()
     df2_checked = df2[cols_to_check].copy()
 
-    # Traitements spécifiques pour certaines colonnes
     for col in cols_to_check:
         if "datetime" in str(df1_checked[col].dtype) or "date" in col:
             df1_checked[col] = pd.to_datetime(df1_checked[col], errors="coerce").dt.round("s")
             df2_checked[col] = pd.to_datetime(df2_checked[col], errors="coerce").dt.round("s")
         elif col == "is_wildfire":
-            df1_checked[col] = df1_checked[col].astype("boolean").fillna(False)
-            df2_checked[col] = df2_checked[col].astype("boolean").fillna(False)
+            # Do NOT fillna; keep None/NA to detect changes
+            df1_checked[col] = df1_checked[col].astype("boolean")
+            df2_checked[col] = df2_checked[col].astype("boolean")
 
     # Sort by id if available
     if "id" in df1.columns and "id" in df2.columns:
         df1_checked.index = df1["id"]
         df2_checked.index = df2["id"]
-        df1_checked = df1_checked.sort_index()
-        df2_checked = df2_checked.sort_index()
     else:
-        df1_checked = df1_checked.sort_index()
-        df2_checked = df2_checked.sort_index()
+        df1_checked.index = df1.index
+        df2_checked.index = df2.index
 
+    df1_checked = df1_checked.sort_index()
+    df2_checked = df2_checked.sort_index()
+
+    # Compare while preserving NA values
     return not df1_checked.equals(df2_checked)
 
 
@@ -224,31 +226,37 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     """
     Compute mutually overlapping cone groups (cliques) between camera sequences.
 
-    Each output group in the 'overlap' column contains only sequences that all overlap pairwise.
+    Sequences with is_wildfire == 0.0 are excluded from overlap computation.
 
     Parameters:
         api_sequences (pd.DataFrame): Must contain:
-            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle'
-            - 'started_at', 'last_seen_at' (datetime-compatible)
+            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle', 'is_wildfire'
+            - 'started_at', 'last_seen_at', 'started_at_local' (datetime-compatible or str)
         R_km (float): Maximum detection range of the cone.
         r_min_km (float): Inner radius of the cone.
 
     Returns:
-        pd.DataFrame: Copy of input with new column 'overlap' containing list of cliques (or None).
+        Tuple[pd.DataFrame, pd.DataFrame]:
+            - DataFrame with 'overlap' column per sequence
+            - Event table with 'event_id', 'sequences', 'time'
     """
     df = api_sequences.copy()
+    df["id"] = df["id"].astype(int)
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df.iterrows()}
+    # Only keep sequences with non-zero is_wildfire
+    df_valid = df[df["is_wildfire"] != 0.0]
+
+    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
 
     overlapping_pairs = []
-    ids = df["id"].tolist()
+    ids = df_valid["id"].tolist()
 
     for i, id1 in enumerate(ids):
-        row1 = df[df["id"] == id1].iloc[0]
+        row1 = df_valid[df_valid["id"] == id1].iloc[0]
         for id2 in ids[i + 1 :]:
-            row2 = df[df["id"] == id2].iloc[0]
+            row2 = df_valid[df_valid["id"] == id2].iloc[0]
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
             if projected_cones[id1].intersects(projected_cones[id2]):
@@ -264,4 +272,31 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
             id_to_groups[sid].append(group)
 
     df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
-    return df
+
+    # Create a table with one row per event (overlapping group or standalone)
+    event_records = []
+    event_counter = 0
+    added_ids = set()
+
+    # First, record all cliques
+    for group in cliques:
+        group_ids = sorted(int(sid) for sid in group)
+        group_df = df[df["id"].isin(group_ids)]
+        group_time = group_df["started_at_local"].min()
+        event_records.append({"event_id": f"event_{event_counter}", "sequences": group_ids, "time": group_time})
+        added_ids.update(group_ids)
+        event_counter += 1
+
+    # Then, add standalone sequences
+    all_ids = set(df["id"])
+    for sid in sorted(all_ids - added_ids):
+        row = df[df["id"] == sid].iloc[0]
+        event_records.append({
+            "event_id": f"event_{event_counter}",
+            "sequences": [int(sid)],
+            "time": row["started_at_local"],
+        })
+        event_counter += 1
+
+    event_id_table = pd.DataFrame(event_records)
+    return df, event_id_table

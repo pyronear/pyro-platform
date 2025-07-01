@@ -108,18 +108,37 @@ def build_sites_markers(api_cameras):
                 n_clicks=0,  # ✅ allows click tracking
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup(
-                        [
-                            html.H2(f"Site {site_name}"),
-                            html.P(f"Coordonnées : ({lat}, {lon})"),
-                        ]
-                    ),
+                    dl.Popup([
+                        html.H2(f"Site {site_name}"),
+                        html.P(f"Coordonnées : ({lat}, {lon})"),
+                    ]),
                 ],
             )
         )
 
     # We group all dl.Marker objects in a dl.MarkerClusterGroup object and return it
     return markers, client_sites
+
+
+def build_fire_marker(id_suffix):
+    return dl.Marker(
+        id=f"fire-location-marker{id_suffix}",
+        position=[0, 0],  # dummy initial position
+        opacity=0,  # hidden by default
+        icon={
+            "iconUrl": "/assets/images/fire_icon.png",  # 🔁 correct path if inside `assets/`
+            "iconSize": [40, 40],
+            "iconAnchor": [20, 40],
+            "popupAnchor": [0, -20],
+        },
+        children=[
+            dl.Tooltip("🔥 Fire detected"),
+            dl.Popup([
+                html.H2("Fire Location"),
+                html.P(id=f"fire-marker-coords{id_suffix}", children=""),
+            ]),
+        ],
+    )
 
 
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
@@ -169,8 +188,8 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
 
 def build_alerts_map(api_cameras, id_suffix=""):
     """
-    The following function mobilises functions defined hereabove or in the utils module to
-    instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
+    Instantiates and returns a dl.Map object, corresponding to the "Alerts and Infrastructure" view,
+    without clustering the camera site markers.
     """
     map_style = {
         "position": "absolute",
@@ -181,35 +200,42 @@ def build_alerts_map(api_cameras, id_suffix=""):
     }
 
     markers, client_sites = build_sites_markers(api_cameras)
+    fire_marker = build_fire_marker(id_suffix)
 
     map_object = dl.Map(
         center=[
             client_sites["lat"].median(),
             client_sites["lon"].median(),
-        ],  # Determines the point around which the map is centered
-        zoom=10,  # Determines the initial level of zoom around the center point
+        ],
+        zoom=9,
         children=[
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
-            dl.MarkerClusterGroup(children=markers, id="sites_markers"),
-        ],  # Will contain the past fire markers of the alerts map
-        style=map_style,  # Reminder: map_style is imported from utils.py
+            dl.LayerGroup(children=markers, id="sites_markers"),
+            dl.LayerGroup(children=[fire_marker], id=f"fire-markers-layer{id_suffix}"),
+        ],
+        style=map_style,
         id=f"map{id_suffix}",
     )
 
     return map_object
 
 
-def create_sequence_list(api_sequences, cameras):
+def create_sequence_list(api_sequences, cameras, event_id_table):
     """
-    Create a list of cards, one per sequence, with overlap info listed below if applicable.
-    Uses a Dash button wrapper with sequence ID as component ID.
+    Create a list of cards, one per event, aggregating all overlapping sequences.
+    Uses a Dash button wrapper with event ID as component ID.
     """
-    if api_sequences.empty:
+    if api_sequences.empty or event_id_table.empty:
         return []
 
     api_sequences = api_sequences.copy()
+    api_sequences["id"] = api_sequences["id"].astype(int)
+    api_sequences["started_at_local"] = api_sequences["started_at_local"].astype(str)
+
+    # Sort events by most recent first
+    event_id_table = event_id_table.sort_values("time", ascending=False)
 
     def get_annotation_emoji(value):
         if value == 1.0:
@@ -225,56 +251,51 @@ def create_sequence_list(api_sequences, cameras):
         cam_name = cam["name"].values[0][:-3].replace("_", " ")
         return cam_name, cam["lat"].values[0], cam["lon"].values[0]
 
-    api_sequences = api_sequences.sort_values("started_at", ascending=False)
-
     cards = []
-    for _, row in api_sequences.iterrows():
-        cam_name, _, _ = get_camera_info(row["camera_id"])
-        azimuth = int(row["cone_azimuth"]) % 360
-        emoji = get_annotation_emoji(row.get("is_wildfire"))
+    for _, event_row in event_id_table.iterrows():
+        event_id = event_row["event_id"]
+        sequence_ids = [int(sid) for sid in event_row["sequences"]]
+        event_time = pd.to_datetime(event_row["time"]).strftime("%Y-%m-%d %H:%M")
 
-        date_str, time_str = row["started_at_local"].split(" ")
-        time_str = time_str[:5]
+        event_seqs = api_sequences[api_sequences["id"].isin(sequence_ids)]
+        if event_seqs.empty:
+            continue
 
-        header = html.Div(f"📅 {date_str} • ⏱ {time_str}", style={"fontWeight": "bold", "marginBottom": "3px"})
-        main_detection = html.Div(
-            f"📷 {cam_name} ({azimuth}°) {emoji}",
-            style={
-                "display": "block",
-                "textAlign": "left",
-                "fontWeight": "bold",
-            },
+        header = html.Div(
+            f"📅 {event_time}",
+            style={"fontWeight": "bold", "textAlign": "left", "marginBottom": "3px"},
         )
 
-        overlaps = []
-        if isinstance(row.get("overlap"), list):
-            for group in row["overlap"]:
-                for sid in group:
-                    if sid == row["id"]:
-                        continue
-                    match = api_sequences[api_sequences["id"] == sid]
-                    if not match.empty:
-                        m = match.iloc[0]
-                        match_name, _, _ = get_camera_info(m["camera_id"])
-                        match_azimuth = int(m["cone_azimuth"]) % 360
-                        match_time = row["started_at"].strftime("%H:%M")
-                        overlaps.append(
-                            html.Div(
-                                f"↳ {match_name} ({match_azimuth}°) • {match_time}",
-                                style={
-                                    "fontSize": "12px",
-                                    "paddingLeft": "8px",
-                                    "color": "#555",
-                                    "display": "block",
-                                    "textAlign": "left",
-                                    "verticalAlign": "bottom",
-                                },
-                            )
-                        )
+        others = []
+        for _, row in event_seqs.sort_values("started_at").iterrows():
+            cam_name, _, _ = get_camera_info(row["camera_id"])
+            azimuth = int(row["cone_azimuth"]) % 360
+            emoji = get_annotation_emoji(row.get("is_wildfire"))
+
+            started_local = str(row.get("started_at_local", ""))
+            if " " in started_local:
+                _, local_time = started_local.split(" ")
+                local_time = local_time[:5]
+            else:
+                local_time = "??:??"
+
+            others.append(
+                html.Div(
+                    f"{cam_name} ({azimuth}°) • {local_time} {emoji}",
+                    style={
+                        "fontSize": "12px",
+                        "paddingLeft": "8px",
+                        "color": "#555",
+                        "display": "block",
+                        "textAlign": "left",
+                        "verticalAlign": "bottom",
+                    },
+                )
+            )
 
         card = html.Button(
-            id={"type": "event-button", "index": row["id"]},
-            children=[header, main_detection, *overlaps],
+            id={"type": "event-button", "index": event_id},
+            children=[header, *others],
             className="pyronear-card alert-card",
             style={"marginBottom": "10px"},
             n_clicks=0,

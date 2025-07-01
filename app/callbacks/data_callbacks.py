@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import convert_dt_to_local_tz, process_bbox, sequences_have_changed
+from utils.data import compute_overlap, convert_dt_to_local_tz, process_bbox, sequences_have_changed
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -202,7 +202,7 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
 
 
 @app.callback(
-    Output("api_sequences", "data"),
+    [Output("api_sequences", "data"), Output("event_id_table", "data")],
     [
         Input("main_api_fetch_interval", "n_intervals"),
         Input("api_cameras", "data"),
@@ -272,8 +272,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
                 axis=1,
             )
 
-            # api_sequences = compute_overlap(api_sequences)
-            api_sequences["overlap"] = [None] * len(api_sequences)
+            api_sequences, event_id_table = compute_overlap(api_sequences)
 
         # Load local sequences safely
         if local_sequences:
@@ -287,11 +286,11 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
                 logger.info("Skipping update: no significant change detected")
                 return dash.no_update
 
-        return api_sequences.to_json(orient="split")
+        return api_sequences.to_json(orient="split"), event_id_table.to_json(orient="split")
 
     except Exception as e:
         logger.error(f"Failed to fetch sequences: {e}")
-        return pd.DataFrame().to_json(orient="split")
+        return pd.DataFrame().to_json(orient="split"), pd.DataFrame().to_json(orient="split")
 
 
 @app.callback(
