@@ -5,14 +5,11 @@
 
 
 import dash_bootstrap_components as dbc
-from dash import Dash, dcc, html
+from dash import dcc, html
 from translations import translate
 
 from components.alerts import create_event_list
 from utils.display import build_alerts_map
-
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.css.append_css({"external_url": "/assets/style.css"})
 
 
 def homepage_layout(user_token, api_cameras, lang="fr"):
@@ -22,6 +19,30 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 dbc.Col([create_event_list()], width=2, className="mb-4"),
                 dbc.Col(
                     [
+                        html.Div(
+                            dcc.Dropdown(
+                                id="sequence_dropdown",
+                                options=[],  # Populated via callback
+                                placeholder="Sélectionner une caméra",
+                                style={
+                                    "border": "none",
+                                    "color": "#c97a00",
+                                    "fontWeight": "bold",
+                                    "fontSize": "15px",
+                                    "background": "transparent",
+                                    "boxShadow": "none",
+                                    "minWidth": "220px",
+                                },
+                                className="dropdown-no-arrow",
+                            ),
+                            id="sequence_dropdown_container",
+                            style={
+                                "padding": "10px 20px",
+                                "borderRadius": "8px",
+                                "backgroundColor": "#f5f9f8",
+                                "display": "none",  # Default hidden
+                            },
+                        ),
                         html.Div(
                             id="zoom-containement-container",
                             className="common-style",

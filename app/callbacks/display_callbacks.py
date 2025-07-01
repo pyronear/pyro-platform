@@ -102,71 +102,88 @@ def update_event_list(api_sequences, cameras, event_id_table):
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
-        Output("sequence_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
         Output("custom_js_trigger", "title"),
+        Output("sequence_dropdown", "options"),
+        Output("sequence_dropdown", "value"),  # new: pre-select first
+        Output("sequence_dropdown_container", "style"),
     ],
-    [
-        Input({"type": "event-button", "index": ALL}, "n_clicks"),
-    ],
+    Input({"type": "event-button", "index": ALL}, "n_clicks"),
     [
         State({"type": "event-button", "index": ALL}, "id"),
+        State("event_id_table", "data"),
         State("api_sequences", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, api_sequences):
+def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequences_json):
     logger.info("select_event_with_button")
 
     ctx = dash.callback_context
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    if api_sequences.empty:
-        return [[{} for _ in button_ids], dash.no_update, 1, "reset_zoom"]
-
-    # Default to first ID in api_sequences if nothing triggered
     if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
-        default_id = api_sequences["id"].iloc[0]
-        num_buttons = len(button_ids)
-        styles = [{} for _ in range(num_buttons)]
-        return [styles, default_id, 1, "reset_zoom"]
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
 
-    # Which button triggered the callback
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if button_id:
-        button_index = json.loads(button_id)["index"]
-    else:
-        if button_ids:
-            button_index = button_ids[0]["index"]
-        else:
-            button_index = 0
+    selected_event_id = json.loads(button_id)["index"]
 
-    # Find overlap group(s) of selected sequence
-    selected_row = api_sequences[api_sequences["id"] == button_index]
-    overlap_ids = set()
-    if not selected_row.empty:
-        overlap_groups = selected_row.iloc[0].get("overlap", [])
-        if overlap_groups:
-            if isinstance(overlap_groups, list):
-                for group in overlap_groups:
-                    for seq_id in group:
-                        if seq_id != button_index:
-                            overlap_ids.add(seq_id)
+    event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
+    api_sequences = pd.read_json(StringIO(api_sequences_json), orient="split")
 
-    # Build button styles
+    selected_event = event_id_table[event_id_table["event_id"] == selected_event_id]
+    if selected_event.empty or api_sequences.empty:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    sequence_ids = selected_event.iloc[0]["sequences"]
+    if not isinstance(sequence_ids, list) or not sequence_ids:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    dropdown_options = []
+    for sid in sequence_ids:
+        match = api_sequences[api_sequences["id"] == sid]
+        if not match.empty:
+            row = match.iloc[0]
+            name = str(row.get("name", "Unknown")).replace("_", " ").replace("-", " ")
+            azimuth = int(float(row.get("cone_azimuth", 0.0))) % 360
+            label = f"{name} ({azimuth}°)"
+            dropdown_options.append({"label": label, "value": sid})
+
+    dropdown_visible_style = {
+        "padding": "10px 20px",
+        "borderRadius": "8px",
+        "backgroundColor": "#f5f9f8",
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "10px",
+    }
+
     styles = []
     for button in button_ids:
-        seq_id = button["index"]
         style = {}
-
-        if seq_id == button_index:
-            style["backgroundColor"] = "#feba6a"  # Selected button
-            style["border"] = "2px solid red"  # Overlapping match
-        elif seq_id in overlap_ids:
-            style["border"] = "1px solid red"  # Overlapping match
-
+        if button["index"] == selected_event_id:
+            style["backgroundColor"] = "#feba6a"
+            style["border"] = "2px solid red"
         styles.append(style)
 
-    return [styles, button_index, 1, "reset_zoom"]
+    # Set first option as default value
+    default_value = dropdown_options[0]["value"] if dropdown_options else None
+
+    return [
+        styles,
+        1,
+        "reset_zoom",
+        dropdown_options,
+        default_value,
+        dropdown_visible_style,
+    ]
+
+
+@app.callback(
+    Output("sequence_id_on_display", "data"),
+    Input("sequence_dropdown", "value"),
+)
+def update_sequence_on_dropdown_change(selected_sequence_id):
+    logger.info(f"Dropdown selected sequence {selected_sequence_id}")
+    return selected_sequence_id
 
 
 @app.callback(
