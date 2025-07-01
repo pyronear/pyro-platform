@@ -167,8 +167,8 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
 
 def build_alerts_map(api_cameras, id_suffix=""):
     """
-    The following function mobilises functions defined hereabove or in the utils module to
-    instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
+    Instantiates and returns a dl.Map object, corresponding to the "Alerts and Infrastructure" view,
+    without clustering the camera site markers.
     """
     map_style = {
         "position": "absolute",
@@ -184,15 +184,15 @@ def build_alerts_map(api_cameras, id_suffix=""):
         center=[
             client_sites["lat"].median(),
             client_sites["lon"].median(),
-        ],  # Determines the point around which the map is centered
-        zoom=10,  # Determines the initial level of zoom around the center point
+        ],
+        zoom=9,
         children=[
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
-            dl.MarkerClusterGroup(children=markers, id="sites_markers"),
-        ],  # Will contain the past fire markers of the alerts map
-        style=map_style,  # Reminder: map_style is imported from utils.py
+            dl.LayerGroup(children=markers, id="sites_markers"),  # 🔁 replaced cluster group
+        ],
+        style=map_style,
         id=f"map{id_suffix}",
     )
 
