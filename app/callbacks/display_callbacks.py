@@ -365,11 +365,16 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         Output("smoke-location-copy-content", "children"),
     ],
     Input("sequence_id_on_display", "data"),
-    [State("api_cameras", "data"), State("api_sequences", "data")],
+    [
+        State("api_cameras", "data"),
+        State("api_sequences", "data"),
+        State("sequence_dropdown", "options"),  # NEW: list of all sequence options
+    ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
+def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options):
     logger.info("update_map_and_alert_info")
+
     if sequence_id_on_display is None:
         raise PreventUpdate
 
@@ -377,7 +382,6 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     df_cameras = pd.read_json(StringIO(cameras), orient="split")
     sequence_id_on_display = str(sequence_id_on_display)
 
-    # Check if the sequence exists
     if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
         return (
             [],
@@ -393,16 +397,14 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             dash.no_update,
         )
 
-    # Retrieve current sequence data
+    # Séquence principale
     current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
-
     site_lat = current_sequence["lat"]
     site_lon = current_sequence["lon"]
     azimuth = float(current_sequence["azimuth"])
     azimuth_detection = float(current_sequence["cone_azimuth"])
     opening_angle = float(current_sequence["cone_angle"])
 
-    # Main detection vision cone
     polygon_detection = build_vision_polygon(
         site_lat=site_lat,
         site_lon=site_lon,
@@ -410,50 +412,23 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         opening_angle=opening_angle,
         dist_km=cfg.CAM_RANGE_KM,
     )
-
     cones = [polygon_detection]
 
-    overlapping_ids = set()
+    # Autres séquences listées dans le dropdown
+    other_ids = [str(opt["value"]) for opt in dropdown_options if str(opt["value"]) != sequence_id_on_display]
+    for other_id in other_ids:
+        if other_id in df_sequences["id"].astype(str).values:
+            seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
+            poly = build_vision_polygon(
+                site_lat=seq["lat"],
+                site_lon=seq["lon"],
+                azimuth=float(seq["cone_azimuth"]),
+                opening_angle=float(seq["cone_angle"]),
+                dist_km=cfg.CAM_RANGE_KM,
+            )
+            cones.append(poly)
 
-    if "overlap" in df_sequences.columns:
-        for overlaps in df_sequences["overlap"].dropna():
-            try:
-                # Supports lists or tuples containing groups of size >= 2
-                if isinstance(overlaps, (list, tuple)):
-                    for group in overlaps:
-                        if isinstance(group, (list, tuple)) and len(group) >= 2:
-                            group_str = list(map(str, group))
-                            if sequence_id_on_display in group_str:
-                                overlapping_ids.update(group_str)
-                elif isinstance(overlaps, str):
-                    import ast
-
-                    parsed = ast.literal_eval(overlaps)
-                    if isinstance(parsed, (list, tuple)):
-                        for group in parsed:
-                            if isinstance(group, (list, tuple)) and len(group) >= 2:
-                                group_str = list(map(str, group))
-                                if sequence_id_on_display in group_str:
-                                    overlapping_ids.update(group_str)
-            except Exception as e:
-                logger.warning(f"Invalid overlap entry: {overlaps} ({e})")
-
-        overlapping_ids.discard(sequence_id_on_display)
-
-        for other_id in overlapping_ids:
-            if other_id in df_sequences["id"].astype(str).values:
-                other_seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
-
-                poly = build_vision_polygon(
-                    site_lat=other_seq["lat"],
-                    site_lon=other_seq["lon"],
-                    azimuth=float(other_seq["cone_azimuth"]),
-                    opening_angle=float(other_seq["cone_angle"]),
-                    dist_km=cfg.CAM_RANGE_KM,
-                )
-                cones.append(poly)
-
-    # Match the sequence to a camera
+    # Nom de la caméra
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
@@ -461,11 +436,9 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
     else:
         camera_name = "Unknown camera"
 
-    # Alert panel information
     camera_info = f"{camera_name} : {int(azimuth)}°"
-    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
-
     angle_info = f"{int(azimuth_detection) % 360}°"
+    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
 
     start_date_info = (
         current_sequence["started_at_local"].split(" ")[-1] if pd.notnull(current_sequence["started_at_local"]) else ""
@@ -476,14 +449,13 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
         else ""
     )
 
-    # Convert cones to Shapely polygons
+    # Intersection éventuelle des cônes
     shapely_polys = []
     for cone in cones:
         positions = getattr(cone, "positions", None)
         if positions and len(positions) >= 3:
             shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
 
-    # Compute intersection between cones
     if shapely_polys:
         intersection = shapely_polys[0]
         for poly in shapely_polys[1:]:
@@ -493,12 +465,9 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences):
             centroid = intersection.centroid
             map_center = [centroid.y, centroid.x]
         else:
-            # fallback if no intersection
             map_center = [site_lat, site_lon]
     else:
         map_center = [site_lat, site_lon]
-
-    map_center = [float(x) for x in map_center]
 
     copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
 
@@ -622,7 +591,7 @@ def reset_zoom(n_clicks):
     - int: Reset zoom level for the map.
     """
     if n_clicks:
-        return 10  # Reset zoom level to 10
+        return 9  # Reset zoom level to 9
     return dash.no_update
 
 
