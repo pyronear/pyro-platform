@@ -120,6 +120,27 @@ def build_sites_markers(api_cameras):
     return markers, client_sites
 
 
+def build_fire_marker(id_suffix):
+    return dl.Marker(
+        id=f"fire-location-marker{id_suffix}",
+        position=[0, 0],  # dummy initial position
+        opacity=0,  # hidden by default
+        icon={
+            "iconUrl": "/assets/images/fire_icon.png",  # 🔁 correct path if inside `assets/`
+            "iconSize": [40, 40],
+            "iconAnchor": [20, 40],
+            "popupAnchor": [0, -20],
+        },
+        children=[
+            dl.Tooltip("🔥 Fire detected"),
+            dl.Popup([
+                html.H2("Fire Location"),
+                html.P(id=f"fire-marker-coords{id_suffix}", children=""),
+            ]),
+        ],
+    )
+
+
 def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
@@ -179,6 +200,7 @@ def build_alerts_map(api_cameras, id_suffix=""):
     }
 
     markers, client_sites = build_sites_markers(api_cameras)
+    fire_marker = build_fire_marker(id_suffix)
 
     map_object = dl.Map(
         center=[
@@ -190,7 +212,8 @@ def build_alerts_map(api_cameras, id_suffix=""):
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
-            dl.LayerGroup(children=markers, id="sites_markers"),  # 🔁 replaced cluster group
+            dl.LayerGroup(children=markers, id="sites_markers"),
+            dl.LayerGroup(children=[fire_marker], id=f"fire-markers-layer{id_suffix}"),
         ],
         style=map_style,
         id=f"map{id_suffix}",

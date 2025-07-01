@@ -15,7 +15,7 @@ import logging_config
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
-from dash.dependencies import ALL
+from dash.dependencies import ALL, Input, Output
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
@@ -368,7 +368,7 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
     [
         State("api_cameras", "data"),
         State("api_sequences", "data"),
-        State("sequence_dropdown", "options"),  # NEW: list of all sequence options
+        State("sequence_dropdown", "options"),
     ],
     prevent_initial_call=True,
 )
@@ -469,7 +469,20 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     else:
         map_center = [site_lat, site_lon]
 
-    copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
+    # Default center and smoke location: use the current sequence location
+    map_center = [site_lat, site_lon]
+    copyable_smoke_location = ""
+
+    # Only attempt triangulation if more than one cone
+    if len(shapely_polys) > 1:
+        intersection = shapely_polys[0]
+        for poly in shapely_polys[1:]:
+            intersection = intersection.intersection(poly)
+
+        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
+            centroid = intersection.centroid
+            map_center = [centroid.y, centroid.x]
+            copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
 
     return (
         cones,
@@ -484,6 +497,37 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         copyable_location,
         copyable_smoke_location,
     )
+
+
+@app.callback(
+    [
+        Output("fire-location-marker", "position"),
+        Output("fire-location-marker", "opacity"),
+        Output("fire-marker-coords", "children"),
+        Output("fire-location-marker-md", "position"),
+        Output("fire-location-marker-md", "opacity"),
+        Output("fire-marker-coords-md", "children"),
+    ],
+    Input("smoke-location-copy-content", "children"),
+)
+def update_fire_markers(smoke_location_str):
+    print("update", smoke_location_str)
+    if not smoke_location_str:
+        print("no update")
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    try:
+        lat_str, lon_str = smoke_location_str.split(", ")
+        lat = float(lat_str.strip())
+        lon = float(lon_str.strip())
+    except Exception as e:
+        print("Invalid smoke_location_str:", smoke_location_str, "Error:", e)
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    pos = [lat, lon]
+    coords_str = f"{lat:.4f}, {lon:.4f}"
+
+    return [pos, 1, coords_str, pos, 1, coords_str]
 
 
 @app.callback(
