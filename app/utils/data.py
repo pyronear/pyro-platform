@@ -198,25 +198,27 @@ def sequences_have_changed(df1, df2, cols_to_check=None):
     df1_checked = df1[cols_to_check].copy()
     df2_checked = df2[cols_to_check].copy()
 
-    # Traitements spécifiques pour certaines colonnes
     for col in cols_to_check:
         if "datetime" in str(df1_checked[col].dtype) or "date" in col:
             df1_checked[col] = pd.to_datetime(df1_checked[col], errors="coerce").dt.round("s")
             df2_checked[col] = pd.to_datetime(df2_checked[col], errors="coerce").dt.round("s")
         elif col == "is_wildfire":
-            df1_checked[col] = df1_checked[col].astype("boolean").fillna(False)
-            df2_checked[col] = df2_checked[col].astype("boolean").fillna(False)
+            # Do NOT fillna; keep None/NA to detect changes
+            df1_checked[col] = df1_checked[col].astype("boolean")
+            df2_checked[col] = df2_checked[col].astype("boolean")
 
     # Sort by id if available
     if "id" in df1.columns and "id" in df2.columns:
         df1_checked.index = df1["id"]
         df2_checked.index = df2["id"]
-        df1_checked = df1_checked.sort_index()
-        df2_checked = df2_checked.sort_index()
     else:
-        df1_checked = df1_checked.sort_index()
-        df2_checked = df2_checked.sort_index()
+        df1_checked.index = df1.index
+        df2_checked.index = df2.index
 
+    df1_checked = df1_checked.sort_index()
+    df2_checked = df2_checked.sort_index()
+
+    # Compare while preserving NA values
     return not df1_checked.equals(df2_checked)
 
 
@@ -243,17 +245,14 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
     # Only keep sequences for overlap computation if is_wildfire != 0.0
     df_valid = df[df["is_wildfire"] != 0.0]
 
-    projected_cones = {
-        row["id"]: get_projected_cone(row, R_km, r_min_km)
-        for _, row in df_valid.iterrows()
-    }
+    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
 
     overlapping_pairs = []
     ids = df_valid["id"].tolist()
 
     for i, id1 in enumerate(ids):
         row1 = df_valid[df_valid["id"] == id1].iloc[0]
-        for id2 in ids[i + 1:]:
+        for id2 in ids[i + 1 :]:
             row2 = df_valid[df_valid["id"] == id2].iloc[0]
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
@@ -271,4 +270,3 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
 
     df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
     return df
-

@@ -108,12 +108,10 @@ def build_sites_markers(api_cameras):
                 n_clicks=0,  # ✅ allows click tracking
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup(
-                        [
-                            html.H2(f"Site {site_name}"),
-                            html.P(f"Coordonnées : ({lat}, {lon})"),
-                        ]
-                    ),
+                    dl.Popup([
+                        html.H2(f"Site {site_name}"),
+                        html.P(f"Coordonnées : ({lat}, {lon})"),
+                    ]),
                 ],
             )
         )
@@ -236,7 +234,10 @@ def create_sequence_list(api_sequences, cameras):
         date_str, time_str = row["started_at_local"].split(" ")
         time_str = time_str[:5]
 
-        header = html.Div(f"📅 {date_str} ⏱ {time_str} {emoji}", style={"fontWeight": "bold", "textAlign": "left", "marginBottom": "3px"})
+        header = html.Div(
+            f"📅 {date_str} ⏱ {time_str} {emoji}",
+            style={"fontWeight": "bold", "textAlign": "left", "marginBottom": "3px"},
+        )
         main_detection = html.Div(
             f"📷 {cam_name} ({azimuth}°)",
             style={

@@ -10,7 +10,7 @@ from pyroclient import Client
 
 import config as cfg
 
-__all__ = ["get_token", "get_client"]
+__all__ = ["get_client", "get_token"]
 
 
 if any(not isinstance(val, str) for val in [cfg.API_URL, cfg.API_LOGIN, cfg.API_PWD]):

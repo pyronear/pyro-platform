@@ -19,7 +19,7 @@ from translations import translate
 import config as cfg
 from pages.cameras_status import display_cam_cards
 from services import get_client, get_token
-from utils.data import convert_dt_to_local_tz, process_bbox, sequences_have_changed, compute_overlap
+from utils.data import compute_overlap, convert_dt_to_local_tz, process_bbox, sequences_have_changed
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
