@@ -12,14 +12,14 @@ from io import StringIO
 
 import logging_config
 import pandas as pd
-import requests
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
+from reolink_api_client import ReolinkAPIClient
 
 import config as cfg
 from utils.display import build_vision_polygon
-from utils.live_stream import fetch_cameras, find_closest_camera_pose, fov_zoom, send_api_request
+from utils.live_stream import find_closest_camera_pose, fov_zoom
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
@@ -55,16 +55,29 @@ def fetch_cameras_from_pi(site_name, available_stream):
 
     pi_ip = available_stream.get(site_name)
     if not pi_ip:
-        logger.warning("No Pi IP found for site '%s'", site_name)
+        logger.warning(f"No Pi IP found for site '{site_name}'")
         raise PreventUpdate
 
     pi_api_url = f"http://{pi_ip}:8081"
-    logger.info("Querying Pi at: %s", pi_api_url)
+    logger.info(f"Querying Pi at: {pi_api_url}")
 
     try:
-        pi_cameras = fetch_cameras(pi_api_url)
+        # Use the ReolinkAPIClient instead of the old fetch_cameras
+        client = ReolinkAPIClient(pi_api_url)
+        data = client.get_camera_infos()  # this calls /info/camera_infos
+
+        pi_cameras = {}
+        for cam in data.get("cameras", []):
+            name = cam.get("name", f"Camera {cam.get('id')}")
+            if name:
+                pi_cameras[name] = {
+                    "ip": cam.get("ip"),
+                    "poses": cam.get("poses", []),
+                    "azimuths": cam.get("azimuths", []),
+                }
+
     except Exception as e:
-        logger.error("Error fetching cameras from %s: %s", pi_api_url, e)
+        logger.error(f"[fetch_cameras_from_pi] Error fetching cameras from {pi_api_url}: {e}")
         raise PreventUpdate
 
     return pi_api_url, pi_cameras
@@ -154,8 +167,15 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
         if not camera_ip:
             raise PreventUpdate
 
-        logger.info(f"[start_stream] Starting stream for {camera_ip}")
-        send_api_request(pi_api_url, f"/start_stream/{camera_ip}")
+        # Create a new client instance safely
+        client = ReolinkAPIClient(pi_api_url)
+
+        try:
+            logger.info(f"[start_stream] Starting stream for {camera_ip}")
+            client.start_stream(camera_ip)
+        except Exception as e:
+            logger.error(f"[start_stream] Failed to start stream for {camera_ip}: {e}")
+            raise PreventUpdate
 
         now_iso = datetime.datetime.now().isoformat()
         return now_iso, False, False, False, ""  # start time, timer enabled, modal closed, flag false, no banner
@@ -243,6 +263,9 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
     if not pi_api_url or not camera_ip:
         raise PreventUpdate
 
+    # Instantiate the API client
+    client = ReolinkAPIClient(pi_api_url)
+
     direction_map = {
         "move-up": "Up",
         "move-down": "Down",
@@ -252,41 +275,41 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
     }
 
     try:
-        # 🔁 Case 1: Triggered by current_camera
+        # Case 1: Triggered by camera data change (automatic pose adjustment)
         if trigger == "current_camera":
             logger.info(f"[AUTO] Triggered by camera pose change for {camera_ip}")
-            time.sleep(1)  # let stream start first
+            time.sleep(1)  # Let stream start
 
-            # Move to preset pose if defined
+            # Move to preset pose if available
             if pose_id is not None:
                 logger.info(f"[AUTO] Moving {camera_ip} to preset pose {pose_id}")
-                send_api_request(pi_api_url, f"/move/{camera_ip}?pose_id={pose_id}&speed=50")
-                time.sleep(1.5)  # Allow some delay before fine adjustment
+                client.move_camera(camera_ip, pose_id=pose_id, speed=50)
+                time.sleep(1.5)  # Give time to settle
 
-            # Apply signed shift
+            # Apply fine adjustment
             if abs(pose_shift) >= 1:
                 direction = "Right" if pose_shift > 0 else "Left"
                 degrees = abs(pose_shift)
-                logger.info(f"[AUTO] Applying fine shift of {degrees:.2f}° to the {direction} for {camera_ip}")
-                send_api_request(pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={degrees:.2f}&speed=4")
+                logger.info(f"[AUTO] Applying fine shift of {degrees:.2f}° {direction} for {camera_ip}")
+                client.move_camera(camera_ip, direction=direction, degrees=degrees, speed=4)
 
-        # 🧑‍💻 Case 2: Manual PTZ controls
+        # Case 2: Manual movement
         elif trigger in direction_map:
             direction = direction_map[trigger]
             true_speed = int(move_speed / 10) + 1
             if direction != "Stop":
                 logger.info(f"[MANUAL] Moving {camera_ip} -> {direction} at speed {true_speed}")
-                send_api_request(pi_api_url, f"/move/{camera_ip}?direction={direction}&speed={true_speed}")
+                client.move_camera(camera_ip, direction=direction, speed=true_speed)
             else:
                 logger.info(f"[MANUAL] Stopping movement for {camera_ip}")
-                send_api_request(pi_api_url, f"/stop/{camera_ip}")
+                client.stop_camera(camera_ip)
 
-        # 🔍 Case 3: Zoom input change
+        # Case 3: Zoom change
         elif trigger == "zoom-input":
             if zoom_level is not None:
                 true_zoom = int(zoom_level * 41 / 100)
                 logger.info(f"[MANUAL] Zooming {camera_ip} to level {true_zoom}")
-                send_api_request(pi_api_url, f"/zoom/{camera_ip}/{true_zoom}")
+                client.zoom(camera_ip, true_zoom)
 
     except Exception as e:
         logger.warning(f"[ERROR] Failed to control camera {camera_ip} via Pi {pi_api_url}: {e}")
@@ -314,6 +337,9 @@ def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
     global last_command_time
     last_command_time = time.time()
 
+    # Instantiate the API client
+    client = ReolinkAPIClient(pi_api_url)
+
     # --- 1. Extract click position ---
     x_percent = round((click_data["offsetX"] / click_data["width"]) * 100, 2)
     y_percent = round((click_data["offsetY"] / click_data["height"]) * 100, 2)
@@ -323,29 +349,28 @@ def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
     dy = y_percent - 50  # positive = down
 
     # --- 3. Convert to degrees ---
-    true_zoom = int(zoom_value * 41 / 100)
-    fov_horizontal = fov_zoom(true_zoom)  # use your existing function
+    true_zoom = int(zoom_value * 41 / 100) if zoom_value is not None else 0
+    fov_horizontal = fov_zoom(true_zoom)  # Assumes your function exists elsewhere
     fov_vertical = fov_horizontal * 41.7 / 54.2
 
     delta_azimuth = dx / 100 * fov_horizontal
     delta_tilt = dy / 100 * fov_vertical
 
     try:
-        # --- 4. Send commands to API ---
+        # --- 4. Horizontal movement ---
         if abs(delta_azimuth) >= 0.5:
             direction = "Right" if delta_azimuth > 0 else "Left"
-            send_api_request(
-                pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={abs(delta_azimuth):.2f}&speed=3"
-            )
+            logger.info(f"[CLICK] Moving {direction} by {abs(delta_azimuth):.2f}° for {camera_ip}")
+            client.move_camera(camera_ip, direction=direction, degrees=abs(delta_azimuth), speed=3)
 
+        # --- 5. Vertical movement ---
         if abs(delta_tilt) >= 0.5:
             direction = "Down" if delta_tilt > 0 else "Up"
-            send_api_request(
-                pi_api_url, f"/move/{camera_ip}?direction={direction}&degrees={abs(delta_tilt):.2f}&speed=2"
-            )
+            logger.info(f"[CLICK] Moving {direction} by {abs(delta_tilt):.2f}° for {camera_ip}")
+            client.move_camera(camera_ip, direction=direction, degrees=abs(delta_tilt), speed=2)
 
     except Exception as e:
-        logger.warning(f"[ERROR] Click-to-move failed: {e}")
+        logger.warning(f"[ERROR] Click-to-move failed for {camera_ip}: {e}")
 
     return no_update
 
@@ -429,6 +454,8 @@ def update_stream_url(site_name, hide_flag):
     if not site_name:
         raise PreventUpdate
 
+    print(f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}")
+
     return f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
 
 
@@ -449,23 +476,28 @@ def open_capture_modal(n_clicks, current_camera, api_url):
     global last_command_time
     last_command_time = time.time()
 
-    camera_id = current_camera["camera"].get("ip")
-    if not camera_id:
+    camera_ip = current_camera["camera"].get("ip")
+    if not camera_ip:
         logger.error("No IP in current_camera data")
         return False, "", ""
 
     try:
-        resp = requests.get(f"{api_url}/capture/{camera_id}", timeout=5)
-        if resp.status_code != 200:
-            logger.error(f"Non-200 response: {resp.status_code}")
+        # Instantiate the API client
+        client = ReolinkAPIClient(api_url)
+
+        # Capture the image using the client
+        img = client.capture_image(camera_ip)
+
+        # Convert to bytes
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG")
+        image_bytes = buffer.getvalue()
+
+        if len(image_bytes) < 100:
+            logger.error(f"Image too small or empty: {len(image_bytes)} bytes")
             return False, "", ""
 
-        if not resp.content or len(resp.content) < 100:
-            logger.error(f"Image too small or empty: {len(resp.content)} bytes")
-            return False, "", ""
-
-        # Convert image to base64 for display
-        image_bytes = io.BytesIO(resp.content).getvalue()
+        # Encode to base64
         base64_img = base64.b64encode(image_bytes).decode("utf-8")
         img_src = f"data:image/jpeg;base64,{base64_img}"
 
