@@ -104,7 +104,7 @@ def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
     Output("stream-camera-name", "children"),
     Output("stream-preset-azimuths", "children"),
     Input("stream-current-azimuth", "value"),
-    Input("pi_cameras", "data"),
+    State("pi_cameras", "data"),
     prevent_initial_call=True,
 )
 def set_current_camera(target_azimuth, pi_cameras):
@@ -171,6 +171,8 @@ def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, 
         client = ReolinkAPIClient(pi_api_url)
 
         try:
+            logger.info(f"[start_stream] Stoping patrol for {camera_ip}")
+            client.stop_patrol(camera_ip)
             logger.info(f"[start_stream] Starting stream for {camera_ip}")
             client.start_stream(camera_ip)
         except Exception as e:
