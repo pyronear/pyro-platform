@@ -24,9 +24,6 @@ from utils.live_stream import find_closest_camera_pose, fov_zoom
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
-INACTIVITY_TIMEOUT = 120
-start_time = None
-
 
 @app.callback(
     Output("available-stream-sites-dropdown", "value"),
@@ -412,27 +409,52 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
     Output("loading-modal", "is_open"),
     Output("modal-close-interval", "disabled"),
     Output("video-stream", "src"),
+    Output("inactivity-modal", "is_open"),
+    Output("stream-check-interval", "disabled"),
     Input("stream-start-time", "data"),
     Input("modal-close-interval", "n_intervals"),
+    Input("stream-check-interval", "n_intervals"),
     State("loading-modal", "is_open"),
     State("available-stream-sites-dropdown", "value"),
+    State("inactivity-modal", "is_open"),
+    State("current_camera", "data"),
+    State("pi_api_url", "data"),
     prevent_initial_call=True,
 )
-def handle_modal_and_stream(stream_data, n_intervals, is_open, site_name):
+def stream_management(stream_data, modal_timer, check_timer,
+                                           is_loading_open, site_name,
+                                           is_inactive_open, current_camera, pi_api_url):
     triggered = ctx.triggered_id
 
+    # === Stream just started ===
     if triggered == "stream-start-time" and stream_data is not None:
-        # Open modal and enable timer, don't touch video src
-        return True, False, ""
+        return True, False, "", False, False  # open loading modal, enable timer, don't show video yet, no inactivity, enable check
 
-    if triggered == "modal-close-interval" and is_open:
-        # Close modal, disable timer, update stream src
+    # === Modal loading time done, show stream ===
+    if triggered == "modal-close-interval" and is_loading_open:
         if not site_name:
             raise PreventUpdate
         stream_url = f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
-        return False, True, stream_url
+        return False, True, stream_url, False, False  # close modal, disable modal timer, show video, no inactivity, continue checking
 
-    return no_update, no_update, no_update
+    # === Stream check timer triggered ===
+    if triggered == "stream-check-interval" and not is_inactive_open:
+        if not current_camera or not pi_api_url:
+            raise PreventUpdate
+
+        camera_ip = current_camera.get("camera", {}).get("ip")
+        if not camera_ip:
+            raise PreventUpdate
+
+        client = ReolinkAPIClient(pi_api_url)
+        result = client.is_stream_running(camera_ip)
+
+        if not result.get("running", True):
+            # Show inactivity modal, disable check, reset video src
+            return False, True, "", True, True
+
+    return no_update, no_update, no_update, no_update, no_update
+
 
 
 @app.callback(

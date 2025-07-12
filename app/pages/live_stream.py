@@ -114,7 +114,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
     dropdown_options: List[Option] = []
 
     if available_stream:
-        dropdown_options = [{"label": name, "value": name} for name in available_stream.keys()]
+        dropdown_options = [{"label": name, "value": name.lower().replace("_", "-")} for name in available_stream.keys()]
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:
@@ -459,8 +459,8 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             dcc.Interval(id="modal-close-interval", interval=10000, n_intervals=0, disabled=True),
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("Stream en cours de chargement...")),
-                    dbc.ModalBody("Merci de patienter."),
+                    dbc.ModalHeader(dbc.ModalTitle(translate("loading_modal_title", lang))),
+                    dbc.ModalBody(translate("loading_modal_body", lang)),
                 ],
                 id="loading-modal",
                 is_open=False,
@@ -477,6 +477,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             dcc.Store(id="click-coords", storage_type="session"),
             dcc.Store(id="click-coords2", storage_type="session"),
             dcc.Store(id="lang", storage_type="session", data=lang),
+            dcc.Interval(id="stream-check-interval", interval=10_000, n_intervals=0),
             dbc.Modal(
                 id="inactivity-modal",
                 is_open=False,
