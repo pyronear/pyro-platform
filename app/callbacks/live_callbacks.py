@@ -17,6 +17,7 @@ from dash.exceptions import PreventUpdate
 from main import app
 from reolink_api_client import ReolinkAPIClient
 from translations import translate
+
 import config as cfg
 from utils.display import build_vision_polygon
 from utils.live_stream import find_closest_camera_pose, fov_zoom
@@ -123,7 +124,7 @@ def set_current_camera(target_azimuth, pi_cameras, current_camera_name):
     }
 
     print("current_camera", current_camera)
-    print(current_camera_name ,cam_name, current_camera_name == cam_name)
+    print(current_camera_name, cam_name, current_camera_name == cam_name)
 
     if current_camera_name == cam_name:
         print("no update name")
@@ -160,8 +161,7 @@ def reset_zoom_and_speed_on_camera_change(current_camera):
     State("lang", "data"),
     prevent_initial_call=True,
 )
-def start_stream(camera_name, current_camera, pi_api_url, lang): 
-
+def start_stream(camera_name, current_camera, pi_api_url, lang):
     if not current_camera or not pi_api_url:
         raise PreventUpdate
 
@@ -180,7 +180,7 @@ def start_stream(camera_name, current_camera, pi_api_url, lang):
     except Exception as e:
         logger.error(f"[start_stream] Failed to start stream for {camera_ip}: {e}")
         raise PreventUpdate
-    
+
     status_banner = html.Div([
         html.Span(
             "🔴 Live stream",
@@ -193,15 +193,14 @@ def start_stream(camera_name, current_camera, pi_api_url, lang):
                 "fontWeight": "bold",
             },
         ),
-            html.Span(
-                translate("live_stream_warning", lang),
-                style={"color": "orange", "fontWeight": "bold"},
-            ),
-        ])
+        html.Span(
+            translate("live_stream_warning", lang),
+            style={"color": "orange", "fontWeight": "bold"},
+        ),
+    ])
 
     now_iso = datetime.datetime.now().isoformat()
     return now_iso, status_banner
-
 
 
 @app.callback(
@@ -223,7 +222,6 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
 
     logger.debug(f"[control_camera] Triggered by: {ctx.triggered_id}")
     logger.debug(f"[control_camera] Current camera data: {current_camera}")
-
 
     trigger = ctx.triggered_id
     camera = current_camera.get("camera", {})
@@ -418,7 +416,7 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
     Input("modal-close-interval", "n_intervals"),
     State("loading-modal", "is_open"),
     State("available-stream-sites-dropdown", "value"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def handle_modal_and_stream(stream_data, n_intervals, is_open, site_name):
     triggered = ctx.triggered_id
@@ -435,7 +433,6 @@ def handle_modal_and_stream(stream_data, n_intervals, is_open, site_name):
         return False, True, stream_url
 
     return no_update, no_update, no_update
-
 
 
 @app.callback(
