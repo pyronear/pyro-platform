@@ -422,39 +422,36 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
     prevent_initial_call=True,
 )
 def stream_management(stream_data, modal_timer, check_timer,
-                                           is_loading_open, site_name,
-                                           is_inactive_open, current_camera, pi_api_url):
+                      is_loading_open, site_name,
+                      is_inactive_open, current_camera, pi_api_url):
     triggered = ctx.triggered_id
+
+    # ✅ Abort if anything critical is missing
+    if not current_camera or not pi_api_url or not site_name:
+        raise PreventUpdate
+
+    camera_ip = current_camera.get("camera", {}).get("ip")
+    if not camera_ip:
+        raise PreventUpdate
 
     # === Stream just started ===
     if triggered == "stream-start-time" and stream_data is not None:
-        return True, False, "", False, False  # open loading modal, enable timer, don't show video yet, no inactivity, enable check
+        return True, False, "", False, False
 
-    # === Modal loading time done, show stream ===
+    # === Modal loading finished: show video ===
     if triggered == "modal-close-interval" and is_loading_open:
-        if not site_name:
-            raise PreventUpdate
         stream_url = f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
-        return False, True, stream_url, False, False  # close modal, disable modal timer, show video, no inactivity, continue checking
+        return False, True, stream_url, False, False
 
-    # === Stream check timer triggered ===
+    # === Periodic check: is stream still alive? ===
     if triggered == "stream-check-interval" and not is_inactive_open:
-        if not current_camera or not pi_api_url:
-            raise PreventUpdate
-
-        camera_ip = current_camera.get("camera", {}).get("ip")
-        if not camera_ip:
-            raise PreventUpdate
-
         client = ReolinkAPIClient(pi_api_url)
         result = client.is_stream_running(camera_ip)
 
         if not result.get("running", True):
-            # Show inactivity modal, disable check, reset video src
             return False, True, "", True, True
 
     return no_update, no_update, no_update, no_update, no_update
-
 
 
 @app.callback(
