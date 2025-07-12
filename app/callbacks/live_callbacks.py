@@ -16,7 +16,7 @@ from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
 from reolink_api_client import ReolinkAPIClient
-
+from translations import translate
 import config as cfg
 from utils.display import build_vision_polygon
 from utils.live_stream import find_closest_camera_pose, fov_zoom
@@ -25,7 +25,6 @@ logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 INACTIVITY_TIMEOUT = 120
 start_time = None
-last_command_time = time.time()
 
 
 @app.callback(
@@ -144,92 +143,54 @@ def reset_zoom_and_speed_on_camera_change(current_camera):
 
 @app.callback(
     Output("stream-start-time", "data"),
-    Output("stream-timer", "disabled"),
-    Output("inactivity-modal", "is_open"),
-    Output("hide-stream-flag", "data"),
     Output("stream-status", "children"),
     Input("current_camera", "data"),
-    Input("stream-timer", "n_intervals"),
     State("pi_api_url", "data"),
-    State("stream-start-time", "data"),
-    State("detection-status", "data"),
+    State("lang", "data"),
     prevent_initial_call=True,
 )
-def manage_stream_ui(current_camera, n_intervals, pi_api_url, stream_start_iso, detection_status):
-    triggered = ctx.triggered_id
+def start_stream(current_camera, pi_api_url, lang): 
 
-    # 🚀 Triggered by selecting a new camera
-    if triggered == "current_camera":
-        if not current_camera or not pi_api_url:
-            raise PreventUpdate
+    if not current_camera or not pi_api_url:
+        raise PreventUpdate
 
-        camera_ip = current_camera.get("camera", {}).get("ip")
-        if not camera_ip:
-            raise PreventUpdate
+    camera_ip = current_camera.get("camera", {}).get("ip")
+    if not camera_ip:
+        raise PreventUpdate
 
-        # Create a new client instance safely
-        client = ReolinkAPIClient(pi_api_url)
+    # Create a new client instance safely
+    client = ReolinkAPIClient(pi_api_url)
 
-        try:
-            logger.info(f"[start_stream] Stoping patrol for {camera_ip}")
-            client.stop_patrol(camera_ip)
-            logger.info(f"[start_stream] Starting stream for {camera_ip}")
-            client.start_stream(camera_ip)
-        except Exception as e:
-            logger.error(f"[start_stream] Failed to start stream for {camera_ip}: {e}")
-            raise PreventUpdate
+    try:
+        logger.info(f"[start_stream] Stoping patrol for {camera_ip}")
+        client.stop_patrol(camera_ip)
+        logger.info(f"[start_stream] Starting stream for {camera_ip}")
+        client.start_stream(camera_ip)
+    except Exception as e:
+        logger.error(f"[start_stream] Failed to start stream for {camera_ip}: {e}")
+        raise PreventUpdate
+    
+    status_banner = html.Div([
+        html.Span(
+            "🔴 Live stream",
+            style={
+                "backgroundColor": "#f99",
+                "color": "black",
+                "borderRadius": "6px",
+                "padding": "4px 8px",
+                "marginRight": "8px",
+                "fontWeight": "bold",
+            },
+        ),
+            html.Span(
+                translate("live_stream_warning", lang),
+                style={"color": "orange", "fontWeight": "bold"},
+            ),
+        ])
 
-        now_iso = datetime.datetime.now().isoformat()
-        return now_iso, False, False, False, ""  # start time, timer enabled, modal closed, flag false, no banner
+    now_iso = datetime.datetime.now().isoformat()
+    return now_iso, status_banner
 
-    # ⏱️ Triggered by timer tick
-    if triggered == "stream-timer":
-        if detection_status != "running" or not stream_start_iso:
-            return no_update, no_update, False, False, ""
-
-        try:
-            now = time.time()
-            seconds_since_command = int(now - last_command_time)
-
-            # Format time since last command
-            minutes, seconds = divmod(seconds_since_command, 60)
-            timer_text = f"{minutes:02d}:{seconds:02d}"
-
-            # Total stream time
-            stream_start = datetime.datetime.fromisoformat(stream_start_iso)
-            total_elapsed = datetime.datetime.now() - stream_start
-            total_minutes, total_seconds = divmod(int(total_elapsed.total_seconds()), 60)
-            total_timer_text = f"{total_minutes:02d}:{total_seconds:02d}"
-
-            if seconds_since_command > INACTIVITY_TIMEOUT:
-                logger.info("[stream monitor] Inactivity threshold reached.")
-                return no_update, True, True, True, ""
-
-            status_banner = html.Div([
-                html.Span(
-                    "🔴 Live stream",
-                    style={
-                        "backgroundColor": "#f99",
-                        "color": "black",
-                        "borderRadius": "6px",
-                        "padding": "4px 8px",
-                        "marginRight": "8px",
-                        "fontWeight": "bold",
-                    },
-                ),
-                html.Span(
-                    f"⚠️ Levée de doute en cours, détection inactive depuis {total_timer_text} - dernière action il y a {timer_text}",
-                    style={"color": "orange", "fontWeight": "bold"},
-                ),
-            ])
-
-            return no_update, no_update, False, False, status_banner
-
-        except Exception as e:
-            logger.warning(f"[stream monitor] Failed to track last command time: {e}")
-            return no_update, no_update, False, False, ""
-
-    return no_update, no_update, False, False, ""
 
 
 @app.callback(
@@ -252,8 +213,6 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
     logger.debug(f"[control_camera] Triggered by: {ctx.triggered_id}")
     logger.debug(f"[control_camera] Current camera data: {current_camera}")
 
-    global last_command_time
-    last_command_time = time.time()
 
     trigger = ctx.triggered_id
     camera = current_camera.get("camera", {})
@@ -335,9 +294,6 @@ def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
     camera_ip = camera.get("ip")
     if not camera_ip or not pi_api_url:
         raise PreventUpdate
-
-    global last_command_time
-    last_command_time = time.time()
 
     # Instantiate the API client
     client = ReolinkAPIClient(pi_api_url)
@@ -444,21 +400,31 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
 
 
 @app.callback(
+    Output("loading-modal", "is_open"),
+    Output("modal-close-interval", "disabled"),
     Output("video-stream", "src"),
-    Input("available-stream-sites-dropdown", "value"),
-    Input("hide-stream-flag", "data"),
+    Input("stream-start-time", "data"),
+    Input("modal-close-interval", "n_intervals"),
+    State("loading-modal", "is_open"),
+    State("available-stream-sites-dropdown", "value"),
+    prevent_initial_call=True
 )
-def update_stream_url(site_name, hide_flag):
-    if hide_flag:
-        logger.info("[update_stream_url] Stream hidden due to inactivity.")
-        return None
+def handle_modal_and_stream(stream_data, n_intervals, is_open, site_name):
+    triggered = ctx.triggered_id
 
-    if not site_name:
-        raise PreventUpdate
+    if triggered == "stream-start-time" and stream_data is not None:
+        # Open modal and enable timer, don't touch video src
+        return True, False, no_update
 
-    print(f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}")
+    if triggered == "modal-close-interval" and is_open:
+        # Close modal, disable timer, update stream src
+        if not site_name:
+            raise PreventUpdate
+        stream_url = f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
+        return False, True, stream_url
 
-    return f"{cfg.MEDIAMTX_SERVER_URL}/{site_name}"
+    return no_update, no_update, no_update
+
 
 
 @app.callback(
@@ -474,9 +440,6 @@ def open_capture_modal(n_clicks, current_camera, api_url):
     if not current_camera or not api_url:
         logger.error("Missing camera or API URL")
         return False, "", ""
-
-    global last_command_time
-    last_command_time = time.time()
 
     camera_ip = current_camera["camera"].get("ip")
     if not camera_ip:
