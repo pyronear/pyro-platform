@@ -114,7 +114,9 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
     dropdown_options: List[Option] = []
 
     if available_stream:
-        dropdown_options = [{"label": name, "value": name.lower().replace("_", "-")} for name in available_stream.keys()]
+        dropdown_options = [
+            {"label": name, "value": name.lower().replace("_", "-")} for name in available_stream.keys()
+        ]
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:

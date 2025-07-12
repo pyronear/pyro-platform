@@ -421,9 +421,9 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
     State("pi_api_url", "data"),
     prevent_initial_call=True,
 )
-def stream_management(stream_data, modal_timer, check_timer,
-                      is_loading_open, site_name,
-                      is_inactive_open, current_camera, pi_api_url):
+def stream_management(
+    stream_data, modal_timer, check_timer, is_loading_open, site_name, is_inactive_open, current_camera, pi_api_url
+):
     triggered = ctx.triggered_id
 
     # ✅ Abort if anything critical is missing

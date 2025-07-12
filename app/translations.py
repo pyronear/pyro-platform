@@ -124,7 +124,6 @@ translate_dict = {
         "live_stream_warning": "⚠️ Verificación en curso: detección inactiva!",
         "loading_modal_title": "Stream cargando...",
         "loading_modal_body": "Por favor, espere.",
-
         # login
         "username_placeholder": "NOMBRE DE USUARIO",
         "password_placeholder": "CONTRASEÑA",
@@ -187,7 +186,6 @@ translate_dict = {
         "live_stream_warning": "⚠️ Verification in progress: detection inactive!",
         "loading_modal_title": "Stream is loading...",
         "loading_modal_body": "Please wait.",
-
         # login
         "username_placeholder": "USERNAME",
         "password_placeholder": "PASSWORD",
