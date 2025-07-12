@@ -104,9 +104,10 @@ def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
     Output("stream-preset-azimuths", "children"),
     Input("stream-current-azimuth", "value"),
     State("pi_cameras", "data"),
+    State("stream-camera-name", "children"),
     prevent_initial_call=True,
 )
-def set_current_camera(target_azimuth, pi_cameras):
+def set_current_camera(target_azimuth, pi_cameras, current_camera_name):
     if target_azimuth is None or not pi_cameras:
         raise PreventUpdate
 
@@ -121,7 +122,16 @@ def set_current_camera(target_azimuth, pi_cameras):
         "pose_shift": signed_shift,
     }
 
-    return current_camera, cam_name, az_string
+    print("current_camera", current_camera)
+    print(current_camera_name ,cam_name, current_camera_name == cam_name)
+
+    if current_camera_name == cam_name:
+        print("no update name")
+
+        return current_camera, no_update, az_string
+    else:
+        print(" update namenamenamenamenamenamenamenamenamenamenamenamename")
+        return current_camera, cam_name, az_string
 
 
 @app.callback(
@@ -144,12 +154,13 @@ def reset_zoom_and_speed_on_camera_change(current_camera):
 @app.callback(
     Output("stream-start-time", "data"),
     Output("stream-status", "children"),
-    Input("current_camera", "data"),
+    Input("stream-camera-name", "children"),
+    State("current_camera", "data"),
     State("pi_api_url", "data"),
     State("lang", "data"),
     prevent_initial_call=True,
 )
-def start_stream(current_camera, pi_api_url, lang): 
+def start_stream(camera_name, current_camera, pi_api_url, lang): 
 
     if not current_camera or not pi_api_url:
         raise PreventUpdate
@@ -414,7 +425,7 @@ def handle_modal_and_stream(stream_data, n_intervals, is_open, site_name):
 
     if triggered == "stream-start-time" and stream_data is not None:
         # Open modal and enable timer, don't touch video src
-        return True, False, no_update
+        return True, False, ""
 
     if triggered == "modal-close-interval" and is_open:
         # Close modal, disable timer, update stream src
