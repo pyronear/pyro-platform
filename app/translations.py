@@ -60,7 +60,7 @@ translate_dict = {
         "auto_end_modal_body": "Le flux a été interrompu après 2 minutes sans activité. Vous pouvez sélectionner à nouveau une caméra pour relancer le flux.",
         "image_preview_title": "📸 Aperçu de l'image capturée",
         "live_stream_warning": "⚠️ Levée de doute en cours: détection inactive !",
-        "loading_modal_title": "Stream en cours de chargement...",
+        "loading_modal_title": "Flux video en cours de chargement...",
         "loading_modal_body": "Merci de patienter.",
         # login
         "username_placeholder": "UTILISATEUR",
