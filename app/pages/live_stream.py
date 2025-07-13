@@ -475,7 +475,6 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             dcc.Store(id="pi_api_url", storage_type="session"),
             dcc.Store(id="pi_cameras", storage_type="session"),
             dcc.Store(id="current_camera", storage_type="session"),
-            dcc.Store(id="trigered_from_alert", storage_type="session", data=True if available_stream else False),
             dcc.Store(id="click-coords", storage_type="session"),
             dcc.Store(id="click-coords2", storage_type="session"),
             dcc.Store(id="lang", storage_type="session", data=lang),

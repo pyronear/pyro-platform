@@ -82,18 +82,14 @@ def fetch_cameras_from_pi(site_name, available_stream):
 
 @app.callback(
     Output("stream-current-azimuth", "value"),
-    Output("trigered_from_alert", "data"),
-    Input("pi_cameras", "data"),
-    State("trigered_from_alert", "data"),
-    State("selected-camera-info", "data"),
+    Input("selected-camera-info", "data"),
 )
-def set_azimuth(pi_cameras, trigered_from_alert, selected_camera_info):
-    if trigered_from_alert and selected_camera_info:
+def set_azimuth(selected_camera_info):
+    if selected_camera_info:
         logger.debug(f"[set_azimuth] Setting from alert: azimuth={selected_camera_info[1]}")
-        return selected_camera_info[1], False
+        return selected_camera_info[1]
 
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 @app.callback(
