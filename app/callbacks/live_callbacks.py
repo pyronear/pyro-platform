@@ -15,7 +15,7 @@ import pandas as pd
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
-from reolink_api_client import ReolinkAPIClient
+from reolink_api_client import ReolinkAPIClient  # type: ignore
 from translations import translate
 
 import config as cfg
