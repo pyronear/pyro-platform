@@ -17,7 +17,7 @@ dash-leaflet = "^0.1.28"
 dash-extensions = "^1.0.0"
 pandas = ">=2.1.4"
 pyroclient = { git = "https://github.com/pyronear/pyro-api.git", branch = "main", subdirectory = "client" }
-reolink_api_client = { git = "https://github.com/pyronear/pyro-engine.git", branch = "use_api", subdirectory = "reolink_api/client" }
+reolink_api_client = { git = "https://github.com/pyronear/pyro-engine.git", branch = "main", subdirectory = "reolink_api/client" }
 python-dotenv = ">=1.0.0"
 geopy = ">=2.4.0"
 sentry-sdk = { version = "^1.5.12", extras = ["flask"] }
