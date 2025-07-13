@@ -242,6 +242,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             response = client.fetch_latest_sequences()
 
         api_sequences = pd.DataFrame(response.json())
+        event_id_table = pd.DataFrame()
 
         if not api_sequences.empty:
             started_at = pd.to_datetime(api_sequences["started_at"], format="%Y-%m-%dT%H:%M:%S.%f", errors="coerce")

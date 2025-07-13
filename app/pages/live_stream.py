@@ -114,7 +114,9 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
     dropdown_options: List[Option] = []
 
     if available_stream:
-        dropdown_options = [{"label": name, "value": name} for name in available_stream.keys()]
+        dropdown_options = [
+            {"label": name, "value": name.lower().replace("_", "-")} for name in available_stream.keys()
+        ]
 
     # Try to derive stream from selected camera info
     if selected_camera_info and available_stream:
@@ -456,17 +458,27 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                 fullscreen=True,
             ),
             dcc.Interval(id="stream-timer", interval=1000, n_intervals=0),  # every second
+            dcc.Interval(id="modal-close-interval", interval=10000, n_intervals=0, disabled=True),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(translate("loading_modal_title", lang))),
+                    dbc.ModalBody(translate("loading_modal_body", lang)),
+                ],
+                id="loading-modal",
+                is_open=False,
+                centered=True,
+                backdrop=True,
+            ),
             dcc.Store(id="stream-start-time", storage_type="session"),
-            dcc.Store(id="detection-status", storage_type="session", data="running"),  # or "stopped", etc.
             html.Div(id="dummy-output", style={"display": "none"}),
             html.Div(id="dummy-output2", style={"display": "none"}),
             dcc.Store(id="pi_api_url", storage_type="session"),
             dcc.Store(id="pi_cameras", storage_type="session"),
             dcc.Store(id="current_camera", storage_type="session"),
-            dcc.Store(id="trigered_from_alert", storage_type="session", data=True if available_stream else False),
-            dcc.Store(id="hide-stream-flag", storage_type="session", data=False),
             dcc.Store(id="click-coords", storage_type="session"),
             dcc.Store(id="click-coords2", storage_type="session"),
+            dcc.Store(id="lang", storage_type="session", data=lang),
+            dcc.Interval(id="stream-check-interval", interval=10_000, n_intervals=0),
             dbc.Modal(
                 id="inactivity-modal",
                 is_open=False,

@@ -59,6 +59,9 @@ translate_dict = {
         "auto_end_modal_title": "⏱️ Fin de diffusion automatique",
         "auto_end_modal_body": "Le flux a été interrompu après 2 minutes sans activité. Vous pouvez sélectionner à nouveau une caméra pour relancer le flux.",
         "image_preview_title": "📸 Aperçu de l'image capturée",
+        "live_stream_warning": "⚠️ Levée de doute en cours: détection inactive !",
+        "loading_modal_title": "Flux video en cours de chargement...",
+        "loading_modal_body": "Merci de patienter.",
         # login
         "username_placeholder": "UTILISATEUR",
         "password_placeholder": "MOT DE PASSE",
@@ -118,6 +121,9 @@ translate_dict = {
         "auto_end_modal_body": "La transmisión se interrumpió después de 2 minutos sin actividad. Puede seleccionar una cámara nuevamente para reiniciar la transmisión.",
         "image_preview_title": "📸 Vista previa de la imagen capturada",
         "download_image_button": "⬇️ Descargar",
+        "live_stream_warning": "⚠️ Verificación en curso: detección inactiva!",
+        "loading_modal_title": "Stream cargando...",
+        "loading_modal_body": "Por favor, espere.",
         # login
         "username_placeholder": "NOMBRE DE USUARIO",
         "password_placeholder": "CONTRASEÑA",
@@ -177,6 +183,9 @@ translate_dict = {
         "auto_end_modal_body": "The stream was stopped after 2 minutes of inactivity. You can select a camera again to restart the stream.",
         "image_preview_title": "📸 Captured Image Preview",
         "download_image_button": "⬇️ Download",
+        "live_stream_warning": "⚠️ Verification in progress: detection inactive!",
+        "loading_modal_title": "Stream is loading...",
+        "loading_modal_body": "Please wait.",
         # login
         "username_placeholder": "USERNAME",
         "password_placeholder": "PASSWORD",
