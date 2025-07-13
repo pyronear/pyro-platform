@@ -6,37 +6,52 @@
 from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
+import pytz
 from dash import html
+from timezonefinder import TimezoneFinder
 from translations import translate
 
 import config as cfg
 
+tf = TimezoneFinder()
+
 
 def display_cam_cards(cameras):
     no_cam_img_url = "assets/images/no-image.svg"
-
     cards = []
-    print(cameras)
+
     for _, row in cameras.iterrows():
         clock_image_src_issue = "assets/images/clock-error.svg"
         last_active_at_style_issue = {"margin": "0", "color": "#f44336"}
 
-        if not row["last_active_at_local"]:
-            clock_image_src = clock_image_src_issue
-            last_active_at_style = last_active_at_style_issue
-        else:
-            try:
-                dt_local = datetime.strptime(row["last_active_at_local"], "%Y-%m-%d %H:%M")
-                if datetime.now() - dt_local > timedelta(minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES):
-                    clock_image_src = clock_image_src_issue
-                    last_active_at_style = last_active_at_style_issue
-                else:
-                    clock_image_src = "assets/images/clock.svg"
-                    last_active_at_style = {"margin": "0"}
-            except Exception:
-                # In case parsing fails
+        try:
+            # Step 1: Parse original UTC timestamp
+            ts_utc = datetime.fromisoformat(str(row["last_active_at"])).replace(tzinfo=pytz.utc)
+
+            # Step 2: Get local timezone from lat/lon
+            timezone_str = tf.timezone_at(lat=round(row["lat"], 4), lng=round(row["lon"], 4))
+            timezone_str = timezone_str or "UTC"
+            local_tz = pytz.timezone(timezone_str)
+
+            # Step 3: Convert timestamp to local time
+            dt_local = ts_utc.astimezone(local_tz)
+
+            # Step 4: Get current time in same local timezone
+            now_local = datetime.now(local_tz)
+
+            # Step 5: Inactivity check
+            if now_local - dt_local > timedelta(minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES):
                 clock_image_src = clock_image_src_issue
                 last_active_at_style = last_active_at_style_issue
+            else:
+                clock_image_src = "assets/images/clock.svg"
+                last_active_at_style = {"margin": "0"}
+
+            formatted_last_active = dt_local.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            formatted_last_active = None
+            clock_image_src = clock_image_src_issue
+            last_active_at_style = last_active_at_style_issue
 
         card = dbc.Col(
             dbc.Card(
@@ -50,10 +65,7 @@ def display_cam_cards(cameras):
                                         src=clock_image_src,
                                         style={"width": "20px", "height": "20px", "marginRight": "5px"},
                                     ),
-                                    html.P(
-                                        f"{row['last_active_at_local']}",
-                                        style=last_active_at_style,
-                                    ),
+                                    html.P(formatted_last_active or "N/A", style=last_active_at_style),
                                 ],
                                 style={"display": "flex", "alignItems": "center"},
                             ),
