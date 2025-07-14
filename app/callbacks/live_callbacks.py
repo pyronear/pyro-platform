@@ -83,8 +83,10 @@ def fetch_cameras_from_pi(site_name, available_stream):
 @app.callback(
     Output("stream-current-azimuth", "value"),
     Input("selected-camera-info", "data"),
+    Input("pi_cameras", "data"),
 )
-def set_azimuth(selected_camera_info):
+def set_azimuth(selected_camera_info, pi_cameras):
+    logger.info("set current azimuth")
     if selected_camera_info:
         logger.debug(f"[set_azimuth] Setting from alert: azimuth={selected_camera_info[1]}")
         return selected_camera_info[1]
@@ -102,6 +104,7 @@ def set_azimuth(selected_camera_info):
     prevent_initial_call=True,
 )
 def set_current_camera(target_azimuth, pi_cameras, current_camera_name):
+    logger.info("set_current_camera")
     if target_azimuth is None or not pi_cameras:
         raise PreventUpdate
 
@@ -116,15 +119,9 @@ def set_current_camera(target_azimuth, pi_cameras, current_camera_name):
         "pose_shift": signed_shift,
     }
 
-    print("current_camera", current_camera)
-    print(current_camera_name, cam_name, current_camera_name == cam_name)
-
     if current_camera_name == cam_name:
-        print("no update name")
-
         return current_camera, no_update, az_string
     else:
-        print(" update namenamenamenamenamenamenamenamenamenamenamenamename")
         return current_camera, cam_name, az_string
 
 
