@@ -19,7 +19,6 @@ from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
-from shapely.geometry import Polygon as ShapelyPolygon  # type: ignore
 from translations import translate
 
 import config as cfg
@@ -349,7 +348,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         raise PreventUpdate
 
 
-# Map
 @app.callback(
     [
         Output("vision_polygons", "children"),
@@ -370,10 +368,11 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         State("api_cameras", "data"),
         State("api_sequences", "data"),
         State("sequence_dropdown", "options"),
+        State("event_id_table", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options):
+def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options, event_id_table_data):
     logger.info("update_map_and_alert_info")
 
     if sequence_id_on_display is None:
@@ -381,6 +380,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
 
     df_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     df_cameras = pd.read_json(StringIO(cameras), orient="split")
+    df_events = pd.read_json(StringIO(event_id_table_data), orient="split")
     sequence_id_on_display = str(sequence_id_on_display)
 
     if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
@@ -399,7 +399,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             dash.no_update,
         )
 
-    # Séquence principale
+    # Current sequence
     current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
     site_lat = current_sequence["lat"]
     site_lon = current_sequence["lon"]
@@ -407,6 +407,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     azimuth_detection = float(current_sequence["cone_azimuth"])
     opening_angle = float(current_sequence["cone_angle"])
 
+    # Vision cone
     polygon_detection = build_vision_polygon(
         site_lat=site_lat,
         site_lon=site_lon,
@@ -416,7 +417,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     )
     cones = [polygon_detection]
 
-    # Autres séquences listées dans le dropdown
+    # Other dropdown cones
     other_ids = [str(opt["value"]) for opt in dropdown_options if str(opt["value"]) != sequence_id_on_display]
     for other_id in other_ids:
         if other_id in df_sequences["id"].astype(str).values:
@@ -430,7 +431,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             )
             cones.append(poly)
 
-    # Nom de la caméra
+    # Camera info
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
@@ -451,48 +452,28 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         else ""
     )
 
-    # Intersection éventuelle des cônes
-    shapely_polys = []
-    for cone in cones:
-        positions = getattr(cone, "positions", None)
-        if positions and len(positions) >= 3:
-            shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
-
-    if shapely_polys:
-        intersection = shapely_polys[0]
-        for poly in shapely_polys[1:]:
-            intersection = intersection.intersection(poly)
-
-        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
-            centroid = intersection.centroid
-            map_center = [centroid.y, centroid.x]
-        else:
-            map_center = [site_lat, site_lon]
-    else:
-        map_center = [site_lat, site_lon]
-
-    # Default center and smoke location: use the current sequence location
-    smoke_location_style = {"display": "none"}
+    # Try to get smoke location from the best matching event
     map_center = [site_lat, site_lon]
+    smoke_location_style = {"display": "none"}
     copyable_smoke_location = ""
 
-    # Only attempt triangulation if more than one cone
-    if len(shapely_polys) > 1:
-        intersection = shapely_polys[0]
-
-        for poly in shapely_polys[1:]:
-            intersection = intersection.intersection(poly)
-
-        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
-            centroid = intersection.centroid
-            map_center = [centroid.y, centroid.x]
-            copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
-
-            smoke_location_style = {
-                "display": "flex",
-                "alignItems": "center",
-                "marginTop": "6px",
-            }
+    try:
+        sequence_id_int = int(sequence_id_on_display)
+        matching_events = df_events[df_events["sequences"].apply(lambda seqs: sequence_id_int in seqs)]
+        if not matching_events.empty:
+            best_event = matching_events.loc[matching_events["sequences"].apply(len).idxmax()]
+            smoke = best_event.get("smoke_location")
+            if isinstance(smoke, list) and len(smoke) == 2:
+                lat, lon = smoke
+                map_center = [lat, lon]
+                copyable_smoke_location = f"{lat:.4f}, {lon:.4f}"
+                smoke_location_style = {
+                    "display": "flex",
+                    "alignItems": "center",
+                    "marginTop": "6px",
+                }
+    except Exception as e:
+        logger.error(f"Failed to resolve smoke location for sequence {sequence_id_on_display} - {e}")
 
     return (
         cones,

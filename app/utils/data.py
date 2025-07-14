@@ -4,17 +4,22 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 import ast
+import itertools
 from collections import defaultdict
 from datetime import datetime
+from math import atan2, cos, radians, sin, sqrt
 from typing import List
 
 import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
+import pyproj
 import pytz
 from geopy.distance import geodesic
 from pyproj import Transformer
-from shapely.geometry import Polygon  # type: ignore
+from shapely.geometry import (
+    Polygon,  # type: ignore
+)
 from shapely.ops import transform as shapely_transform  # type: ignore
 from timezonefinder import TimezoneFinder
 
@@ -222,30 +227,162 @@ def sequences_have_changed(df1, df2, cols_to_check=None):
     return not df1_checked.equals(df2_checked)
 
 
-def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
+def haversine_km(lat1, lon1, lat2, lon2):
     """
-    Compute mutually overlapping cone groups (cliques) between camera sequences.
-
-    Sequences with is_wildfire == 0.0 are excluded from overlap computation.
+    Compute the great-circle distance between two points on the Earth's surface using the Haversine formula.
 
     Parameters:
-        api_sequences (pd.DataFrame): Must contain:
+        lat1 (float): Latitude of point 1 in decimal degrees.
+        lon1 (float): Longitude of point 1 in decimal degrees.
+        lat2 (float): Latitude of point 2 in decimal degrees.
+        lon2 (float): Longitude of point 2 in decimal degrees.
+
+    Returns:
+        float: Distance between the two points in kilometers.
+    """
+    R = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
+
+
+def get_centroid_latlon(geom):
+    """
+    Compute the geographic coordinates (latitude, longitude) of the centroid of a given geometry.
+
+    Parameters:
+        geom (shapely.geometry): Geometry in EPSG:3857 (Web Mercator projection).
+
+    Returns:
+        tuple: (latitude, longitude) of the centroid in EPSG:4326.
+    """
+    centroid = geom.centroid
+    transformer = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+    lon, lat = transformer.transform(centroid.x, centroid.y)
+    return lat, lon
+
+
+def compute_smoke_location(seq, projected_cones):
+    """
+    Estimate the smoke location for a group of sequences.
+
+    Rules:
+        - If the sequence contains only 1 ID, returns None.
+        - If 2 sequences: returns the centroid of their cone intersection.
+        - If >2: returns the centroid of all pairwise intersection centroids.
+
+    Parameters:
+        seq (list): List of sequence IDs.
+        projected_cones (dict): Mapping from sequence ID to cone geometry (shapely object).
+
+    Returns:
+        tuple or None: (latitude, longitude) if estimated, otherwise None.
+    """
+    if len(seq) == 1:
+        return None
+
+    barycenters = []
+
+    for id1, id2 in itertools.combinations(seq, 2):
+        if id1 not in projected_cones or id2 not in projected_cones:
+            continue
+        inter = projected_cones[id1].intersection(projected_cones[id2])
+        if not inter.is_empty and inter.area > 0:
+            lat, lon = get_centroid_latlon(inter)
+            barycenters.append((lat, lon))
+
+    if not barycenters:
+        return None
+    elif len(barycenters) == 1:
+        return barycenters[0]
+    else:
+        # Compute second-level centroid: barycenter of barycenters
+        avg_lat = sum(lat for lat, _ in barycenters) / len(barycenters)
+        avg_lon = sum(lon for _, lon in barycenters) / len(barycenters)
+        return (avg_lat, avg_lon)
+
+
+def filter_localized_events(event_id_table, df_valid, R_km=30, r_min_km=0.5, max_dist_km=2.0):
+    """
+    Identify events with 3 or more sequences that have consistent intersection barycenters.
+
+    For each group:
+        - Compute all pairwise intersections.
+        - Keep if max distance between barycenters is below threshold.
+
+    Parameters:
+        event_id_table (pd.DataFrame): Table with 'event_id' and 'sequences'.
+        df_valid (pd.DataFrame): Subset of sequences with is_wildfire != 0.0.
+        R_km (float): Maximum detection range of the cone in kilometers.
+        r_min_km (float): Minimum (inner) radius of the cone in kilometers.
+        max_dist_km (float): Maximum allowed distance between barycenters.
+
+    Returns:
+        set: Set of valid event IDs (str) with spatially localized detections.
+    """
+    df_valid = df_valid[df_valid["is_wildfire"] != 0.0]
+    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
+
+    valid_event_ids = set()
+
+    for _, row in event_id_table.iterrows():
+        seq = row["sequences"]
+        if len(seq) < 3:
+            continue
+
+        bary_dict = {}
+        for id1, id2 in itertools.combinations(seq, 2):
+            inter = projected_cones[id1].intersection(projected_cones[id2])
+            if not inter.is_empty and inter.area > 0:
+                lat, lon = get_centroid_latlon(inter)
+                bary_dict[id1, id2] = (lat, lon)
+
+        if len(bary_dict) < 2:
+            continue
+
+        bary_coords = list(bary_dict.values())
+        distances = [
+            haversine_km(lat1, lon1, lat2, lon2)
+            for (lat1, lon1), (lat2, lon2) in itertools.combinations(bary_coords, 2)
+        ]
+
+        if max(distances) <= max_dist_km:
+            valid_event_ids.add(row["event_id"])
+
+    return valid_event_ids
+
+
+def compute_overlap(api_sequences, R_km=30, r_min_km=0.5, max_dist_km=2.0):
+    """
+    Identify groups of overlapping camera sequences and consolidate them into events.
+
+    Steps:
+        1. Compute intersection graph of cone projections.
+        2. Extract maximal cliques of sequences (overlapping in space and time).
+        3. Filter valid (localized) events using barycenter consistency.
+        4. Decompose non-localized events with >2 sequences into 2-by-2 pairs.
+        5. Estimate smoke location for each final event.
+
+    Parameters:
+        api_sequences (pd.DataFrame): Input with fields:
             - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle', 'is_wildfire'
-            - 'started_at', 'last_seen_at', 'started_at_local' (datetime-compatible or str)
-        R_km (float): Maximum detection range of the cone.
-        r_min_km (float): Inner radius of the cone.
+            - 'started_at', 'last_seen_at', 'started_at_local' (datetime-compatible)
+        R_km (float): Outer radius of the camera detection cone (in km).
+        r_min_km (float): Inner radius of the camera detection cone (in km).
+        max_dist_km (float): Maximum allowed distance between intersection barycenters for validation.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
-            - DataFrame with 'overlap' column per sequence
-            - Event table with 'event_id', 'sequences', 'time'
+            - Updated DataFrame with 'overlap' column.
+            - Final event table with 'event_id', 'sequences', 'time', and 'smoke_location'.
     """
     df = api_sequences.copy()
     df["id"] = df["id"].astype(int)
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    # Only keep sequences with non-zero is_wildfire
     df_valid = df[df["is_wildfire"] != 0.0]
 
     projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
@@ -273,30 +410,61 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5):
 
     df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
 
-    # Create a table with one row per event (overlapping group or standalone)
-    event_records = []
+    # Phase 1 : raw event groups
+    raw_event_records = []
     event_counter = 0
     added_ids = set()
 
-    # First, record all cliques
     for group in cliques:
         group_ids = sorted(int(sid) for sid in group)
         group_df = df[df["id"].isin(group_ids)]
         group_time = group_df["started_at_local"].min()
-        event_records.append({"event_id": f"event_{event_counter}", "sequences": group_ids, "time": group_time})
+        raw_event_records.append({"event_id": f"event_{event_counter}", "sequences": group_ids, "time": group_time})
         added_ids.update(group_ids)
         event_counter += 1
 
-    # Then, add standalone sequences
     all_ids = set(df["id"])
     for sid in sorted(all_ids - added_ids):
         row = df[df["id"] == sid].iloc[0]
-        event_records.append({
+        raw_event_records.append({
             "event_id": f"event_{event_counter}",
             "sequences": [int(sid)],
             "time": row["started_at_local"],
         })
         event_counter += 1
 
-    event_id_table = pd.DataFrame(event_records)
+    raw_event_table = pd.DataFrame(raw_event_records)
+
+    # Phase 2 : filter localized
+    valid_ids = filter_localized_events(raw_event_table, df, R_km, r_min_km, max_dist_km)
+
+    final_event_records = []
+    new_event_counter = 0
+
+    for _, row in raw_event_table.iterrows():
+        seq = row["sequences"]
+        if len(seq) < 2 or row["event_id"] in valid_ids:
+            final_event_records.append({
+                "event_id": f"event_{new_event_counter}",
+                "sequences": seq,
+                "time": row["time"],
+            })
+            new_event_counter += 1
+        else:
+            for id1, id2 in itertools.combinations(seq, 2):
+                time = df[df["id"].isin([id1, id2])]["started_at_local"].min()
+                final_event_records.append({
+                    "event_id": f"event_{new_event_counter}",
+                    "sequences": [id1, id2],
+                    "time": time,
+                })
+                new_event_counter += 1
+
+    event_id_table = pd.DataFrame(final_event_records)
+
+    # Add smoke_location
+    event_id_table["smoke_location"] = event_id_table["sequences"].apply(
+        lambda seq: compute_smoke_location(seq, projected_cones)
+    )
+
     return df, event_id_table
