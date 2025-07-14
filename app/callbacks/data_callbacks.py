@@ -274,6 +274,7 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             )
 
             api_sequences, event_id_table = compute_overlap(api_sequences)
+            print(event_id_table)
 
         # Load local sequences safely
         if local_sequences:

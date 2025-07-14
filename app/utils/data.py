@@ -467,4 +467,22 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5, max_dist_km=2.0):
         lambda seq: compute_smoke_location(seq, projected_cones)
     )
 
+    event_id_table = event_id_table.copy()
+    event_id_table["sequence_tuple"] = event_id_table["sequences"].apply(lambda seq: tuple(sorted(seq)))
+
+    # Remove exact duplicates
+    event_id_table = event_id_table.drop_duplicates(subset="sequence_tuple").reset_index(drop=True)
+
+    sequence_tuples = event_id_table["sequence_tuple"].tolist()
+    to_drop = set()
+
+    for i, seq1 in enumerate(sequence_tuples):
+        for j, seq2 in enumerate(sequence_tuples):
+            if i != j and set(seq1).issubset(set(seq2)):
+                to_drop.add(i)
+                break  # no need to check further if already a subset
+
+    event_id_table = event_id_table.drop(index=to_drop).reset_index(drop=True)
+    event_id_table = event_id_table.drop(columns="sequence_tuple")
+
     return df, event_id_table
