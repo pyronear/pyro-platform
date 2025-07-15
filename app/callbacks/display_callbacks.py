@@ -81,10 +81,10 @@ def update_language_store(selected_lang):
 @app.callback(
     Output("sequence-list-container", "children"),
     Input("sub_api_sequences", "data"),
+    Input("event_id_table", "data"),
     State("api_cameras", "data"),
-    State("event_id_table", "data"),
 )
-def update_event_list(api_sequences, cameras, event_id_table):
+def update_event_list(api_sequences, event_id_table, cameras):
     logger.info("update_event_list")
 
     # Deserialize all inputs safely

@@ -379,6 +379,18 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                             id="alert-panel",
                         ),
                         html.Div(
+                            dbc.Button(
+                                translate("unmatch-sequence", lang),
+                                id="unmatch-sequence-button",
+                                color="primary",
+                                className="mb-2",  # adds bottom margin
+                            ),
+                            style={
+                                "position": "relative",
+                                "width": "100%",
+                            },
+                        ),
+                        html.Div(
                             dbc.Col(
                                 build_alerts_map(api_cameras),
                                 className="common-style",

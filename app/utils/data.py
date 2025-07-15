@@ -10,6 +10,7 @@ from datetime import datetime
 from math import atan2, cos, radians, sin, sqrt
 from typing import List
 
+import logging_config
 import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
@@ -22,6 +23,11 @@ from shapely.geometry import (
 )
 from shapely.ops import transform as shapely_transform  # type: ignore
 from timezonefinder import TimezoneFinder
+
+import config as cfg
+
+logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
+
 
 tf = TimezoneFinder()
 
@@ -354,7 +360,7 @@ def filter_localized_events(event_id_table, df_valid, R_km=30, r_min_km=0.5, max
     return valid_event_ids
 
 
-def compute_overlap(api_sequences, R_km=30, r_min_km=0.5, max_dist_km=2.0):
+def compute_overlap(api_sequences, R_km=35, r_min_km=0.5, max_dist_km=2.0, unmatched_event_table=None):
     """
     Identify groups of overlapping camera sequences and consolidate them into events.
 
@@ -372,6 +378,7 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5, max_dist_km=2.0):
         R_km (float): Outer radius of the camera detection cone (in km).
         r_min_km (float): Inner radius of the camera detection cone (in km).
         max_dist_km (float): Maximum allowed distance between intersection barycenters for validation.
+        unmatched_event_table: Events id that can't match
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -390,15 +397,39 @@ def compute_overlap(api_sequences, R_km=30, r_min_km=0.5, max_dist_km=2.0):
     overlapping_pairs = []
     ids = df_valid["id"].tolist()
 
+    # Prepare the exclusion set from unmatched_event_table
+    unmatched_exclusions = set()
+    if unmatched_event_table is not None and isinstance(unmatched_event_table, list):
+        try:
+            for source_seq, group_seqs in unmatched_event_table:
+                source_seq = int(source_seq)
+                group_seqs = [int(s) for s in group_seqs]
+                for seq in group_seqs:
+                    if seq != source_seq:
+                        unmatched_exclusions.add((source_seq, seq))
+                        unmatched_exclusions.add((seq, source_seq))  # make it symmetric
+        except Exception as e:
+            logger.warning(f"Failed to parse unmatched_event_table: {e}")
+
+    print("unmatched_exclusions", unmatched_exclusions)
+
     for i, id1 in enumerate(ids):
         row1 = df_valid[df_valid["id"] == id1].iloc[0]
         for id2 in ids[i + 1 :]:
             row2 = df_valid[df_valid["id"] == id2].iloc[0]
+
+            # Skip if time windows do not overlap
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
+
+            # Skip forbidden matches
+            if (id1, id2) in unmatched_exclusions:
+                continue
+
             if projected_cones[id1].intersects(projected_cones[id2]):
                 overlapping_pairs.append((id1, id2))
 
+    print("overlapping_pairs", overlapping_pairs)
     G = nx.Graph()
     G.add_edges_from(overlapping_pairs)
     cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G) if len(clique) >= 2]

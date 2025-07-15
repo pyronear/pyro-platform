@@ -8,6 +8,7 @@ from io import StringIO
 
 import dash
 import logging_config
+import numpy as np
 import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
@@ -206,16 +207,23 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
     [
         Input("main_api_fetch_interval", "n_intervals"),
         Input("api_cameras", "data"),
-        Input("my-date-picker-single", "date"),  # NEW: date picker input
+        Input("my-date-picker-single", "date"),
         Input("to_acknowledge", "data"),
+        Input("unmatched_event_id_table", "data"),
     ],
-    [
-        State("api_sequences", "data"),
-        State("user_token", "data"),
-    ],
+    [State("api_sequences", "data"), State("user_token", "data"), State("event_id_table", "data")],
     prevent_initial_call=True,
 )
-def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_sequences, user_token):
+def api_watcher(
+    n_intervals,
+    api_cameras,
+    selected_date,
+    to_acknowledge,
+    unmatched_event_id_table,
+    local_sequences,
+    user_token,
+    local_event_id_table,
+):
     """
     Callback to periodically fetch alerts data from the API or after date change.
 
@@ -242,7 +250,6 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
             response = client.fetch_latest_sequences()
 
         api_sequences = pd.DataFrame(response.json())
-        event_id_table = pd.DataFrame()
 
         if not api_sequences.empty:
             started_at = pd.to_datetime(api_sequences["started_at"], format="%Y-%m-%dT%H:%M:%S.%f", errors="coerce")
@@ -273,8 +280,12 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
                 axis=1,
             )
 
-            api_sequences, event_id_table = compute_overlap(api_sequences)
-            print(event_id_table)
+            unmatched_event_id_table = json.loads(unmatched_event_id_table)
+
+            api_sequences, event_id_table = compute_overlap(
+                api_sequences, unmatched_event_table=unmatched_event_id_table
+            )
+            local_event_id_table = pd.read_json(StringIO(local_event_id_table), orient="split")
 
         # Load local sequences safely
         if local_sequences:
@@ -282,11 +293,13 @@ def api_watcher(n_intervals, api_cameras, selected_date, to_acknowledge, local_s
         else:
             local_sequences_df = pd.DataFrame()
 
-        # Skip update if nothing changed
-        if not local_sequences_df.empty and not api_sequences.empty:
-            if not sequences_have_changed(api_sequences, local_sequences_df):
-                logger.info("Skipping update: no significant change detected")
-                return dash.no_update
+        if len(local_event_id_table) == len(event_id_table):
+            if np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values):
+                # Skip update if nothing changed
+                if not local_sequences_df.empty and not api_sequences.empty:
+                    if not sequences_have_changed(api_sequences, local_sequences_df):
+                        logger.info("Skipping update: no significant change detected")
+                        return dash.no_update
 
         return api_sequences.to_json(orient="split"), event_id_table.to_json(orient="split")
 
@@ -385,3 +398,50 @@ def load_detections(sequence_id_on_display, api_sequences, api_detections, are_d
     are_detections_loaded[sequence_id_on_display] = str(filtered.iloc[0])
 
     return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)
+
+
+@app.callback(
+    Output("unmatched_event_id_table", "data"),
+    Input("unmatch-sequence-button", "n_clicks"),
+    State("unmatched_event_id_table", "data"),
+    State("sequence_id_on_display", "data"),
+    State("event_id_table", "data"),
+    State("selected_event_id", "data"),
+    prevent_initial_call=True,
+)
+def unmatch_sequence_and_store(n_clicks, unmatched_event_json, sequence_id, event_id_table_json, selected_event_id):
+    if not sequence_id or not selected_event_id or n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        sequence_id_int = int(sequence_id)
+
+        # Load current unmatched list
+        try:
+            unmatched_list = json.loads(unmatched_event_json)
+            if not isinstance(unmatched_list, list):
+                unmatched_list = []
+        except Exception as e:
+            logger.warning(f"Invalid unmatched_event_id_table, resetting. Error: {e}")
+            unmatched_list = []
+
+        # Load event_id_table to find sequences of selected_event_id
+        event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
+        row = event_id_table[event_id_table["event_id"] == selected_event_id]
+
+        if row.empty:
+            raise PreventUpdate
+
+        group_sequences = tuple(row.iloc[0]["sequences"])
+
+        # Add and deduplicate
+        unmatched_list.append((sequence_id_int, group_sequences))
+        unmatched_list = list({(sid, tuple(seq)) for sid, seq in unmatched_list})
+
+        logger.info(f"Unmatched sequence {sequence_id_int} from event {selected_event_id}")
+
+        return json.dumps(unmatched_list)
+
+    except Exception as e:
+        logger.error(f"Error unmatching sequence: {e}")
+        raise PreventUpdate
