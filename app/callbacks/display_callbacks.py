@@ -106,6 +106,7 @@ def update_event_list(api_sequences, cameras, event_id_table):
         Output("sequence_dropdown", "options"),
         Output("sequence_dropdown", "value"),  # new: pre-select first
         Output("sequence_dropdown_container", "style"),
+        Output("selected_event_id", "data"),
     ],
     Input({"type": "event-button", "index": ALL}, "n_clicks"),
     [
@@ -120,7 +121,7 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
 
     ctx = dash.callback_context
     if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
-        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}, None]
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     selected_event_id = json.loads(button_id)["index"]
@@ -173,6 +174,7 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
         dropdown_options,
         default_value,
         dropdown_visible_style,
+        selected_event_id,
     ]
 
 
@@ -369,10 +371,13 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         State("api_sequences", "data"),
         State("sequence_dropdown", "options"),
         State("event_id_table", "data"),
+        State("selected_event_id", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options, event_id_table_data):
+def update_map_and_alert_info(
+    sequence_id_on_display, cameras, api_sequences, dropdown_options, event_id_table_data, selected_event_id
+):
     logger.info("update_map_and_alert_info")
 
     if sequence_id_on_display is None:
@@ -458,22 +463,26 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     copyable_smoke_location = ""
 
     try:
-        sequence_id_int = int(sequence_id_on_display)
-        matching_events = df_events[df_events["sequences"].apply(lambda seqs: sequence_id_int in seqs)]
-        if not matching_events.empty:
-            best_event = matching_events.loc[matching_events["sequences"].apply(len).idxmax()]
-            smoke = best_event.get("smoke_location")
-            if isinstance(smoke, list) and len(smoke) == 2:
-                lat, lon = smoke
-                map_center = [lat, lon]
-                copyable_smoke_location = f"{lat:.4f}, {lon:.4f}"
-                smoke_location_style = {
-                    "display": "flex",
-                    "alignItems": "center",
-                    "marginTop": "6px",
-                }
+        if selected_event_id:
+            matching_events = df_events[df_events["event_id"] == selected_event_id]
+            if not matching_events.empty:
+                best_event = matching_events.iloc[0]
+                smoke = best_event.get("smoke_location")
+                if (
+                    isinstance(smoke, (list, tuple))
+                    and len(smoke) == 2
+                    and all(isinstance(x, (int, float)) for x in smoke)
+                ):
+                    lat, lon = smoke
+                    map_center = [lat, lon]
+                    copyable_smoke_location = f"{lat:.4f}, {lon:.4f}"
+                    smoke_location_style = {
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginTop": "6px",
+                    }
     except Exception as e:
-        logger.error(f"Failed to resolve smoke location for sequence {sequence_id_on_display} - {e}")
+        logger.error(f"Failed to resolve smoke location for event {selected_event_id} - {e}")
 
     return (
         cones,

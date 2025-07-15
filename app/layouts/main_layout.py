@@ -80,4 +80,5 @@ def get_main_layout():
         dcc.Store(id="available-stream-sites", storage_type="session"),
         dcc.Store(id="selected-camera-info", storage_type="session"),
         dcc.Store(id="language", storage_type="session", data="fr"),
+        dcc.Store(id="selected_event_id", storage_type="session", data=None),
     ])
