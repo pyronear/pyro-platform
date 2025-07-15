@@ -1006,3 +1006,33 @@ def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_seque
         return False, "", ""
 
     return dash.no_update
+
+
+@app.callback(
+    Output("unmatch-sequence-button", "style"),
+    Input("sequence_id_on_display", "data"),
+    State("event_id_table", "data"),
+    State("selected_event_id", "data"),
+    prevent_initial_call=True,
+)
+def toggle_unmatch_button_visibility(sequence_id, event_id_table_json, selected_event_id):
+    if not sequence_id or not selected_event_id:
+        raise PreventUpdate
+
+    try:
+        event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
+        row = event_id_table[event_id_table["event_id"] == selected_event_id]
+
+        if row.empty:
+            raise PreventUpdate
+
+        sequences = row.iloc[0]["sequences"]
+
+        if isinstance(sequences, list) and len(sequences) > 1:
+            return {"width": "100%", "display": "block"}
+        else:
+            return {"display": "none"}
+
+    except Exception as e:
+        print(f"[toggle_unmatch_button_visibility] Error: {e}")
+        raise PreventUpdate
