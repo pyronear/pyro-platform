@@ -45,6 +45,7 @@ translate_dict = {
         "download": "Télécharger la Séquence",
         "start_time": "Début à ",
         "end_time": "Fin à ",
+        "unmatch-sequence": "Dissocier la séquence",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -106,6 +107,7 @@ translate_dict = {
         "download": "Descargar la secuencia",
         "start_time": "Inicio a las ",
         "end_time": "Fin a las ",
+        "unmatch-sequence": "Desvincular secuencia",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -167,6 +169,7 @@ translate_dict = {
         "download": "Download Sequence",
         "start_time": "Start at ",
         "end_time": "End at ",
+        "unmatch-sequence": "Unmatch sequence",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",

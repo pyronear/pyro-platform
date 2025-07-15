@@ -19,7 +19,6 @@ from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
-from shapely.geometry import Polygon as ShapelyPolygon  # type: ignore
 from translations import translate
 
 import config as cfg
@@ -82,10 +81,10 @@ def update_language_store(selected_lang):
 @app.callback(
     Output("sequence-list-container", "children"),
     Input("sub_api_sequences", "data"),
+    Input("event_id_table", "data"),
     State("api_cameras", "data"),
-    State("event_id_table", "data"),
 )
-def update_event_list(api_sequences, cameras, event_id_table):
+def update_event_list(api_sequences, event_id_table, cameras):
     logger.info("update_event_list")
 
     # Deserialize all inputs safely
@@ -107,6 +106,7 @@ def update_event_list(api_sequences, cameras, event_id_table):
         Output("sequence_dropdown", "options"),
         Output("sequence_dropdown", "value"),  # new: pre-select first
         Output("sequence_dropdown_container", "style"),
+        Output("selected_event_id", "data"),
     ],
     Input({"type": "event-button", "index": ALL}, "n_clicks"),
     [
@@ -121,7 +121,7 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
 
     ctx = dash.callback_context
     if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
-        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}, None]
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     selected_event_id = json.loads(button_id)["index"]
@@ -174,6 +174,7 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
         dropdown_options,
         default_value,
         dropdown_visible_style,
+        selected_event_id,
     ]
 
 
@@ -349,7 +350,6 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         raise PreventUpdate
 
 
-# Map
 @app.callback(
     [
         Output("vision_polygons", "children"),
@@ -370,10 +370,14 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
         State("api_cameras", "data"),
         State("api_sequences", "data"),
         State("sequence_dropdown", "options"),
+        State("event_id_table", "data"),
+        State("selected_event_id", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dropdown_options):
+def update_map_and_alert_info(
+    sequence_id_on_display, cameras, api_sequences, dropdown_options, event_id_table_data, selected_event_id
+):
     logger.info("update_map_and_alert_info")
 
     if sequence_id_on_display is None:
@@ -381,6 +385,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
 
     df_sequences = pd.read_json(StringIO(api_sequences), orient="split")
     df_cameras = pd.read_json(StringIO(cameras), orient="split")
+    df_events = pd.read_json(StringIO(event_id_table_data), orient="split")
     sequence_id_on_display = str(sequence_id_on_display)
 
     if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
@@ -399,7 +404,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             dash.no_update,
         )
 
-    # Séquence principale
+    # Current sequence
     current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
     site_lat = current_sequence["lat"]
     site_lon = current_sequence["lon"]
@@ -407,6 +412,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     azimuth_detection = float(current_sequence["cone_azimuth"])
     opening_angle = float(current_sequence["cone_angle"])
 
+    # Vision cone
     polygon_detection = build_vision_polygon(
         site_lat=site_lat,
         site_lon=site_lon,
@@ -416,7 +422,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
     )
     cones = [polygon_detection]
 
-    # Autres séquences listées dans le dropdown
+    # Other dropdown cones
     other_ids = [str(opt["value"]) for opt in dropdown_options if str(opt["value"]) != sequence_id_on_display]
     for other_id in other_ids:
         if other_id in df_sequences["id"].astype(str).values:
@@ -430,7 +436,7 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
             )
             cones.append(poly)
 
-    # Nom de la caméra
+    # Camera info
     camera_id = current_sequence["camera_id"]
     if camera_id in df_cameras["id"].values:
         camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
@@ -451,48 +457,32 @@ def update_map_and_alert_info(sequence_id_on_display, cameras, api_sequences, dr
         else ""
     )
 
-    # Intersection éventuelle des cônes
-    shapely_polys = []
-    for cone in cones:
-        positions = getattr(cone, "positions", None)
-        if positions and len(positions) >= 3:
-            shapely_polys.append(ShapelyPolygon([(lon, lat) for lat, lon in positions]))
-
-    if shapely_polys:
-        intersection = shapely_polys[0]
-        for poly in shapely_polys[1:]:
-            intersection = intersection.intersection(poly)
-
-        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
-            centroid = intersection.centroid
-            map_center = [centroid.y, centroid.x]
-        else:
-            map_center = [site_lat, site_lon]
-    else:
-        map_center = [site_lat, site_lon]
-
-    # Default center and smoke location: use the current sequence location
-    smoke_location_style = {"display": "none"}
+    # Try to get smoke location from the best matching event
     map_center = [site_lat, site_lon]
+    smoke_location_style = {"display": "none"}
     copyable_smoke_location = ""
 
-    # Only attempt triangulation if more than one cone
-    if len(shapely_polys) > 1:
-        intersection = shapely_polys[0]
-
-        for poly in shapely_polys[1:]:
-            intersection = intersection.intersection(poly)
-
-        if not intersection.is_empty and isinstance(intersection, ShapelyPolygon):
-            centroid = intersection.centroid
-            map_center = [centroid.y, centroid.x]
-            copyable_smoke_location = f"{map_center[0]:.4f}, {map_center[1]:.4f}"
-
-            smoke_location_style = {
-                "display": "flex",
-                "alignItems": "center",
-                "marginTop": "6px",
-            }
+    try:
+        if selected_event_id:
+            matching_events = df_events[df_events["event_id"] == selected_event_id]
+            if not matching_events.empty:
+                best_event = matching_events.iloc[0]
+                smoke = best_event.get("smoke_location")
+                if (
+                    isinstance(smoke, (list, tuple))
+                    and len(smoke) == 2
+                    and all(isinstance(x, (int, float)) for x in smoke)
+                ):
+                    lat, lon = smoke
+                    map_center = [lat, lon]
+                    copyable_smoke_location = f"{lat:.4f}, {lon:.4f}"
+                    smoke_location_style = {
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginTop": "6px",
+                    }
+    except Exception as e:
+        logger.error(f"Failed to resolve smoke location for event {selected_event_id} - {e}")
 
     return (
         cones,
@@ -1016,3 +1006,54 @@ def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_seque
         return False, "", ""
 
     return dash.no_update
+
+
+@app.callback(
+    Output("start-live-stream", "style"),
+    Output("create-occlusion-mask", "style"),
+    Output("unmatch-sequence-button", "style"),
+    Input("sub_api_sequences", "data"),
+    Input("sequence_id_on_display", "data"),
+    State("event_id_table", "data"),
+    State("selected_event_id", "data"),
+    prevent_initial_call=True,
+)
+def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, selected_event_id):
+    # Default: hide all
+    hide_style = {"display": "none"}
+    show_style = {"display": "block", "width": "100%"}
+
+    # Case 1 — sub_api_sequences is None or empty
+    if not sub_api_sequences:
+        return hide_style, hide_style, hide_style
+
+    try:
+        df_sequences = pd.read_json(StringIO(sub_api_sequences), orient="split")
+        if df_sequences.empty:
+            return hide_style, hide_style, hide_style
+    except Exception as e:
+        print(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
+        return hide_style, hide_style, hide_style
+
+    # Default: show stream & mask buttons
+    stream_style = show_style
+    mask_style = show_style
+    unmatch_style = hide_style  # set conditionally
+
+    # Case 2 — sequence_id or selected_event_id missing
+    if not sequence_id or not selected_event_id:
+        return stream_style, mask_style, hide_style
+
+    # Case 3 — check if selected event has > 1 sequence
+    try:
+        df_events = pd.read_json(StringIO(event_id_table_json), orient="split")
+        row = df_events[df_events["event_id"] == selected_event_id]
+
+        if not row.empty:
+            sequences = row.iloc[0]["sequences"]
+            if isinstance(sequences, list) and len(sequences) > 1:
+                unmatch_style = show_style
+    except Exception as e:
+        print(f"[hide_button_callback] Failed to process event_id_table: {e}")
+
+    return stream_style, mask_style, unmatch_style

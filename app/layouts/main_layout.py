@@ -68,6 +68,11 @@ def get_main_layout():
             storage_type="session",
             data=pd.DataFrame().to_json(orient="split"),
         ),
+        dcc.Store(
+            id="unmatched_event_id_table",
+            storage_type="session",
+            data=pd.DataFrame().to_json(orient="split"),
+        ),
         dcc.Store(id="sequence_id_on_display", storage_type="session", data=0),
         dcc.Store(id="auto-move-state", storage_type="session", data={"active": True}),
         # Add this to your app.layout
@@ -80,4 +85,5 @@ def get_main_layout():
         dcc.Store(id="available-stream-sites", storage_type="session"),
         dcc.Store(id="selected-camera-info", storage_type="session"),
         dcc.Store(id="language", storage_type="session", data="fr"),
+        dcc.Store(id="selected_event_id", storage_type="session", data=None),
     ])
