@@ -18,9 +18,7 @@ import pyproj
 import pytz
 from geopy.distance import geodesic
 from pyproj import Transformer
-from shapely.geometry import (
-    Polygon,  # type: ignore
-)
+from shapely.geometry import Polygon  # type: ignore
 from shapely.ops import transform as shapely_transform  # type: ignore
 from timezonefinder import TimezoneFinder
 
