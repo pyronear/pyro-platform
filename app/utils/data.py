@@ -411,8 +411,6 @@ def compute_overlap(api_sequences, R_km=35, r_min_km=0.5, max_dist_km=2.0, unmat
         except Exception as e:
             logger.warning(f"Failed to parse unmatched_event_table: {e}")
 
-    print("unmatched_exclusions", unmatched_exclusions)
-
     for i, id1 in enumerate(ids):
         row1 = df_valid[df_valid["id"] == id1].iloc[0]
         for id2 in ids[i + 1 :]:
@@ -429,7 +427,6 @@ def compute_overlap(api_sequences, R_km=35, r_min_km=0.5, max_dist_km=2.0, unmat
             if projected_cones[id1].intersects(projected_cones[id2]):
                 overlapping_pairs.append((id1, id2))
 
-    print("overlapping_pairs", overlapping_pairs)
     G = nx.Graph()
     G.add_edges_from(overlapping_pairs)
     cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G) if len(clique) >= 2]
