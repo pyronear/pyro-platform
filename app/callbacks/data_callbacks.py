@@ -294,7 +294,9 @@ def api_watcher(
             local_sequences_df = pd.DataFrame()
 
         if len(local_event_id_table) == len(event_id_table):
-            if np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values):
+            if len(event_id_table) == 0 or (
+                np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
+            ):
                 # Skip update if nothing changed
                 if not local_sequences_df.empty and not api_sequences.empty:
                     if not sequences_have_changed(api_sequences, local_sequences_df):

@@ -383,7 +383,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                             id="unmatch-sequence-button",
                             color="primary",
                             className="mb-2",
-                            style={"width": "100%"},
+                            style={"display": "none"},
                         ),
                         html.Div(
                             dbc.Col(
@@ -404,8 +404,15 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                                 id="map-button",
                             ),
                         ),
-                        dbc.Button(id="start-live-stream", color="primary", className="mb-1"),
-                        dbc.Button(id="create-occlusion-mask", color="primary", className="mb-1"),
+                        dbc.Button(
+                            id="start-live-stream", color="primary", className="mb-1", style={"display": "none"}
+                        ),
+                        dbc.Button(
+                            id="create-occlusion-mask",
+                            color="primary",
+                            className="mb-1",
+                            style={"display": "none"},
+                        ),
                     ],
                     width=2,
                     style={

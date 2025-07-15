@@ -1009,30 +1009,51 @@ def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_seque
 
 
 @app.callback(
+    Output("start-live-stream", "style"),
+    Output("create-occlusion-mask", "style"),
     Output("unmatch-sequence-button", "style"),
+    Input("sub_api_sequences", "data"),
     Input("sequence_id_on_display", "data"),
     State("event_id_table", "data"),
     State("selected_event_id", "data"),
     prevent_initial_call=True,
 )
-def toggle_unmatch_button_visibility(sequence_id, event_id_table_json, selected_event_id):
-    if not sequence_id or not selected_event_id:
-        raise PreventUpdate
+def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, selected_event_id):
+    # Default: hide all
+    hide_style = {"display": "none"}
+    show_style = {"display": "block", "width": "100%"}
+
+    # Case 1 — sub_api_sequences is None or empty
+    if not sub_api_sequences:
+        return hide_style, hide_style, hide_style
 
     try:
-        event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
-        row = event_id_table[event_id_table["event_id"] == selected_event_id]
-
-        if row.empty:
-            raise PreventUpdate
-
-        sequences = row.iloc[0]["sequences"]
-
-        if isinstance(sequences, list) and len(sequences) > 1:
-            return {"width": "100%", "display": "block"}
-        else:
-            return {"display": "none"}
-
+        df_sequences = pd.read_json(StringIO(sub_api_sequences), orient="split")
+        if df_sequences.empty:
+            return hide_style, hide_style, hide_style
     except Exception as e:
-        print(f"[toggle_unmatch_button_visibility] Error: {e}")
-        raise PreventUpdate
+        print(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
+        return hide_style, hide_style, hide_style
+
+    # Default: show stream & mask buttons
+    stream_style = show_style
+    mask_style = show_style
+    unmatch_style = hide_style  # set conditionally
+
+    # Case 2 — sequence_id or selected_event_id missing
+    if not sequence_id or not selected_event_id:
+        return stream_style, mask_style, hide_style
+
+    # Case 3 — check if selected event has > 1 sequence
+    try:
+        df_events = pd.read_json(StringIO(event_id_table_json), orient="split")
+        row = df_events[df_events["event_id"] == selected_event_id]
+
+        if not row.empty:
+            sequences = row.iloc[0]["sequences"]
+            if isinstance(sequences, list) and len(sequences) > 1:
+                unmatch_style = show_style
+    except Exception as e:
+        print(f"[hide_button_callback] Failed to process event_id_table: {e}")
+
+    return stream_style, mask_style, unmatch_style
