@@ -134,6 +134,20 @@ def login_callback(n_clicks, username, password, user_token, lang):
     raise PreventUpdate
 
 
+from dash import Input, Output, State, callback
+
+
+@callback(
+    Output("detection_fetch_limit", "data"),
+    Input("detection_fetch_limit_input", "value"),
+    prevent_initial_call=True,  # optional, remove if you want it to run on first load
+)
+def update_fetch_limit(value):
+    if value is None:
+        return 10  # fallback default
+    return value
+
+
 @app.callback(
     Output("available-stream-sites", "data"),
     Input("user_name", "data"),
@@ -207,9 +221,9 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
     [
         Input("main_api_fetch_interval", "n_intervals"),
         Input("api_cameras", "data"),
-        Input("my-date-picker-single", "date"),
         Input("to_acknowledge", "data"),
         Input("unmatched_event_id_table", "data"),
+        Input("my-date-picker-single", "date"),
     ],
     [State("api_sequences", "data"), State("user_token", "data"), State("event_id_table", "data")],
     prevent_initial_call=True,
@@ -217,9 +231,9 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
 def api_watcher(
     n_intervals,
     api_cameras,
-    selected_date,
     to_acknowledge,
     unmatched_event_id_table,
+    selected_date,
     local_sequences,
     user_token,
     local_event_id_table,
@@ -285,19 +299,32 @@ def api_watcher(
             api_sequences, event_id_table = compute_overlap(
                 api_sequences, unmatched_event_table=unmatched_event_id_table
             )
+
+            print("event_id_table")
+            print(event_id_table)
             local_event_id_table = pd.read_json(StringIO(local_event_id_table), orient="split")
 
-        # Load local sequences safely
-        if local_sequences:
-            local_sequences_df = pd.read_json(StringIO(local_sequences), orient="split")
-        else:
-            local_sequences_df = pd.DataFrame()
+            # Load local sequences safely
+            if local_sequences:
+                local_sequences_df = pd.read_json(StringIO(local_sequences), orient="split")
+            else:
+                local_sequences_df = pd.DataFrame()
 
-        if len(local_event_id_table) == len(event_id_table):
-            if len(event_id_table) == 0 or (
-                np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
-            ):
-                # Skip update if nothing changed
+            # Ensure valid DataFrames
+            if not isinstance(local_event_id_table, pd.DataFrame):
+                local_event_id_table = pd.DataFrame()
+            if not isinstance(event_id_table, pd.DataFrame):
+                event_id_table = pd.DataFrame()
+
+            # Check event condition: either empty or sequences match
+            event_condition = event_id_table.empty or (
+                "sequences" in local_event_id_table.columns
+                and "sequences" in event_id_table.columns
+                and np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
+            )
+
+            # Now apply sequence comparison only if event condition is true
+            if event_condition:
                 if not local_sequences_df.empty and not api_sequences.empty:
                     if not sequences_have_changed(api_sequences, local_sequences_df):
                         logger.info("Skipping update: no significant change detected")
@@ -352,7 +379,7 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
     [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
     [
         Input("sequence_id_on_display", "data"),
-        Input("detection_fetch_limit_input", "value"),
+        Input("detection_fetch_limit", "data"),
         Input("detection_fetch_desc", "value"),
     ],
     [

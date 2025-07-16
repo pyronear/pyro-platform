@@ -58,8 +58,11 @@ def display_page(
     if triggered == "selected-camera-info" and selected_camera_info:
         return live_stream_layout(user_token, api_cameras, available_stream, selected_camera_info, lang=lang)
 
-    if (pathname == "/" or pathname is None) or triggered == "my-date-picker-single":
-        return homepage_layout(user_token, api_cameras, lang=lang)
+    if triggered == "my-date-picker-single":
+        return homepage_layout(user_token, api_cameras, lang=lang, descending_order=False)
+
+    if pathname in ["/", None]:
+        return homepage_layout(user_token, api_cameras, lang=lang, descending_order=True)
 
     if pathname == "/cameras-status":
         return cameras_status_layout(user_token, api_cameras, lang=lang)

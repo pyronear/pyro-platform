@@ -12,7 +12,7 @@ from components.alerts import create_event_list
 from utils.display import build_alerts_map
 
 
-def homepage_layout(user_token, api_cameras, lang="fr"):
+def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
     return dbc.Container(
         [
             dbc.Row([
@@ -35,7 +35,7 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                             dbc.Checklist(
                                 id="detection_fetch_desc",
                                 options=[{"value": True}],
-                                value=[True],
+                                value=[descending_order],
                                 switch=True,
                             ),
                             html.Hr(className="my-3"),

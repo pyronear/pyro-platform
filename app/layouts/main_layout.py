@@ -86,4 +86,5 @@ def get_main_layout():
         dcc.Store(id="selected-camera-info", storage_type="session"),
         dcc.Store(id="language", storage_type="session", data="fr"),
         dcc.Store(id="selected_event_id", storage_type="session", data=None),
+        dcc.Store(id="detection_fetch_limit", storage_type="session", data=10),
     ])

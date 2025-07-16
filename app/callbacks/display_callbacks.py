@@ -550,7 +550,10 @@ def update_fire_markers(smoke_location_str, api_sequences):
         Input("confirm-non-wildfire", "n_clicks"),
         Input("cancel-confirmation", "n_clicks"),
     ],
-    [State("sequence_id_on_display", "data"), State("user_token", "data")],
+    [
+        State("sequence_id_on_display", "data"),
+        State("user_token", "data"),
+    ],
     prevent_initial_call=True,
 )
 def acknowledge_event(
@@ -561,14 +564,13 @@ def acknowledge_event(
     logger.info("acknowledge_event")
 
     if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
     if user_token is None:
-        return dash.no_update
+        raise PreventUpdate
 
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # Modal styles
     modal_visible_style = {
         "position": "fixed",
         "top": "50%",
@@ -580,29 +582,31 @@ def acknowledge_event(
     modal_hidden_style = {"display": "none"}
 
     client = get_client(user_token)
+    client.token = user_token
 
     if triggered_id == "acknowledge-button":
-        # Show the modal
-        if acknowledge_clicks > 0:
-            return modal_visible_style, dash.no_update
+        if acknowledge_clicks is None or acknowledge_clicks == 0:
+            raise PreventUpdate
+        return modal_visible_style, dash.no_update
 
     elif triggered_id == "confirm-wildfire":
-        # Send wildfire confirmation to the API
-        client.token = user_token
+        if confirm_wildfire is None or confirm_wildfire == 0:
+            raise PreventUpdate
         client.label_sequence(sequence_id_on_display, True)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "confirm-non-wildfire":
-        # Send non-wildfire confirmation to the API
-        client.token = user_token
+        if confirm_non_wildfire is None or confirm_non_wildfire == 0:
+            raise PreventUpdate
         client.label_sequence(sequence_id_on_display, False)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
-        # Cancel action
+        if cancel is None or cancel == 0:
+            raise PreventUpdate
         return modal_hidden_style, dash.no_update
 
-    raise dash.exceptions.PreventUpdate
+    raise PreventUpdate
 
 
 # Modal issue let's add this later
@@ -749,12 +753,15 @@ def update_datepicker(open_clicks, selected_date):
 def pick_live_stream_camera(n_clicks, azimuth, camera_label, azimuth_label):
     logger.info("pick_live_stream_camera")
 
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
     if not camera_label or not azimuth_label:
         raise PreventUpdate
+
     try:
         cam_name, _, _ = camera_label.split(" ")
         azimuth = int(azimuth.replace("°", ""))
-        # detection_azimuth = int(azimuth_label.replace("°", "").strip()) Need azimuth refine first
     except Exception as e:
         logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
         raise PreventUpdate
