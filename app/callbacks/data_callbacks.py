@@ -136,11 +136,10 @@ def login_callback(n_clicks, username, password, user_token, lang):
 
 from dash import Input, Output, State, callback
 
-
 @callback(
-    Output("detection_fetch_limit", "data"),
-    Input("detection_fetch_limit_input", "value"),
-    prevent_initial_call=True,  # optional, remove if you want it to run on first load
+    Output('detection_fetch_limit', 'data'),
+    Input('detection_fetch_limit_input', 'value'),
+    prevent_initial_call=True  # optional, remove if you want it to run on first load
 )
 def update_fetch_limit(value):
     if value is None:
@@ -223,7 +222,7 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
         Input("api_cameras", "data"),
         Input("to_acknowledge", "data"),
         Input("unmatched_event_id_table", "data"),
-        Input("my-date-picker-single", "date"),
+        Input("my-date-picker-single", "date")
     ],
     [State("api_sequences", "data"), State("user_token", "data"), State("event_id_table", "data")],
     prevent_initial_call=True,
@@ -300,8 +299,6 @@ def api_watcher(
                 api_sequences, unmatched_event_table=unmatched_event_id_table
             )
 
-            print("event_id_table")
-            print(event_id_table)
             local_event_id_table = pd.read_json(StringIO(local_event_id_table), orient="split")
 
             # Load local sequences safely
@@ -320,7 +317,10 @@ def api_watcher(
             event_condition = event_id_table.empty or (
                 "sequences" in local_event_id_table.columns
                 and "sequences" in event_id_table.columns
-                and np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
+                and np.array_equal(
+                    local_event_id_table["sequences"].values,
+                    event_id_table["sequences"].values
+                )
             )
 
             # Now apply sequence comparison only if event condition is true
@@ -329,6 +329,8 @@ def api_watcher(
                     if not sequences_have_changed(api_sequences, local_sequences_df):
                         logger.info("Skipping update: no significant change detected")
                         return dash.no_update
+
+
 
         return api_sequences.to_json(orient="split"), event_id_table.to_json(orient="split")
 
