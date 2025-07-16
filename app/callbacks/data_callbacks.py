@@ -375,8 +375,6 @@ def load_detections(
     if user_token is None or sequence_id_on_display is None:
         raise PreventUpdate
 
-    print("load_detections", detection_fetch_limit, detection_fetch_desc)
-
     detection_fetch_desc = detection_fetch_desc if detection_fetch_desc else False
 
     try:
@@ -396,22 +394,13 @@ def load_detections(
 
     detection_key = f"{sequence_id_on_display}_{detection_fetch_limit}_{detection_fetch_desc}"
 
-    print("api_detections", detection_key)
-
-    print(api_detections.keys())
-
     if detection_key not in api_detections.keys():
         try:
-            print("FETching DATA", sequence_id_on_display, detection_fetch_limit, detection_fetch_desc)
             response = client.fetch_sequences_detections(
                 sequence_id=sequence_id_on_display, limit=detection_fetch_limit, desc=detection_fetch_desc
             )
             data = response.json()
             detections = pd.DataFrame(data) if isinstance(data, list) else pd.DataFrame()
-
-            print("DETECTION")
-            print(detections)
-            print("dd")
 
             if not detections.empty and "bboxes" in detections.columns:
                 detections = detections.iloc[::-1].reset_index(drop=True)
@@ -434,10 +423,6 @@ def load_detections(
             return dash.no_update, dash.no_update, dash.no_update
 
     sequence_on_display = api_detections[detection_key]
-
-    sequence_on_displayDF = pd.read_json(StringIO(sequence_on_display), orient="split")
-
-    print(sequence_on_displayDF)
 
     return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)
 
