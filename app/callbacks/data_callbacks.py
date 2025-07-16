@@ -350,7 +350,11 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
 
 @app.callback(
     [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
-    [Input("sequence_id_on_display", "data")],
+    [
+        Input("sequence_id_on_display", "data"),
+        Input("detection_fetch_limit_input", "value"),
+        Input("detection_fetch_desc", "value"),
+    ],
     [
         State("api_sequences", "data"),
         State("api_detections", "data"),
@@ -359,9 +363,21 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
     ],
     prevent_initial_call=True,
 )
-def load_detections(sequence_id_on_display, api_sequences, api_detections, are_detections_loaded, user_token):
+def load_detections(
+    sequence_id_on_display,
+    detection_fetch_limit,
+    detection_fetch_desc,
+    api_sequences,
+    api_detections,
+    are_detections_loaded,
+    user_token,
+):
     if user_token is None or sequence_id_on_display is None:
         raise PreventUpdate
+
+    print("load_detections", detection_fetch_limit, detection_fetch_desc)
+
+    detection_fetch_desc = detection_fetch_desc if detection_fetch_desc else False
 
     try:
         api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
@@ -378,26 +394,50 @@ def load_detections(sequence_id_on_display, api_sequences, api_detections, are_d
     sequence_on_display = pd.DataFrame().to_json(orient="split")
     client = get_client(user_token)
 
-    if sequence_id_on_display not in api_detections:
+    detection_key = f"{sequence_id_on_display}_{detection_fetch_limit}_{detection_fetch_desc}"
+
+    print("api_detections", detection_key)
+
+    print(api_detections.keys())
+
+    if detection_key not in api_detections.keys():
         try:
-            response = client.fetch_sequences_detections(sequence_id_on_display)
+            print("FETching DATA", sequence_id_on_display, detection_fetch_limit, detection_fetch_desc)
+            response = client.fetch_sequences_detections(
+                sequence_id=sequence_id_on_display, limit=detection_fetch_limit, desc=detection_fetch_desc
+            )
             data = response.json()
             detections = pd.DataFrame(data) if isinstance(data, list) else pd.DataFrame()
+
+            print("DETECTION")
+            print(detections)
+            print("dd")
+
             if not detections.empty and "bboxes" in detections.columns:
                 detections = detections.iloc[::-1].reset_index(drop=True)
                 detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
-            api_detections[sequence_id_on_display] = detections.to_json(orient="split")
+
+                sequence_meta = api_sequences.loc[api_sequences["id"].astype(str) == sequence_id_on_display]
+                if not sequence_meta.empty:
+                    lat = sequence_meta.iloc[0].get("lat")
+                    lon = sequence_meta.iloc[0].get("lon")
+
+                    if "created_at" in detections.columns and pd.notnull(lat) and pd.notnull(lon):
+                        detections["created_at_local"] = detections["created_at"].apply(
+                            lambda dt: convert_dt_to_local_tz(lat, lon, dt) if pd.notnull(dt) else None
+                        )
+
+            api_detections[detection_key] = detections.to_json(orient="split")
+
         except Exception as e:
             logger.error(f"Error fetching detections for {sequence_id_on_display}: {e}")
             return dash.no_update, dash.no_update, dash.no_update
 
-    sequence_on_display = api_detections[sequence_id_on_display]
-    filtered = api_sequences.loc[api_sequences["id"].astype(str) == sequence_id_on_display, "last_seen_at"]
+    sequence_on_display = api_detections[detection_key]
 
-    if filtered.empty:
-        return dash.no_update, dash.no_update, dash.no_update
+    sequence_on_displayDF = pd.read_json(StringIO(sequence_on_display), orient="split")
 
-    are_detections_loaded[sequence_id_on_display] = str(filtered.iloc[0])
+    print(sequence_on_displayDF)
 
     return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)
 

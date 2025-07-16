@@ -16,7 +16,31 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
     return dbc.Container(
         [
             dbc.Row([
-                dbc.Col([create_event_list()], width=2, className="mb-4"),
+                dbc.Col(
+                    [
+                        html.Label(translate("detections_to_fetch", lang), className="mt-2"),
+                        dcc.Input(
+                            id="detection_fetch_limit_input",
+                            type="number",
+                            min=1,
+                            max=50,
+                            step=1,
+                            value=10,
+                            style={"width": "100%"},
+                        ),
+                        html.Label(translate("fetch_order", lang), className="mt-3"),
+                        dbc.Checklist(
+                            id="detection_fetch_desc",
+                            options=[{"value": True}],
+                            value=[True],
+                            switch=True,
+                        ),
+                        html.Hr(className="my-3"),
+                        create_event_list(),
+                    ],
+                    width=2,
+                    className="mb-4",
+                ),
                 dbc.Col(
                     [
                         html.Div(

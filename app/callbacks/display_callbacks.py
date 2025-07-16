@@ -12,6 +12,7 @@ from io import BytesIO, StringIO
 import boto3  # type: ignore
 import dash
 import logging_config
+import numpy as np
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
@@ -198,15 +199,18 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
         Output("image-slider", "min"),
         Output("slider-container", "style"),
     ],
-    [Input("image-slider", "value"), Input("sequence_on_display", "data")],
+    [
+        Input("image-slider", "value"),
+        Input("sequence_on_display", "data"),
+        Input("detection_fetch_desc", "value"),  # Nouveau Input
+    ],
     [
         State("sequence-list-container", "children"),
         State("language", "data"),
-        State("alert-end-date-value", "children"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, alert_end_value):
+def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_desc, sequence_list, lang):
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
@@ -216,8 +220,16 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     if sequence_on_display.empty or not len(sequence_list):
         return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
 
-    images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"]),
+    if not detection_fetch_desc:
+        sequence_on_display = sequence_on_display[::-1].reset_index(drop=True)
+
+    # Extraire les infos nécessaires
+    images, boxes, created_at_local_list = zip(
+        *(
+            (alert["url"], alert["processed_bboxes"], alert.get("created_at_local"))
+            for _, alert in sequence_on_display.iterrows()
+            if alert["url"]
+        ),
         strict=False,
     )
 
@@ -229,6 +241,7 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
+    # Afficher les bboxes si présentes
     bbox_styles = [{"display": "none"} for _ in range(3)]
     for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):
         bbox_styles[i] = {
@@ -243,15 +256,11 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
             "display": "block",
         }
 
-    try:
-        if isinstance(alert_end_value, str) and alert_end_value.strip():
-            last_time = datetime.strptime(alert_end_value.strip(), "%H:%M")
-        else:
-            raise ValueError("Empty or invalid date string")
-    except Exception:
-        last_time = datetime.now()
+    # Indices de ticks pour le slider
+    num_ticks = 3
+    tick_indices = sorted(set(int(round(i)) for i in np.linspace(0, n_images - 1, num=num_ticks)))
 
-    marks = {i: (last_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in range(n_images)}
+    marks = {i: str(created_at_local_list[i]).split(" ")[-1] for i in tick_indices}
 
     return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}]
 
@@ -1032,7 +1041,7 @@ def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, se
         if df_sequences.empty:
             return hide_style, hide_style, hide_style
     except Exception as e:
-        print(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
+        logger.error(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
         return hide_style, hide_style, hide_style
 
     # Default: show stream & mask buttons
@@ -1054,6 +1063,6 @@ def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, se
             if isinstance(sequences, list) and len(sequences) > 1:
                 unmatch_style = show_style
     except Exception as e:
-        print(f"[hide_button_callback] Failed to process event_id_table: {e}")
+        logger.error(f"[hide_button_callback] Failed to process event_id_table: {e}")
 
     return stream_style, mask_style, unmatch_style

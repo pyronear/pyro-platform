@@ -46,6 +46,8 @@ translate_dict = {
         "start_time": "Début à ",
         "end_time": "Fin à ",
         "unmatch-sequence": "Dissocier la séquence",
+        "detections_to_fetch": "Afficher :",
+        "fetch_order": "Afficher les plus récentes",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -108,6 +110,10 @@ translate_dict = {
         "start_time": "Inicio a las ",
         "end_time": "Fin a las ",
         "unmatch-sequence": "Desvincular secuencia",
+        "detections_to_fetch": "Número de detecciones a cargar",
+        "fetch_order": "Orden de recuperación",
+        "detections_to_fetch": "Mostrar:",
+        "fetch_order": "Mostrar las más recientes",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -170,6 +176,8 @@ translate_dict = {
         "start_time": "Start at ",
         "end_time": "End at ",
         "unmatch-sequence": "Unmatch sequence",
+        "detections_to_fetch": "Show:",
+        "fetch_order": "Show latest first",
         # live stream
         "move_speed": "Movement Speed",
         "zoom_level": "Zoom Level",
