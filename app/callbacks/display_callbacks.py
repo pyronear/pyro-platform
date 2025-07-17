@@ -54,6 +54,11 @@ def update_live_stream_button(lang):
     return [translate("live_stream", lang)]
 
 
+@app.callback(Output("export", "children"), Input("language", "data"))
+def update_export_button(lang):
+    return translate("export", lang)
+
+
 @app.callback(
     Output("start-live-stream", "children"),
     Input("language", "data"),
