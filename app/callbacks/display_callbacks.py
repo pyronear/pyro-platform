@@ -202,7 +202,7 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
     [
         Input("image-slider", "value"),
         Input("sequence_on_display", "data"),
-        Input("detection_fetch_desc", "value"),  # Nouveau Input
+        Input("detection_fetch_desc", "value"),
     ],
     [
         State("sequence-list-container", "children"),
@@ -211,6 +211,10 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
     prevent_initial_call=True,
 )
 def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_desc, sequence_list, lang):
+    from io import StringIO
+
+    import pandas as pd
+
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
@@ -223,7 +227,6 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
     if not detection_fetch_desc:
         sequence_on_display = sequence_on_display[::-1].reset_index(drop=True)
 
-    # Extraire les infos nécessaires
     images, boxes, created_at_local_list = zip(
         *(
             (alert["url"], alert["processed_bboxes"], alert.get("created_at_local"))
@@ -241,7 +244,6 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
-    # Afficher les bboxes si présentes
     bbox_styles = [{"display": "none"} for _ in range(3)]
     for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):
         bbox_styles[i] = {
@@ -256,11 +258,16 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
             "display": "block",
         }
 
-    # Indices de ticks pour le slider
-    num_ticks = 3
-    tick_indices = sorted(set(int(round(i)) for i in np.linspace(0, n_images - 1, num=num_ticks)))
+    try:
+        latest_time = pd.to_datetime(sequence_on_display["created_at_local"].dropna().max())
+    except Exception:
+        latest_time = datetime.now()
 
-    marks = {i: str(created_at_local_list[i]).split(" ")[-1] for i in tick_indices}
+    # Compute 5 evenly spaced tick positions
+    num_marks = 5
+    tick_indices = sorted(set(int(round(i)) for i in np.linspace(0, n_images - 1, num=num_marks)))
+
+    marks = {i: (latest_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in tick_indices}
 
     return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}]
 
@@ -560,8 +567,6 @@ def acknowledge_event(
     acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
 ):
     ctx = dash.callback_context
-
-    logger.info("acknowledge_event")
 
     if not ctx.triggered:
         raise PreventUpdate
