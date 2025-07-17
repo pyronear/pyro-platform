@@ -9,6 +9,7 @@ import urllib.parse
 
 import callbacks.data_callbacks
 import callbacks.display_callbacks
+import callbacks.export_callbacks
 import callbacks.live_callbacks
 import dash
 import logging_config
@@ -20,6 +21,7 @@ from main import app
 import config as cfg
 from pages.blinking_alarm import blinking_alarm_layout
 from pages.cameras_status import cameras_status_layout
+from pages.export import export_layout
 from pages.homepage import homepage_layout
 from pages.live_stream import live_stream_layout
 from pages.login import login_layout
@@ -70,6 +72,9 @@ def display_page(
         return blinking_alarm_layout(user_token, api_cameras, lang=lang)
     if pathname == "/live-stream":
         return live_stream_layout(user_token, api_cameras, available_stream, lang=lang)
+
+    if pathname == "/export":
+        return export_layout(lang=lang)
 
     logger.warning("Unable to find page for pathname: %s", pathname)
     return html.Div([html.P("Unable to find this page.", className="alert alert-warning")])

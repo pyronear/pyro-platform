@@ -73,6 +73,14 @@ def Navbar(lang="fr"):
                         color="light",
                         style={"fontSize": "16px"},
                     ),
+                    # 📤 Export
+                    dbc.Button(
+                        id="export-button-navbar",
+                        children=["📤 ", html.Span(id="export")],
+                        href="/export",
+                        color="light",
+                        style={"fontSize": "16px"},
+                    ),
                     # 🌐 Langues
                     dcc.Dropdown(
                         id="language-selector",

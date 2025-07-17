@@ -15,6 +15,7 @@ translate_dict = {
         "home": "Alertes",
         "live_stream": "Levée de doute",
         "datepicker": "Choisir une date",
+        "export": "Exporter",
         # cameras status
         "breadcrumb": "Dashboard des caméras",
         "page_title": "Dashboard de l'état des caméras",
@@ -69,6 +70,15 @@ translate_dict = {
         "username_placeholder": "UTILISATEUR",
         "password_placeholder": "MOT DE PASSE",
         "login_button_text": "Connexion",
+        # Export
+        "export_title": "Exporter les données",
+        "start_date": "Date de début",
+        "end_date": "Date de fin",
+        "prepare_archive": "Préparer l'archive",
+        "download": "Télécharger",
+        "downloading_in_progress": "Chargement en cours...",
+        "download_ready": "Téléchargement prêt",
+        "no_data_found": "Aucune donnée trouvée pour cette période.",
     },
     "es": {
         # data callbacks
@@ -80,6 +90,7 @@ translate_dict = {
         "home": "Alertas",
         "live_stream": "Transmisión en Vivo",
         "datepicker": "Elegir una fecha",
+        "export": "Exportar",
         # cameras status
         "breadcrumb": "Panel de cámaras",
         "page_title": "Panel de control del estado de la cámara",
@@ -136,6 +147,15 @@ translate_dict = {
         "username_placeholder": "NOMBRE DE USUARIO",
         "password_placeholder": "CONTRASEÑA",
         "login_button_text": "Iniciar sesión",
+        # Export
+        "export_title": "Exportar datos",
+        "start_date": "Fecha de inicio",
+        "end_date": "Fecha de fin",
+        "prepare_archive": "Preparar archivo",
+        "download": "Descargar",
+        "downloading_in_progress": "Cargando...",
+        "download_ready": "Descarga lista",
+        "no_data_found": "No se encontraron datos para este período.",
     },
     "en": {
         # data callbacks
@@ -147,6 +167,7 @@ translate_dict = {
         "home": "Alerts",
         "live_stream": "Live Stream",
         "datepicker": "Pick a date",
+        "export": "Export",
         # cameras status
         "breadcrumb": "Camera Dashboard",
         "page_title": "Camera Status Dashboard",
@@ -201,6 +222,15 @@ translate_dict = {
         "username_placeholder": "USERNAME",
         "password_placeholder": "PASSWORD",
         "login_button_text": "Log In",
+        # Export
+        "export_title": "Export data",
+        "start_date": "Start date",
+        "end_date": "End date",
+        "prepare_archive": "Prepare archive",
+        "download": "Download",
+        "downloading_in_progress": "Loading in progress...",
+        "download_ready": "Download ready",
+        "no_data_found": "No data found for this period.",
     },
 }
 
