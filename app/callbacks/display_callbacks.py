@@ -12,6 +12,7 @@ from io import BytesIO, StringIO
 import boto3  # type: ignore
 import dash
 import logging_config
+import numpy as np
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
@@ -198,15 +199,22 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
         Output("image-slider", "min"),
         Output("slider-container", "style"),
     ],
-    [Input("image-slider", "value"), Input("sequence_on_display", "data")],
+    [
+        Input("image-slider", "value"),
+        Input("sequence_on_display", "data"),
+        Input("detection_fetch_desc", "value"),
+    ],
     [
         State("sequence-list-container", "children"),
         State("language", "data"),
-        State("alert-end-date-value", "children"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang, alert_end_value):
+def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_desc, sequence_list, lang):
+    from io import StringIO
+
+    import pandas as pd
+
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
@@ -216,8 +224,15 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
     if sequence_on_display.empty or not len(sequence_list):
         return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
 
-    images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"]),
+    if not detection_fetch_desc:
+        sequence_on_display = sequence_on_display[::-1].reset_index(drop=True)
+
+    images, boxes, created_at_local_list = zip(
+        *(
+            (alert["url"], alert["processed_bboxes"], alert.get("created_at_local"))
+            for _, alert in sequence_on_display.iterrows()
+            if alert["url"]
+        ),
         strict=False,
     )
 
@@ -244,14 +259,15 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
         }
 
     try:
-        if isinstance(alert_end_value, str) and alert_end_value.strip():
-            last_time = datetime.strptime(alert_end_value.strip(), "%H:%M")
-        else:
-            raise ValueError("Empty or invalid date string")
+        latest_time = pd.to_datetime(sequence_on_display["created_at_local"].dropna().max())
     except Exception:
-        last_time = datetime.now()
+        latest_time = datetime.now()
 
-    marks = {i: (last_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in range(n_images)}
+    # Compute 5 evenly spaced tick positions
+    num_marks = 5
+    tick_indices = sorted(set(int(round(i)) for i in np.linspace(0, n_images - 1, num=num_marks)))
+
+    marks = {i: (latest_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in tick_indices}
 
     return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}]
 
@@ -541,7 +557,10 @@ def update_fire_markers(smoke_location_str, api_sequences):
         Input("confirm-non-wildfire", "n_clicks"),
         Input("cancel-confirmation", "n_clicks"),
     ],
-    [State("sequence_id_on_display", "data"), State("user_token", "data")],
+    [
+        State("sequence_id_on_display", "data"),
+        State("user_token", "data"),
+    ],
     prevent_initial_call=True,
 )
 def acknowledge_event(
@@ -549,17 +568,14 @@ def acknowledge_event(
 ):
     ctx = dash.callback_context
 
-    logger.info("acknowledge_event")
-
     if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
     if user_token is None:
-        return dash.no_update
+        raise PreventUpdate
 
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # Modal styles
     modal_visible_style = {
         "position": "fixed",
         "top": "50%",
@@ -571,29 +587,31 @@ def acknowledge_event(
     modal_hidden_style = {"display": "none"}
 
     client = get_client(user_token)
+    client.token = user_token
 
     if triggered_id == "acknowledge-button":
-        # Show the modal
-        if acknowledge_clicks > 0:
-            return modal_visible_style, dash.no_update
+        if acknowledge_clicks is None or acknowledge_clicks == 0:
+            raise PreventUpdate
+        return modal_visible_style, dash.no_update
 
     elif triggered_id == "confirm-wildfire":
-        # Send wildfire confirmation to the API
-        client.token = user_token
+        if confirm_wildfire is None or confirm_wildfire == 0:
+            raise PreventUpdate
         client.label_sequence(sequence_id_on_display, True)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "confirm-non-wildfire":
-        # Send non-wildfire confirmation to the API
-        client.token = user_token
+        if confirm_non_wildfire is None or confirm_non_wildfire == 0:
+            raise PreventUpdate
         client.label_sequence(sequence_id_on_display, False)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
-        # Cancel action
+        if cancel is None or cancel == 0:
+            raise PreventUpdate
         return modal_hidden_style, dash.no_update
 
-    raise dash.exceptions.PreventUpdate
+    raise PreventUpdate
 
 
 # Modal issue let's add this later
@@ -740,12 +758,15 @@ def update_datepicker(open_clicks, selected_date):
 def pick_live_stream_camera(n_clicks, azimuth, camera_label, azimuth_label):
     logger.info("pick_live_stream_camera")
 
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
     if not camera_label or not azimuth_label:
         raise PreventUpdate
+
     try:
         cam_name, _, _ = camera_label.split(" ")
         azimuth = int(azimuth.replace("°", ""))
-        # detection_azimuth = int(azimuth_label.replace("°", "").strip()) Need azimuth refine first
     except Exception as e:
         logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
         raise PreventUpdate
@@ -1032,7 +1053,7 @@ def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, se
         if df_sequences.empty:
             return hide_style, hide_style, hide_style
     except Exception as e:
-        print(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
+        logger.error(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
         return hide_style, hide_style, hide_style
 
     # Default: show stream & mask buttons
@@ -1054,6 +1075,6 @@ def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, se
             if isinstance(sequences, list) and len(sequences) > 1:
                 unmatch_style = show_style
     except Exception as e:
-        print(f"[hide_button_callback] Failed to process event_id_table: {e}")
+        logger.error(f"[hide_button_callback] Failed to process event_id_table: {e}")
 
     return stream_style, mask_style, unmatch_style

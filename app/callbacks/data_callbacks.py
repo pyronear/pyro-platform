@@ -134,6 +134,20 @@ def login_callback(n_clicks, username, password, user_token, lang):
     raise PreventUpdate
 
 
+from dash import Input, Output, State, callback
+
+
+@callback(
+    Output("detection_fetch_limit", "data"),
+    Input("detection_fetch_limit_input", "value"),
+    prevent_initial_call=True,  # optional, remove if you want it to run on first load
+)
+def update_fetch_limit(value):
+    if value is None:
+        return 10  # fallback default
+    return value
+
+
 @app.callback(
     Output("available-stream-sites", "data"),
     Input("user_name", "data"),
@@ -207,9 +221,9 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
     [
         Input("main_api_fetch_interval", "n_intervals"),
         Input("api_cameras", "data"),
-        Input("my-date-picker-single", "date"),
         Input("to_acknowledge", "data"),
         Input("unmatched_event_id_table", "data"),
+        Input("my-date-picker-single", "date"),
     ],
     [State("api_sequences", "data"), State("user_token", "data"), State("event_id_table", "data")],
     prevent_initial_call=True,
@@ -217,9 +231,9 @@ def api_cameras_watcher(n_intervals, api_cameras, user_token):
 def api_watcher(
     n_intervals,
     api_cameras,
-    selected_date,
     to_acknowledge,
     unmatched_event_id_table,
+    selected_date,
     local_sequences,
     user_token,
     local_event_id_table,
@@ -285,19 +299,30 @@ def api_watcher(
             api_sequences, event_id_table = compute_overlap(
                 api_sequences, unmatched_event_table=unmatched_event_id_table
             )
+
             local_event_id_table = pd.read_json(StringIO(local_event_id_table), orient="split")
 
-        # Load local sequences safely
-        if local_sequences:
-            local_sequences_df = pd.read_json(StringIO(local_sequences), orient="split")
-        else:
-            local_sequences_df = pd.DataFrame()
+            # Load local sequences safely
+            if local_sequences:
+                local_sequences_df = pd.read_json(StringIO(local_sequences), orient="split")
+            else:
+                local_sequences_df = pd.DataFrame()
 
-        if len(local_event_id_table) == len(event_id_table):
-            if len(event_id_table) == 0 or (
-                np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
-            ):
-                # Skip update if nothing changed
+            # Ensure valid DataFrames
+            if not isinstance(local_event_id_table, pd.DataFrame):
+                local_event_id_table = pd.DataFrame()
+            if not isinstance(event_id_table, pd.DataFrame):
+                event_id_table = pd.DataFrame()
+
+            # Check event condition: either empty or sequences match
+            event_condition = event_id_table.empty or (
+                "sequences" in local_event_id_table.columns
+                and "sequences" in event_id_table.columns
+                and np.array_equal(local_event_id_table["sequences"].values, event_id_table["sequences"].values)
+            )
+
+            # Now apply sequence comparison only if event condition is true
+            if event_condition:
                 if not local_sequences_df.empty and not api_sequences.empty:
                     if not sequences_have_changed(api_sequences, local_sequences_df):
                         logger.info("Skipping update: no significant change detected")
@@ -350,7 +375,11 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
 
 @app.callback(
     [Output("are_detections_loaded", "data"), Output("sequence_on_display", "data"), Output("api_detections", "data")],
-    [Input("sequence_id_on_display", "data")],
+    [
+        Input("sequence_id_on_display", "data"),
+        Input("detection_fetch_limit", "data"),
+        Input("detection_fetch_desc", "value"),
+    ],
     [
         State("api_sequences", "data"),
         State("api_detections", "data"),
@@ -359,9 +388,19 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
     ],
     prevent_initial_call=True,
 )
-def load_detections(sequence_id_on_display, api_sequences, api_detections, are_detections_loaded, user_token):
+def load_detections(
+    sequence_id_on_display,
+    detection_fetch_limit,
+    detection_fetch_desc,
+    api_sequences,
+    api_detections,
+    are_detections_loaded,
+    user_token,
+):
     if user_token is None or sequence_id_on_display is None:
         raise PreventUpdate
+
+    detection_fetch_desc = detection_fetch_desc if detection_fetch_desc else False
 
     try:
         api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
@@ -378,26 +417,37 @@ def load_detections(sequence_id_on_display, api_sequences, api_detections, are_d
     sequence_on_display = pd.DataFrame().to_json(orient="split")
     client = get_client(user_token)
 
-    if sequence_id_on_display not in api_detections:
+    detection_key = f"{sequence_id_on_display}_{detection_fetch_limit}_{detection_fetch_desc}"
+
+    if detection_key not in api_detections.keys():
         try:
-            response = client.fetch_sequences_detections(sequence_id_on_display)
+            response = client.fetch_sequences_detections(
+                sequence_id=sequence_id_on_display, limit=detection_fetch_limit, desc=detection_fetch_desc
+            )
             data = response.json()
             detections = pd.DataFrame(data) if isinstance(data, list) else pd.DataFrame()
+
             if not detections.empty and "bboxes" in detections.columns:
                 detections = detections.iloc[::-1].reset_index(drop=True)
                 detections["processed_bboxes"] = detections["bboxes"].apply(process_bbox)
-            api_detections[sequence_id_on_display] = detections.to_json(orient="split")
+
+                sequence_meta = api_sequences.loc[api_sequences["id"].astype(str) == sequence_id_on_display]
+                if not sequence_meta.empty:
+                    lat = sequence_meta.iloc[0].get("lat")
+                    lon = sequence_meta.iloc[0].get("lon")
+
+                    if "created_at" in detections.columns and pd.notnull(lat) and pd.notnull(lon):
+                        detections["created_at_local"] = detections["created_at"].apply(
+                            lambda dt: convert_dt_to_local_tz(lat, lon, dt) if pd.notnull(dt) else None
+                        )
+
+            api_detections[detection_key] = detections.to_json(orient="split")
+
         except Exception as e:
             logger.error(f"Error fetching detections for {sequence_id_on_display}: {e}")
             return dash.no_update, dash.no_update, dash.no_update
 
-    sequence_on_display = api_detections[sequence_id_on_display]
-    filtered = api_sequences.loc[api_sequences["id"].astype(str) == sequence_id_on_display, "last_seen_at"]
-
-    if filtered.empty:
-        return dash.no_update, dash.no_update, dash.no_update
-
-    are_detections_loaded[sequence_id_on_display] = str(filtered.iloc[0])
+    sequence_on_display = api_detections[detection_key]
 
     return json.dumps(are_detections_loaded), sequence_on_display, json.dumps(api_detections)
 
