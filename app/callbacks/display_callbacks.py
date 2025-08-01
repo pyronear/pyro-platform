@@ -185,6 +185,14 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
 
 
 @app.callback(
+    Output("detection_fetch_desc_store", "data"),
+    Input("detection_fetch_desc_store", "data"),
+)
+def update_desc_store(value):
+    return True in value  # ensures it's a boolean
+
+
+@app.callback(
     Output("sequence_id_on_display", "data"),
     Input("sequence_dropdown", "value"),
 )
@@ -207,7 +215,7 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
     [
         Input("image-slider", "value"),
         Input("sequence_on_display", "data"),
-        Input("detection_fetch_desc", "value"),
+        Input("detection_fetch_desc_store", "data"),
     ],
     [
         State("sequence-list-container", "children"),

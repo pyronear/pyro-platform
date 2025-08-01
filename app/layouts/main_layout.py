@@ -87,4 +87,7 @@ def get_main_layout():
         dcc.Store(id="language", storage_type="session", data="fr"),
         dcc.Store(id="selected_event_id", storage_type="session", data=None),
         dcc.Store(id="detection_fetch_limit", storage_type="session", data=10),
+        dcc.Store(
+            id="detection_fetch_desc_store", storage_type="session", data=True
+        ),  # or False if that's your default
     ])
