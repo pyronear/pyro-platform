@@ -21,24 +21,6 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                         className="common-style",
                         style={"padding": "8px"},
                         children=[
-                            html.Label(translate("detections_to_fetch", lang), className="mt-2"),
-                            dcc.Input(
-                                id="detection_fetch_limit_input",
-                                type="number",
-                                min=1,
-                                max=50,
-                                step=1,
-                                value=10,
-                                style={"width": "100%"},
-                            ),
-                            html.Label(translate("fetch_order", lang), className="mt-3"),
-                            dbc.Checklist(
-                                id="detection_fetch_desc",
-                                options=[{"value": True}],
-                                value=[descending_order],
-                                switch=True,
-                            ),
-                            html.Hr(className="my-3"),
                             create_event_list(),
                         ],
                     ),
@@ -113,7 +95,7 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                         ),
                         dbc.Row(
                             [
-                                dbc.Col(
+                                dbc.Col(  # Play button
                                     dbc.Button(
                                         html.Img(src="assets/images/play-pause.svg"),
                                         id="auto-move-button",
@@ -122,14 +104,59 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                     ),
                                     width=1,
                                 ),
-                                dbc.Col(
+                                dbc.Col(  # Input and toggle
+                                    html.Div(
+                                        [
+                                            html.Span(
+                                                translate("detections_to_fetch", lang), style={"marginRight": "6px"}
+                                            ),
+                                            dcc.Input(
+                                                id="detection_fetch_limit_input",
+                                                type="number",
+                                                min=1,
+                                                max=50,
+                                                step=1,
+                                                value=10,
+                                                style={"width": "60px", "marginRight": "12px"},
+                                            ),
+                                            dbc.Switch(
+                                                id="detection_fetch_desc",
+                                                label=translate("fetch_order", lang),
+                                                value=descending_order,  # value is a bool
+                                                style={"display": "inline-block"},
+                                            ),
+                                        ],
+                                        style={"display": "flex", "alignItems": "center"},
+                                    ),
+                                    width=5,
+                                ),
+                                dbc.Col(  # Slider
                                     html.Div(
                                         dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0, marks={}),
                                         id="slider-container",
                                         className="common-style-slider",
                                         style={"display": "none"},
                                     ),
-                                    width=11,
+                                    width=5,
+                                ),
+                                dbc.Col(  # Timestamp
+                                    html.Div(
+                                        html.Span(
+                                            id="image-timestamp",
+                                            children="",
+                                            style={
+                                                "fontFamily": "'Roboto', sans-serif",  # match Bootstrap default
+                                                "fontSize": "16px",
+                                                "fontWeight": "400",  # or 500
+                                                "color": "#212529",  # Bootstrap's default text color
+                                                "backgroundColor": "#fffffff",  # same as slider background
+                                                "padding": "6px 10px",
+                                                "borderRadius": "6px",
+                                            },
+                                        ),
+                                        style={"display": "flex", "alignItems": "center", "justifyContent": "flex-end"},
+                                    ),
+                                    width=1,
                                 ),
                             ],
                             style={"marginTop": "10px"},

@@ -378,7 +378,7 @@ def update_sub_api_sequences(api_sequences, local_sub_sequences):
     [
         Input("sequence_id_on_display", "data"),
         Input("detection_fetch_limit", "data"),
-        Input("detection_fetch_desc", "value"),
+        Input("detection_fetch_desc_store", "data"),
     ],
     [
         State("api_sequences", "data"),
