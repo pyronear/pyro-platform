@@ -143,7 +143,7 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                     html.Div(
                                         html.Span(
                                             id="image-timestamp",
-                                            children="12:33:33",
+                                            children="",
                                             style={
                                                 "fontFamily": "'Roboto', sans-serif",  # match Bootstrap default
                                                 "fontSize": "16px",

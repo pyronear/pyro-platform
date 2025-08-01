@@ -12,7 +12,6 @@ from io import BytesIO, StringIO
 import boto3  # type: ignore
 import dash
 import logging_config
-import numpy as np
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
 from dash import Input, Output, State, ctx
@@ -211,6 +210,7 @@ def update_sequence_on_dropdown_change(selected_sequence_id):
         Output("image-slider", "marks"),
         Output("image-slider", "min"),
         Output("slider-container", "style"),
+        Output("image-timestamp", "children"),
     ],
     [
         Input("image-slider", "value"),
@@ -235,11 +235,12 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
     sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
 
     if sequence_on_display.empty or not len(sequence_list):
-        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}, ""
 
     if not detection_fetch_desc:
         sequence_on_display = sequence_on_display[::-1].reset_index(drop=True)
 
+    # Extract data
     images, boxes, created_at_local_list = zip(
         *(
             (alert["url"], alert["processed_bboxes"], alert.get("created_at_local"))
@@ -250,13 +251,14 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
     )
 
     if not images:
-        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}, ""
 
     n_images = len(images)
     slider_value = slider_value % n_images
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
+    # Compute bbox styles
     bbox_styles = [{"display": "none"} for _ in range(3)]
     for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):
         bbox_styles[i] = {
@@ -271,18 +273,17 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
             "display": "block",
         }
 
+    # Marks with no labels (just dots)
+    marks = dict.fromkeys(range(n_images), "")
+
+    # Timestamp for the selected image
     try:
-        latest_time = pd.to_datetime(sequence_on_display["created_at_local"].dropna().max())
+        timestamp = created_at_local_list[slider_value]
+        timestamp_str = pd.to_datetime(timestamp).strftime("%H:%M") if timestamp else ""
     except Exception:
-        latest_time = datetime.now()
+        timestamp_str = ""
 
-    # Compute 5 evenly spaced tick positions
-    num_marks = 5
-    tick_indices = sorted(set(int(round(i)) for i in np.linspace(0, n_images - 1, num=num_marks)))
-
-    marks = {i: (latest_time - timedelta(seconds=30 * (n_images - 1 - i))).strftime("%H:%M:%S") for i in tick_indices}
-
-    return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}]
+    return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}, timestamp_str]
 
 
 @app.callback(
