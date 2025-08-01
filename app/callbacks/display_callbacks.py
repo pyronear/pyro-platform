@@ -278,8 +278,13 @@ def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_des
 
     # Timestamp for the selected image
     try:
-        timestamp = created_at_local_list[slider_value]
-        timestamp_str = pd.to_datetime(timestamp).strftime("%H:%M") if timestamp else ""
+        # Take latest non-null timestamp
+        latest_ts = pd.to_datetime(next((ts for ts in reversed(created_at_local_list) if ts), None), errors="coerce")
+        if pd.notnull(latest_ts):
+            timestamp = latest_ts - pd.Timedelta(seconds=30 * (n_images - 1 - slider_value))
+            timestamp_str = timestamp.strftime("%H:%M:%S")
+        else:
+            timestamp_str = ""
     except Exception:
         timestamp_str = ""
 
