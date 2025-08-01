@@ -186,10 +186,10 @@ def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequ
 
 @app.callback(
     Output("detection_fetch_desc_store", "data"),
-    Input("detection_fetch_desc_store", "data"),
+    Input("detection_fetch_desc", "value"),
 )
 def update_desc_store(value):
-    return True in value  # ensures it's a boolean
+    return value
 
 
 @app.callback(

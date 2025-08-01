@@ -119,13 +119,10 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                                 value=10,
                                                 style={"width": "60px", "marginRight": "12px"},
                                             ),
-                                            html.Span(translate("fetch_order", lang), style={"marginRight": "6px"}),
-                                            dbc.Checklist(
+                                            dbc.Switch(
                                                 id="detection_fetch_desc",
-                                                options=[{"value": True}],
-                                                value=[descending_order],
-                                                switch=True,
-                                                inline=True,
+                                                label=translate("fetch_order", lang),
+                                                value=descending_order,  # value is a bool
                                                 style={"display": "inline-block"},
                                             ),
                                         ],
@@ -150,7 +147,7 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                             style={
                                                 "fontFamily": "'Roboto', sans-serif",  # match Bootstrap default
                                                 "fontSize": "16px",
-                                                "fontWeight": "500",  # or 500
+                                                "fontWeight": "400",  # or 500
                                                 "color": "#212529",  # Bootstrap's default text color
                                                 "backgroundColor": "#fffffff",  # same as slider background
                                                 "padding": "6px 10px",
