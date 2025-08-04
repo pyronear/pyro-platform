@@ -829,26 +829,30 @@ def update_datepicker(open_clicks, selected_date):
 @app.callback(
     Output("selected-camera-info", "data"),
     Input("start-live-stream", "n_clicks"),
+    Input("live-stream-button", "n_clicks"),
     State("alert-azimuth-value", "children"),
     State("alert-camera-value", "children"),
     State("alert-azimuth-value", "children"),
     prevent_initial_call=True,
 )
-def pick_live_stream_camera(n_clicks, azimuth, camera_label, azimuth_label):
+def pick_live_stream_camera(start_clicks, button_clicks, azimuth, camera_label, azimuth_label):
     logger.info("pick_live_stream_camera")
 
-    if n_clicks is None or n_clicks == 0:
-        raise PreventUpdate
+    # Check which input triggered the callback
+    if ctx.triggered_id == "live-stream-button":
+        logger.info("[pick_live_stream_camera] live-stream-button clicked, resetting data")
+        return None
 
     if not camera_label or not azimuth_label:
-        raise PreventUpdate
+        logger.warning("[pick_live_stream_camera] missing camera or azimuth label")
+        return None
 
     try:
         cam_name, _, _ = camera_label.split(" ")
         azimuth = int(azimuth.replace("°", ""))
     except Exception as e:
         logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
-        raise PreventUpdate
+        return None
 
     logger.info(f"Selected camera={cam_name}, azimuth={azimuth}")
     return (cam_name, azimuth)
