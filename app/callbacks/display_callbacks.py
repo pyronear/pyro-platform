@@ -608,23 +608,24 @@ def update_location_and_parcel_info(opacity, smoke_location, lang):
         label = parcel.get("llib_frt", "")
         code = parcel.get("ccod_cact", "")
         if label or code:
-            parcel_label = f"{label} (ID: {code})" if code else label
+            parcel_label = f"{code}" if code else label
             children.append(
                 html.Div(
                     [
                         html.Span(
-                            f"{translate('onf_parcel', lang)} : ", style={"fontWeight": "bold", "marginRight": "4px"}
+                            f"{translate('onf_parcel', lang)} : ",
+                            style={"fontWeight": "bold", "marginRight": "4px"},
                         ),
                         html.Span(parcel_label),
                     ],
-                    style={"margin": "0", "padding": "0", "lineHeight": "1.2"},
+                    style={"margin": "4px 0 0 0", "padding": "0", "lineHeight": "1.2"},
                 )
             )
 
     if not children:
         return [], {"display": "none"}
 
-    return children, {"display": "block", "marginTop": "8px", "padding": "6px 0"}
+    return children, {"display": "block", "marginTop": "0px", "padding": "6px 0"}
 
 
 @app.callback(
