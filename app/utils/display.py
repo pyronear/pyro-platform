@@ -413,3 +413,41 @@ def prepare_archive(sequence_data, api_sequences, folder_name, camera_value):
 
     # Create zip
     shutil.make_archive(os.path.join("zips", folder_name), "zip", base_dir)
+
+
+def get_location_info(lat, lon):
+    # Step 1: Reverse geocode using Nominatim
+    nominatim_url = "https://nominatim.openstreetmap.org/reverse"
+    params = {"lat": lat, "lon": lon, "format": "json", "addressdetails": 1}
+    headers = {"User-Agent": "YourAppName/1.0"}
+    response = requests.get(nominatim_url, params=params, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+
+    address = data.get("address", {})
+    city = address.get("city") or address.get("town") or address.get("village") or None
+    country = address.get("country")
+    country_code = address.get("country_code")
+
+    result = {"city": city, "country": country, "country_code": country_code, "parcel": None}
+
+    # Step 2: If in France, check for forest parcel
+    if country_code == "fr":
+        parcel_url = "https://services1.arcgis.com/Y4HgaQpzkE7kenlE/arcgis/rest/services/Parcelles_foresti%C3%A8res_publiques_de_France_m%C3%A9tropolitaine/FeatureServer/11/query"
+        parcel_params = {
+            "geometry": f"{lon},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": 4326,
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json",
+        }
+        parcel_response = requests.get(parcel_url, params=parcel_params)
+        parcel_response.raise_for_status()
+        parcel_data = parcel_response.json()
+
+        if parcel_data.get("features"):
+            result["parcel"] = parcel_data["features"][0]["attributes"]
+
+    return result

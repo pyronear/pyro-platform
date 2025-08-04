@@ -409,7 +409,7 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                                         children=[
                                                             html.Span(
                                                                 id="smoke-location-copy-content",
-                                                                children="48.5595, 2.5468",  # Or dynamically updated
+                                                                children="",
                                                                 style={"marginRight": "6px", "whiteSpace": "nowrap"},
                                                             ),
                                                             dcc.Clipboard(
@@ -426,6 +426,15 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                                         ],
                                                     ),
                                                 ],
+                                            ),
+                                            html.Div(
+                                                id="alert-location-parcel-info",
+                                                style={
+                                                    "display": "block",
+                                                    "margin": "0",
+                                                    "padding": "0",
+                                                    "lineHeight": "1",
+                                                },
                                             ),
                                         ],
                                     ),
