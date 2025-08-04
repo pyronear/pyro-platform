@@ -91,7 +91,7 @@ def set_azimuth(selected_camera_info, pi_cameras):
         logger.debug(f"[set_azimuth] Setting from alert: azimuth={selected_camera_info[1]}")
         return selected_camera_info[1]
 
-    raise PreventUpdate
+    return None
 
 
 @app.callback(
