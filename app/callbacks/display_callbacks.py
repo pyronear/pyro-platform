@@ -14,7 +14,7 @@ import dash
 import logging_config
 import pandas as pd
 from botocore.exceptions import ClientError  # type: ignore
-from dash import Input, Output, State, ctx
+from dash import Input, Output, State, ctx, html
 from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
 from dateutil.relativedelta import relativedelta  # type: ignore
@@ -27,6 +27,7 @@ from utils.display import (
     build_vision_polygon,
     create_sequence_list,
     filter_bboxes_dict,
+    get_location_info,
     prepare_archive,
 )
 
@@ -566,6 +567,64 @@ def update_fire_markers(smoke_location_str, api_sequences):
     coords_str = f"{lat:.4f}, {lon:.4f}"
 
     return [pos, 1, coords_str, pos, 1, coords_str]
+
+
+@app.callback(
+    Output("alert-location-parcel-info", "children"),
+    Output("alert-location-parcel-info", "style"),
+    Input("fire-location-marker", "opacity"),
+    State("smoke-location-copy-content", "children"),
+    State("language", "data"),
+)
+def update_location_and_parcel_info(opacity, smoke_location, lang):
+    if opacity != 1 or not smoke_location:
+        return dash.no_update, {"display": "none"}  # hide but don't change content
+
+    try:
+        lat, lon = map(float, smoke_location.split(","))
+    except Exception:
+        return [], {"display": "none"}  # Invalid format, clear everything
+
+    result = get_location_info(lat, lon)
+    city = result.get("city")
+    parcel = result.get("parcel")
+
+    children = []
+
+    if city:
+        children.append(
+            html.Div(
+                [
+                    html.Span(
+                        f"{translate('localisation', lang)} : ", style={"fontWeight": "bold", "marginRight": "4px"}
+                    ),
+                    html.Span(city),
+                ],
+                style={"margin": "0", "padding": "0", "lineHeight": "1.2"},
+            )
+        )
+
+    if parcel:
+        label = parcel.get("llib_frt", "")
+        code = parcel.get("ccod_cact", "")
+        if label or code:
+            parcel_label = f"{label} (ID: {code})" if code else label
+            children.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"{translate('onf_parcel', lang)} : ", style={"fontWeight": "bold", "marginRight": "4px"}
+                        ),
+                        html.Span(parcel_label),
+                    ],
+                    style={"margin": "0", "padding": "0", "lineHeight": "1.2"},
+                )
+            )
+
+    if not children:
+        return [], {"display": "none"}
+
+    return children, {"display": "block", "marginTop": "8px", "padding": "6px 0"}
 
 
 @app.callback(

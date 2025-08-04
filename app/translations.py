@@ -49,6 +49,8 @@ translate_dict = {
         "unmatch-sequence": "Dissocier la séquence",
         "detections_to_fetch": "Afficher :",
         "fetch_order": "Afficher les plus récentes",
+        "localisation": "Localisation",
+        "onf_parcel": "Parcelle ONF",
         # live stream
         "move_speed": "Vitesse de déplacement",
         "zoom_level": "Niveau de zoom",
@@ -125,6 +127,8 @@ translate_dict = {
         "fetch_order": "Orden de recuperación",
         "detections_to_fetch": "Mostrar:",
         "fetch_order": "Mostrar las más recientes",
+        "localisation": "Localización",
+        "onf_parcel": "Parcela ONF",
         # live stream
         "move_speed": "Velocidad de movimiento",
         "zoom_level": "Nivel de zoom",
@@ -218,6 +222,8 @@ translate_dict = {
         "live_stream_warning": "⚠️ Verification in progress: detection inactive!",
         "loading_modal_title": "Stream is loading...",
         "loading_modal_body": "Please wait.",
+        "localisation": "Location",
+        "onf_parcel": "ONF Parcel",
         # login
         "username_placeholder": "USERNAME",
         "password_placeholder": "PASSWORD",
