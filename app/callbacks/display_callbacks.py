@@ -606,7 +606,7 @@ def update_location_and_parcel_info(opacity, smoke_location, lang):
 
     if parcel:
         label = parcel.get("llib_frt", "")
-        code = parcel.get("ccod_cact", "")
+        code = parcel.get("ccod_prf", "")
         if label or code:
             parcel_label = f"{code}" if code else label
             children.append(
