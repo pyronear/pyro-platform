@@ -5,157 +5,200 @@
 
 import ast
 import json
-import urllib
-from io import StringIO
+import os
+from datetime import date, datetime, timedelta, timezone
+from io import BytesIO, StringIO
 
+import boto3  # type: ignore
 import dash
 import logging_config
 import pandas as pd
-from dash.dependencies import ALL, Input, Output, State
+from botocore.exceptions import ClientError  # type: ignore
+from dash import Input, Output, State, ctx, html
+from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
+from dateutil.relativedelta import relativedelta  # type: ignore
 from main import app
+from translations import translate
 
 import config as cfg
-from services import api_client
-from utils.display import build_vision_polygon, convert_dt_to_local_tz, create_event_list_from_alerts
+from services import get_client
+from utils.display import (
+    build_vision_polygon,
+    create_sequence_list,
+    filter_bboxes_dict,
+    get_location_info,
+    prepare_archive,
+)
 
 logger = logging_config.configure_logging(cfg.DEBUG, cfg.SENTRY_DSN)
 
 
-@app.callback(Output("camera_status_button_text", "children"), Input("url", "search"))
-def update_nav_bar_language(search):
-
-    translate = {
-        "fr": {
-            "camera_status": "Statut des Caméras",
-        },
-        "es": {
-            "camera_status": "Estado de las Cámaras",
-        },
-    }
-
-    params = dict(urllib.parse.parse_qsl(search.lstrip("?"))) if search else {}
-
-    lang = params.get("lang", cfg.DEFAULT_LANGUAGE)
-
-    return [translate[lang]["camera_status"]]
+@app.callback(Output("camera_status_button_text", "children"), Input("language", "data"))
+def update_camera_status_button(lang):
+    return [translate("camera_status", lang)]
 
 
-@app.callback(Output("url", "search"), [Input("btn-fr", "n_clicks"), Input("btn-es", "n_clicks")])
-def update_language_url(fr_clicks, es_clicks):
-    # Check which button has been clicked
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return ""
-
-    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    # update the URL according to the button clicked
-    if button_id == "btn-fr":
-        return "?lang=fr"
-    elif button_id == "btn-es":
-        return "?lang=es"
-
-    return ""
+@app.callback(Output("blinking_alarm_button_text", "children"), Input("language", "data"))
+def update_blinking_alarm_button(lang):
+    return [translate("blinking_alarm", lang)]
 
 
-# Create event list
+@app.callback(Output("home_button_text", "children"), Input("language", "data"))
+def update_home_button(lang):
+    return [translate("home", lang)]
+
+
+@app.callback(Output("live_stream_button_text", "children"), Input("language", "data"))
+def update_live_stream_button(lang):
+    return [translate("live_stream", lang)]
+
+
+@app.callback(Output("export", "children"), Input("language", "data"))
+def update_export_button(lang):
+    return translate("export", lang)
+
+
+@app.callback(
+    Output("start-live-stream", "children"),
+    Input("language", "data"),
+)
+def update_start_live_stream_button(lang):
+    return translate("start_live_stream_button", lang)
+
+
+@app.callback(
+    Output("create-occlusion-mask", "children"),
+    Input("language", "data"),
+)
+def update_create_occlusion_mask_button(lang):
+    return translate("create_occlusion_mask", lang)
+
+
+@app.callback(
+    Output("language", "data"),
+    Input("language-selector", "value"),
+    prevent_initial_call="initial_duplicate",  # ne déclenche pas à l'initialisation si même valeur
+)
+def update_language_store(selected_lang):
+    return selected_lang
+
+
 @app.callback(
     Output("sequence-list-container", "children"),
-    [
-        Input("api_sequences", "data"),
-        Input("to_acknowledge", "data"),
-    ],
+    Input("sub_api_sequences", "data"),
+    Input("event_id_table", "data"),
     State("api_cameras", "data"),
 )
-def update_event_list(api_sequences, to_acknowledge, cameras):
-    """
-    Updates the event list based on changes in the events data or acknowledgement actions.
-
-    Parameters:
-    - api_detections (json): JSON formatted data containing current alerts information.
-    - to_acknowledge (int): Event ID that is being acknowledged.
-
-    Returns:
-    - html.Div: A Div containing the updated list of alerts.
-    """
+def update_event_list(api_sequences, event_id_table, cameras):
     logger.info("update_event_list")
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
+    # Deserialize all inputs safely
+    if isinstance(api_sequences, str):
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if isinstance(cameras, str):
+        cameras = pd.read_json(StringIO(cameras), orient="split")
+    if isinstance(event_id_table, str):
+        event_id_table = pd.read_json(StringIO(event_id_table), orient="split")
 
-    if len(api_sequences):
-        # Drop acknowledge event for faster update
-        api_sequences = api_sequences[~api_sequences["id"].isin([to_acknowledge])]
-
-    return create_event_list_from_alerts(api_sequences, cameras)
+    return create_sequence_list(api_sequences, cameras, event_id_table)
 
 
-# Select the event id
 @app.callback(
     [
         Output({"type": "event-button", "index": ALL}, "style"),
-        Output("sequence_id_on_display", "data"),
         Output("auto-move-button", "n_clicks"),
         Output("custom_js_trigger", "title"),
+        Output("sequence_dropdown", "options"),
+        Output("sequence_dropdown", "value"),  # new: pre-select first
+        Output("sequence_dropdown_container", "style"),
+        Output("selected_event_id", "data"),
     ],
-    [
-        Input({"type": "event-button", "index": ALL}, "n_clicks"),
-    ],
+    Input({"type": "event-button", "index": ALL}, "n_clicks"),
     [
         State({"type": "event-button", "index": ALL}, "id"),
+        State("event_id_table", "data"),
         State("api_sequences", "data"),
-        State("sequence_id_on_display", "data"),
     ],
     prevent_initial_call=True,
 )
-def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on_display):
-    """
-    Handles event selection through button clicks.
-
-    Parameters:
-    - n_clicks (list): List of click counts for each event button.
-    - button_ids (list): List of button IDs corresponding to events.
-    - local_alerts (json): JSON formatted data containing current alert information.
-    - sequence_id_on_display (int): Currently displayed event ID.
-
-    Returns:
-    - list: List of styles for event buttons.
-    - int: ID of the event to display.
-    - int: Number of clicks for the auto-move button reset.
-    """
+def select_event_with_button(n_clicks, button_ids, event_id_table_json, api_sequences_json):
     logger.info("select_event_with_button")
+
     ctx = dash.callback_context
+    if not ctx.triggered or not ctx.triggered[0]["prop_id"]:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}, None]
 
-    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
-    if api_sequences.empty:
-        return [[], 0, 1, "reset_zoom"]
-
-    # Extracting the index of the clicked button
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if button_id:
-        button_index = json.loads(button_id)["index"]
-    else:
-        if len(button_ids):
-            button_index = button_ids[0]["index"]
-        else:
-            button_index = 0
+    selected_event_id = json.loads(button_id)["index"]
 
-    # Highlight the button
+    event_id_table = pd.read_json(StringIO(event_id_table_json), orient="split")
+    api_sequences = pd.read_json(StringIO(api_sequences_json), orient="split")
+
+    selected_event = event_id_table[event_id_table["event_id"] == selected_event_id]
+    if selected_event.empty or api_sequences.empty:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    sequence_ids = selected_event.iloc[0]["sequences"]
+    if not isinstance(sequence_ids, list) or not sequence_ids:
+        return [[{} for _ in button_ids], 1, "reset_zoom", [], None, {"display": "none"}]
+
+    dropdown_options = []
+    for sid in sequence_ids:
+        match = api_sequences[api_sequences["id"] == sid]
+        if not match.empty:
+            row = match.iloc[0]
+            name = str(row.get("name", "Unknown")).replace("_", " ").replace("-", " ")
+            azimuth = int(float(row.get("cone_azimuth", 0.0))) % 360
+            label = f"{name} ({azimuth}°)"
+            dropdown_options.append({"label": label, "value": sid})
+
+    dropdown_visible_style = {
+        "padding": "10px 20px",
+        "borderRadius": "8px",
+        "backgroundColor": "#f5f9f8",
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "10px",
+    }
+
     styles = []
     for button in button_ids:
-        if button["index"] == button_index:
-            styles.append(
-                {
-                    "backgroundColor": "#feba6a",
-                },
-            )  # Highlight style
-        else:
-            styles.append(
-                {},
-            )  # Default style
+        style = {}
+        if button["index"] == selected_event_id:
+            style["backgroundColor"] = "#feba6a"
+            style["border"] = "2px solid red"
+        styles.append(style)
 
-    return [styles, button_index, 1, "reset_zoom"]
+    # Set first option as default value
+    default_value = dropdown_options[0]["value"] if dropdown_options else None
+
+    return [
+        styles,
+        1,
+        "reset_zoom",
+        dropdown_options,
+        default_value,
+        dropdown_visible_style,
+        selected_event_id,
+    ]
+
+
+@app.callback(
+    Output("detection_fetch_desc_store", "data"),
+    Input("detection_fetch_desc", "value"),
+)
+def update_desc_store(value):
+    return value
+
+
+@app.callback(
+    Output("sequence_id_on_display", "data"),
+    Input("sequence_dropdown", "value"),
+)
+def update_sequence_on_dropdown_change(selected_sequence_id):
+    logger.info(f"Dropdown selected sequence {selected_sequence_id}")
+    return selected_sequence_id
 
 
 @app.callback(
@@ -165,49 +208,60 @@ def select_event_with_button(n_clicks, button_ids, api_sequences, sequence_id_on
         Output("bbox-1", "style"),
         Output("bbox-2", "style"),
         Output("image-slider", "max"),
+        Output("image-slider", "marks"),
+        Output("image-slider", "min"),
+        Output("slider-container", "style"),
+        Output("image-timestamp", "children"),
     ],
-    [Input("image-slider", "value"), Input("sequence_on_display", "data")],
+    [
+        Input("image-slider", "value"),
+        Input("sequence_on_display", "data"),
+        Input("detection_fetch_desc_store", "data"),
+    ],
     [
         State("sequence-list-container", "children"),
         State("language", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang):
-    """
-    Updates the image and bounding box display based on the slider value.
-    """
-    img_src = ""
+def update_image_and_bbox(slider_value, sequence_on_display, detection_fetch_desc, sequence_list, lang):
+    from io import StringIO
+
+    import pandas as pd
+
     no_alert_image_src = "./assets/images/no-alert-default.png"
     if lang == "es":
         no_alert_image_src = "./assets/images/no-alert-default-es.png"
 
     sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
 
-    if sequence_on_display.empty:
-        raise PreventUpdate
+    if sequence_on_display.empty or not len(sequence_list):
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}, ""
 
-    if len(sequence_list) == 0:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+    if not detection_fetch_desc:
+        sequence_on_display = sequence_on_display[::-1].reset_index(drop=True)
 
-    # Filter images with non-empty URLs
-    images, boxes = zip(
-        *((alert["url"], alert["processed_bboxes"]) for _, alert in sequence_on_display.iterrows() if alert["url"])
+    # Extract data
+    images, boxes, created_at_local_list = zip(
+        *(
+            (alert["url"], alert["processed_bboxes"], alert.get("created_at_local"))
+            for _, alert in sequence_on_display.iterrows()
+            if alert["url"]
+        ),
+        strict=False,
     )
 
     if not images:
-        return no_alert_image_src, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
+        return no_alert_image_src, *[{"display": "none"}] * 3, 0, {}, 0, {"display": "none"}, ""
 
-    # Ensure slider_value is within the range of available images
-    slider_value = slider_value % len(images)
+    n_images = len(images)
+    slider_value = slider_value % n_images
     img_src = images[slider_value]
     images_bbox_list = boxes[slider_value]
 
-    # Create styles for each bbox (default hidden)
+    # Compute bbox styles
     bbox_styles = [{"display": "none"} for _ in range(3)]
-
-    # Update styles for available bounding boxes
-    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):  # Limit to 3 bboxes
+    for i, (x0, y0, width, height) in enumerate(images_bbox_list[:3]):
         bbox_styles[i] = {
             "position": "absolute",
             "left": f"{x0}%",
@@ -220,7 +274,22 @@ def update_image_and_bbox(slider_value, sequence_on_display, sequence_list, lang
             "display": "block",
         }
 
-    return [img_src, *bbox_styles, len(images) - 1]
+    # Marks with no labels (just dots)
+    marks = dict.fromkeys(range(n_images), "")
+
+    # Timestamp for the selected image
+    try:
+        # Take latest non-null timestamp
+        latest_ts = pd.to_datetime(next((ts for ts in reversed(created_at_local_list) if ts), None), errors="coerce")
+        if pd.notnull(latest_ts):
+            timestamp = latest_ts - pd.Timedelta(seconds=30 * (n_images - 1 - slider_value))
+            timestamp_str = timestamp.strftime("%H:%M:%S")
+        else:
+            timestamp_str = ""
+    except Exception:
+        timestamp_str = ""
+
+    return [img_src, *bbox_styles, n_images - 1, marks, 0, {"display": "block"}, timestamp_str]
 
 
 @app.callback(
@@ -318,133 +387,245 @@ def auto_move_slider(n_intervals, current_value, max_value, auto_move_clicks, se
 
 
 @app.callback(
-    Output("download-link", "href"),
-    [Input("image-slider", "value")],
-    [State("sequence_on_display", "data")],
-    prevent_initial_call=True,
-)
-def update_download_link(slider_value, sequence_on_display):
-    """
-    Updates the download link for the currently displayed image.
-
-    Parameters:
-    - slider_value (int): Current value of the image slider.
-    - alert_data (json): JSON formatted data for the selected event.
-
-    Returns:
-    - str: URL for downloading the current image.
-    """
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    if len(sequence_on_display):
-        try:
-            return sequence_on_display["url"].values[slider_value]
-        except Exception as e:
-            logger.info(e)
-            logger.info(f"Size of the alert_data dataframe: {sequence_on_display.size}")
-
-    return ""  # Return empty string if no image URL is available
-
-
-# Map
-@app.callback(
     [
         Output("vision_polygons", "children"),
         Output("map", "center"),
         Output("vision_polygons-md", "children"),
         Output("map-md", "center"),
         Output("alert-camera-value", "children"),
-        Output("camera-location-value", "children"),
         Output("alert-azimuth-value", "children"),
-        Output("alert-date-value", "children"),
+        Output("alert-start-date-value", "children"),
+        Output("alert-end-date-value", "children"),
         Output("alert-information", "style"),
-        Output("slider-container", "style"),
+        Output("camera-location-copy-content", "children"),
+        Output("smoke-location-copy-content", "children"),
+        Output("smoke-location", "style"),
     ],
-    Input("sequence_on_display", "data"),
-    State("api_cameras", "data"),
+    Input("sequence_id_on_display", "data"),
+    [
+        State("api_cameras", "data"),
+        State("api_sequences", "data"),
+        State("sequence_dropdown", "options"),
+        State("event_id_table", "data"),
+        State("selected_event_id", "data"),
+    ],
     prevent_initial_call=True,
 )
-def update_map_and_alert_info(sequence_on_display, cameras):
-    """
-    Updates the map's vision polygons, center, and alert information based on the current alert data.
-
-    Parameters:
-    - alert_data (json): JSON formatted data for the selected event.
-
-    Returns:
-    - list: List of vision polygon elements to be displayed on the map.
-    - list: New center coordinates for the map.
-    - list: List of vision polygon elements to be displayed on the modal map.
-    - list: New center coordinates for the modal map.
-    - str: Camera information for the alert.
-    - str: Camera location for the alert.
-    - str: Detection angle for the alert.
-    - str: Date of the alert.
-    - dict: Style settings for alert information.
-    - dict: Style settings for the slider container.
-    """
+def update_map_and_alert_info(
+    sequence_id_on_display, cameras, api_sequences, dropdown_options, event_id_table_data, selected_event_id
+):
     logger.info("update_map_and_alert_info")
-    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
-    cameras = pd.read_json(StringIO(cameras), orient="split")
 
-    if not sequence_on_display.empty:
-        # Convert the 'bboxes' column to a list (empty lists if the original value was '[]').
-        sequence_on_display["bboxes"] = sequence_on_display["bboxes"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
-        )
+    if sequence_id_on_display is None:
+        raise PreventUpdate
 
-        # Filter out rows where 'bboxes' is not empty and get the last one.
-        # If all are empty, then simply get the last row of the DataFrame.
-        row_with_bboxes = (
-            sequence_on_display[sequence_on_display["bboxes"].astype(bool)].iloc[-1]
-            if not sequence_on_display[sequence_on_display["bboxes"].astype(bool)].empty
-            else sequence_on_display.iloc[-1]
-        )
+    df_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    df_cameras = pd.read_json(StringIO(cameras), orient="split")
+    df_events = pd.read_json(StringIO(event_id_table_data), orient="split")
+    sequence_id_on_display = str(sequence_id_on_display)
 
-        row_cam = cameras[cameras["id"] == row_with_bboxes["camera_id"]]
-        lat, lon = row_cam[["lat"]].values.item(), row_cam[["lon"]].values.item()
-
-        polygon, detection_azimuth = build_vision_polygon(
-            site_lat=lat,
-            site_lon=lon,
-            azimuth=row_with_bboxes["azimuth"],
-            opening_angle=cfg.CAM_OPENING_ANGLE,
-            dist_km=cfg.CAM_RANGE_KM,
-            bboxes=row_with_bboxes["processed_bboxes"],
-        )
-
-        date_val = convert_dt_to_local_tz(lat, lon, row_with_bboxes["created_at"])
-        cam_name = f"{row_cam['name'].values.item()[:-3].replace('_', ' ')} : {int(row_with_bboxes['azimuth'])}°"
-
-        camera_info = f"{cam_name}"
-        location_info = f"{lat:.4f}, {lon:.4f}"
-        angle_info = f"{detection_azimuth}°"
-        date_info = f"{date_val}"
-
+    if df_sequences.empty or sequence_id_on_display not in df_sequences["id"].astype(str).values:
         return (
-            polygon,
-            [lat, lon],
-            polygon,
-            [lat, lon],
-            camera_info,
-            location_info,
-            angle_info,
-            date_info,
-            {"display": "block"},
-            {"display": "block"},
+            [],
+            dash.no_update,
+            [],
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            {"display": "none"},
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
         )
+
+    # Current sequence
+    current_sequence = df_sequences[df_sequences["id"].astype(str) == sequence_id_on_display].iloc[0]
+    site_lat = current_sequence["lat"]
+    site_lon = current_sequence["lon"]
+    azimuth = float(current_sequence["azimuth"])
+    azimuth_detection = float(current_sequence["cone_azimuth"])
+    opening_angle = float(current_sequence["cone_angle"])
+
+    # Vision cone
+    polygon_detection = build_vision_polygon(
+        site_lat=site_lat,
+        site_lon=site_lon,
+        azimuth=azimuth_detection,
+        opening_angle=opening_angle,
+        dist_km=cfg.CAM_RANGE_KM,
+    )
+    cones = [polygon_detection]
+
+    # Other dropdown cones
+    other_ids = [str(opt["value"]) for opt in dropdown_options if str(opt["value"]) != sequence_id_on_display]
+    for other_id in other_ids:
+        if other_id in df_sequences["id"].astype(str).values:
+            seq = df_sequences[df_sequences["id"].astype(str) == other_id].iloc[0]
+            poly = build_vision_polygon(
+                site_lat=seq["lat"],
+                site_lon=seq["lon"],
+                azimuth=float(seq["cone_azimuth"]),
+                opening_angle=float(seq["cone_angle"]),
+                dist_km=cfg.CAM_RANGE_KM,
+            )
+            cones.append(poly)
+
+    # Camera info
+    camera_id = current_sequence["camera_id"]
+    if camera_id in df_cameras["id"].values:
+        camera_row = df_cameras[df_cameras["id"] == camera_id].iloc[0]
+        camera_name = camera_row["name"].rsplit("-", 1)[0].replace("_", " ")
+    else:
+        camera_name = "Unknown camera"
+
+    camera_info = f"{camera_name} : {int(azimuth)}°"
+    angle_info = f"{int(azimuth_detection) % 360}°"
+    copyable_location = f"{site_lat:.4f}, {site_lon:.4f}"
+
+    start_date_info = (
+        current_sequence["started_at_local"].split(" ")[-1] if pd.notnull(current_sequence["started_at_local"]) else ""
+    )
+    end_date_info = (
+        current_sequence["last_seen_at_local"].split(" ")[-1]
+        if pd.notnull(current_sequence["last_seen_at_local"])
+        else ""
+    )
+
+    # Try to get smoke location from the best matching event
+    map_center = [site_lat, site_lon]
+    smoke_location_style = {"display": "none"}
+    copyable_smoke_location = ""
+
+    try:
+        if selected_event_id:
+            matching_events = df_events[df_events["event_id"] == selected_event_id]
+            if not matching_events.empty:
+                best_event = matching_events.iloc[0]
+                smoke = best_event.get("smoke_location")
+                if (
+                    isinstance(smoke, (list, tuple))
+                    and len(smoke) == 2
+                    and all(isinstance(x, (int, float)) for x in smoke)
+                ):
+                    lat, lon = smoke
+                    map_center = [lat, lon]
+                    copyable_smoke_location = f"{lat:.4f}, {lon:.4f}"
+                    smoke_location_style = {
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginTop": "6px",
+                    }
+    except Exception as e:
+        logger.error(f"Failed to resolve smoke location for event {selected_event_id} - {e}")
 
     return (
-        [],
-        dash.no_update,
-        [],
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        dash.no_update,
-        {"display": "none"},
-        {"display": "none"},
+        cones,
+        map_center,
+        cones,
+        map_center,
+        camera_info,
+        angle_info,
+        start_date_info,
+        end_date_info,
+        {"display": "block"},
+        copyable_location,
+        copyable_smoke_location,
+        smoke_location_style,
     )
+
+
+@app.callback(
+    [
+        Output("fire-location-marker", "position"),
+        Output("fire-location-marker", "opacity"),
+        Output("fire-marker-coords", "children"),
+        Output("fire-location-marker-md", "position"),
+        Output("fire-location-marker-md", "opacity"),
+        Output("fire-marker-coords-md", "children"),
+    ],
+    Input("smoke-location-copy-content", "children"),
+    State("api_sequences", "data"),
+)
+def update_fire_markers(smoke_location_str, api_sequences):
+    logger.info(f"update {smoke_location_str}")
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+
+    if not smoke_location_str or api_sequences.empty:
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    try:
+        lat_str, lon_str = smoke_location_str.split(", ")
+        lat = float(lat_str.strip())
+        lon = float(lon_str.strip())
+    except Exception as e:
+        logger.error(f"Invalid smoke_location_str: {smoke_location_str} | Error: {e}")
+        return [dash.no_update, 0, "", dash.no_update, 0, ""]
+
+    pos = [lat, lon]
+    coords_str = f"{lat:.4f}, {lon:.4f}"
+
+    return [pos, 1, coords_str, pos, 1, coords_str]
+
+
+@app.callback(
+    Output("alert-location-parcel-info", "children"),
+    Output("alert-location-parcel-info", "style"),
+    Input("fire-location-marker", "opacity"),
+    State("smoke-location-copy-content", "children"),
+    State("language", "data"),
+)
+def update_location_and_parcel_info(opacity, smoke_location, lang):
+    if opacity != 1 or not smoke_location:
+        return dash.no_update, {"display": "none"}  # hide but don't change content
+
+    try:
+        lat, lon = map(float, smoke_location.split(","))
+    except Exception:
+        return [], {"display": "none"}  # Invalid format, clear everything
+
+    result = get_location_info(lat, lon)
+    city = result.get("city")
+    parcel = result.get("parcel")
+
+    children = []
+
+    if city:
+        children.append(
+            html.Div(
+                [
+                    html.Span(
+                        f"{translate('localisation', lang)} : ", style={"fontWeight": "bold", "marginRight": "4px"}
+                    ),
+                    html.Span(city),
+                ],
+                style={"margin": "0", "padding": "0", "lineHeight": "1.2"},
+            )
+        )
+
+    if parcel:
+        label = parcel.get("llib_frt", "")
+        code = parcel.get("ccod_prf", "")
+        if label or code:
+            parcel_label = f"{code}" if code else label
+            children.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"{translate('onf_parcel', lang)} : ",
+                            style={"fontWeight": "bold", "marginRight": "4px"},
+                        ),
+                        html.Span(parcel_label),
+                    ],
+                    style={"margin": "4px 0 0 0", "padding": "0", "lineHeight": "1.2"},
+                )
+            )
+
+    if not children:
+        return [], {"display": "none"}
+
+    return children, {"display": "block", "marginTop": "0px", "padding": "6px 0"}
 
 
 @app.callback(
@@ -455,7 +636,10 @@ def update_map_and_alert_info(sequence_on_display, cameras):
         Input("confirm-non-wildfire", "n_clicks"),
         Input("cancel-confirmation", "n_clicks"),
     ],
-    [State("sequence_id_on_display", "data"), State("user_token", "data")],
+    [
+        State("sequence_id_on_display", "data"),
+        State("user_token", "data"),
+    ],
     prevent_initial_call=True,
 )
 def acknowledge_event(
@@ -464,11 +648,13 @@ def acknowledge_event(
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
+
+    if user_token is None:
+        raise PreventUpdate
 
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # Modal styles
     modal_visible_style = {
         "position": "fixed",
         "top": "50%",
@@ -479,28 +665,32 @@ def acknowledge_event(
     }
     modal_hidden_style = {"display": "none"}
 
+    client = get_client(user_token)
+    client.token = user_token
+
     if triggered_id == "acknowledge-button":
-        # Show the modal
-        if acknowledge_clicks > 0:
-            return modal_visible_style, dash.no_update
+        if acknowledge_clicks is None or acknowledge_clicks == 0:
+            raise PreventUpdate
+        return modal_visible_style, dash.no_update
 
     elif triggered_id == "confirm-wildfire":
-        # Send wildfire confirmation to the API
-        api_client.token = user_token
-        api_client.label_sequence(sequence_id_on_display, True)
+        if confirm_wildfire is None or confirm_wildfire == 0:
+            raise PreventUpdate
+        client.label_sequence(sequence_id_on_display, True)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "confirm-non-wildfire":
-        # Send non-wildfire confirmation to the API
-        api_client.token = user_token
-        api_client.label_sequence(sequence_id_on_display, False)
+        if confirm_non_wildfire is None or confirm_non_wildfire == 0:
+            raise PreventUpdate
+        client.label_sequence(sequence_id_on_display, False)
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
-        # Cancel action
+        if cancel is None or cancel == 0:
+            raise PreventUpdate
         return modal_hidden_style, dash.no_update
 
-    raise dash.exceptions.PreventUpdate
+    raise PreventUpdate
 
 
 # Modal issue let's add this later
@@ -545,5 +735,429 @@ def reset_zoom(n_clicks):
     - int: Reset zoom level for the map.
     """
     if n_clicks:
-        return 10  # Reset zoom level to 10
+        return 9  # Reset zoom level to 9
     return dash.no_update
+
+
+@app.callback(
+    [Output("blinking-image", "src"), Output("blinking-image-container", "style")],
+    Input("blinking-alarm-interval", "n_intervals"),
+    Input("api_sequences", "data"),
+)
+def blink_image(n_intervals, api_sequences):
+    container_style = {
+        "display": "flex",
+        "justify-content": "center",  # Center horizontaly
+        "align-items": "center",  # Center verticaly
+        "height": "100vh",
+        "width": "100vw",
+    }
+
+    api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+    if api_sequences.empty:
+        image_path = "https://pyronear.org/img/logo_letters_orange.png"
+        container_style["background-color"] = "#044448"
+
+    else:
+        api_sequences["last_seen_at"] = pd.to_datetime(api_sequences["last_seen_at"], utc=True)
+
+        # Get current UTC time
+        now_utc = datetime.now(timezone.utc)
+
+        # Find sequences where last_seen_at is within the last 15 minutes
+        recent_sequences = api_sequences[api_sequences["last_seen_at"] > now_utc - timedelta(minutes=30)]
+
+        if recent_sequences.empty:
+            image_path = "https://pyronear.org/img/logo_letters_orange.png"
+            container_style["background-color"] = "#044448"
+        else:
+            image_path = "https://pyronear.org/img/logo_letters_orange.png"
+            container_style["background-color"] = "red" if n_intervals % 2 == 0 else "#044448"
+
+    return [image_path, container_style]
+
+
+@app.callback(
+    Output("datepicker-modal", "is_open"),
+    [Input("open-datepicker-modal", "n_clicks"), Input("close-datepicker-modal", "n_clicks")],
+    [State("datepicker-modal", "is_open")],
+)
+def toggle_datepicker_modal(open_click, close_click, is_open):
+    if open_click or close_click:
+        return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("my-date-picker-single", "date", allow_duplicate=True),
+    Input("home-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_date_picker(n_clicks):
+    if n_clicks:
+        return None
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("my-date-picker-single", "min_date_allowed"),
+    Output("my-date-picker-single", "max_date_allowed"),
+    Output("my-date-picker-single", "initial_visible_month"),
+    Output("datepicker_button_text", "children"),
+    Input("open-datepicker-modal", "n_clicks"),
+    Input("my-date-picker-single", "date"),
+    prevent_initial_call=True,
+)
+def update_datepicker(open_clicks, selected_date):
+    ctx = dash.callback_context
+    triggered_id = ctx.triggered_id
+    today = date.today()
+    min_date = today - relativedelta(months=3)
+
+    if triggered_id == "open-datepicker-modal":
+        return min_date, today, today, dash.no_update
+
+    if triggered_id == "my-date-picker-single":
+        if selected_date:
+            return dash.no_update, dash.no_update, dash.no_update, f"{selected_date}"
+        else:
+            return dash.no_update, dash.no_update, dash.no_update, ""
+
+    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+
+@app.callback(
+    Output("selected-camera-info", "data"),
+    Input("start-live-stream", "n_clicks"),
+    Input("live-stream-button", "n_clicks"),
+    State("alert-azimuth-value", "children"),
+    State("alert-camera-value", "children"),
+    State("alert-azimuth-value", "children"),
+    prevent_initial_call=True,
+)
+def pick_live_stream_camera(start_clicks, button_clicks, azimuth, camera_label, azimuth_label):
+    logger.info("pick_live_stream_camera")
+
+    # Check which input triggered the callback
+    if ctx.triggered_id == "live-stream-button":
+        logger.info("[pick_live_stream_camera] live-stream-button clicked, resetting data")
+        return None
+
+    if not camera_label or not azimuth_label:
+        logger.warning("[pick_live_stream_camera] missing camera or azimuth label")
+        return None
+
+    try:
+        cam_name, _, _ = camera_label.split(" ")
+        azimuth = int(azimuth.replace("°", ""))
+    except Exception as e:
+        logger.warning(f"[pick_live_stream_camera] Failed to parse camera info: {e}")
+        return None
+
+    logger.info(f"Selected camera={cam_name}, azimuth={azimuth}")
+    return (cam_name, azimuth)
+
+
+@app.callback(
+    Output("bbox-modal", "is_open"),
+    Output("bbox-store", "data"),
+    Input("create-occlusion-mask", "n_clicks"),
+    Input("confirm-bbox-button", "n_clicks"),
+    Input("delete-bbox-button", "n_clicks"),
+    State("alert-camera-value", "children"),
+    State("sequence_on_display", "data"),
+    State("bbox-store", "data"),
+    prevent_initial_call=True,
+)
+def handle_modal(create_clicks, confirm_clicks, delete_clicks, camera_info, sequence_on_display, bbox_store):
+    triggered = ctx.triggered_id
+
+    # Shared S3 client setup
+    try:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+            region_name=os.getenv("S3_REGION"),
+        )
+        bucket_name = "occlusion-masks-json"
+    except Exception as e:
+        logger.error(f"Error initializing S3 client: {e}")
+        raise PreventUpdate
+
+    if triggered == "create-occlusion-mask":
+        if not camera_info or not sequence_on_display:
+            raise PreventUpdate
+
+        cam_name, _, azimuth_camera = camera_info.split(" ")
+        azimuth_camera = int(azimuth_camera.replace("°", ""))
+        object_key = f"{cam_name}_{azimuth_camera}.json"
+
+        df = pd.read_json(StringIO(sequence_on_display), orient="split")
+        df["bboxes"] = df["bboxes"].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.strip() != "[]" else []
+        )
+        best_bbox = None
+        best_score = -1
+        for bboxes in df["bboxes"]:
+            for bbox in bboxes:
+                if bbox[-1] > best_score:
+                    best_score = bbox[-1]
+                    best_bbox = bbox
+        if best_bbox is None:
+            raise PreventUpdate
+
+        # Expand bbox by 10%
+        x_min, y_min, x_max, y_max, score = best_bbox
+        width = x_max - x_min
+        height = y_max - y_min
+        expand_x = width * 0.05
+        expand_y = height * 0.05
+        x_min = max(0, x_min - expand_x)
+        y_min = max(0, y_min - expand_y)
+        x_max = min(1, x_max + expand_x)
+        y_max = min(1, y_max + expand_y)
+        best_bbox = [x_min, y_min, x_max, y_max, score]
+
+        # Fetch existing masks from S3
+        existing_data = {}
+        try:
+            s3_client.head_object(Bucket=bucket_name, Key=object_key)
+            response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+            existing_data = json.loads(response["Body"].read())
+            existing_data = filter_bboxes_dict(existing_data)
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "404":
+                logger.error(f"head_object error: {e}")
+                raise PreventUpdate
+        except Exception as e:
+            logger.error(f"Error loading S3 object: {e}")
+            raise PreventUpdate
+
+        date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        existing_data[date_now] = best_bbox
+
+        data = {"cam_name": cam_name, "azimuth": azimuth_camera, "bboxes_dict": existing_data}
+        return True, data
+
+    elif triggered in {"confirm-bbox-button", "delete-bbox-button"}:
+        if not bbox_store:
+            raise PreventUpdate
+
+        cam_name = bbox_store["cam_name"]
+        azimuth = bbox_store["azimuth"]
+        object_key = f"{cam_name}_{azimuth}.json"
+
+        if triggered == "confirm-bbox-button":
+            bboxes_dict = bbox_store.get("bboxes_dict", {})
+        else:
+            # delete-bbox-button
+            bboxes_dict = {}
+
+        try:
+            json_bytes = json.dumps(bboxes_dict, indent=2).encode("utf-8")
+            byte_buffer = BytesIO(json_bytes)
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key=object_key,
+                Body=byte_buffer,
+                ContentType="application/json",
+                ContentLength=len(json_bytes),
+                ACL="public-read",
+            )
+            action = "deleted" if triggered == "delete-bbox-button" else "saved"
+            logger.info(f"BBoxes {action} on S3: {object_key}")
+            updated_store = {
+                "cam_name": cam_name,
+                "azimuth": azimuth,
+                "bboxes_dict": bboxes_dict,
+            }
+            return False, updated_store
+
+        except Exception as e:
+            logger.error(f"Error writing to S3: {e}")
+            raise PreventUpdate
+
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("bbox-image-container", "children"),
+    Input("bbox-store", "data"),
+    State("sequence_on_display", "data"),
+    prevent_initial_call=True,
+)
+def display_bbox_on_image(bbox_data, sequence_data):
+    if not bbox_data:
+        raise PreventUpdate
+
+    try:
+        bboxes_dict = bbox_data.get("bboxes_dict")
+        if not bboxes_dict:
+            raise PreventUpdate
+
+        df = pd.read_json(StringIO(sequence_data), orient="split")
+        if df.empty:
+            raise PreventUpdate
+
+        img_url = df.iloc[0]["url"]
+
+        # Identifier la bbox la plus récente
+        latest_date = max(bboxes_dict.keys())
+
+        rectangles = []
+        for creation_date, bbox in bboxes_dict.items():
+            x1, y1, x2, y2, _ = bbox
+            w = x2 - x1
+            h = y2 - y1
+
+            is_latest = creation_date == latest_date
+            border_color = "green" if is_latest else "red"
+            bg_color = "rgba(0, 255, 0, 0.3)" if is_latest else "rgba(255, 0, 0, 0.3)"
+
+            rectangles.append(
+                dash.html.Div(
+                    title=creation_date,
+                    style={
+                        "position": "absolute",
+                        "top": f"{y1 * 100}%",
+                        "left": f"{x1 * 100}%",
+                        "width": f"{w * 100}%",
+                        "height": f"{h * 100}%",
+                        "border": f"2px solid {border_color}",
+                        "background-color": bg_color,
+                        "box-sizing": "border-box",
+                    },
+                )
+            )
+
+        return dash.html.Div(
+            [
+                dash.html.Img(src=img_url, style={"width": "100%", "height": "auto", "display": "block"}),
+                *rectangles,
+            ],
+            style={
+                "position": "relative",
+                "width": "100%",
+                "max-width": "100%",
+                "height": "auto",
+                "display": "inline-block",
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"[display_bbox_on_image] Error: {e}")
+        raise PreventUpdate
+
+
+@app.callback(
+    Output("download-link", "href"),
+    [Input("image-slider", "value")],
+    [State("sequence_on_display", "data")],
+    prevent_initial_call=True,
+)
+def update_download_link(slider_value, sequence_on_display):
+    """
+    Updates the download link for the currently displayed image.
+    Parameters:
+    - slider_value (int): Current value of the image slider.
+    - alert_data (json): JSON formatted data for the selected event.
+    Returns:
+    - str: URL for downloading the current image.
+    """
+    sequence_on_display = pd.read_json(StringIO(sequence_on_display), orient="split")
+    if len(sequence_on_display):
+        try:
+            return sequence_on_display["url"].values[slider_value]
+        except Exception as e:
+            logger.error(e)
+            logger.error(f"Size of the alert_data dataframe: {sequence_on_display.size}")
+
+    return ""  # Return empty string if no image URL is available
+
+
+@app.callback(
+    Output("zip-modal", "is_open"),
+    Output("zip-dl-link", "href"),
+    Output("zip-dl-link", "download"),
+    Input("dl-button", "n_clicks"),
+    Input("confirm-dl-button", "n_clicks"),
+    State("sequence_on_display", "data"),
+    State("api_sequences", "data"),
+    State("alert-camera-value", "children"),
+    State("alert-start-date-value", "children"),
+    prevent_initial_call=True,
+)
+def prepare_archive_callback(open_clicks, close_clicks, sequence_data, api_sequences, camera_value, date_value):
+    triggered_id = ctx.triggered_id
+
+    if triggered_id == "dl-button":
+        if not camera_value or not date_value or not sequence_data:
+            return dash.no_update
+
+        api_sequences = pd.read_json(StringIO(api_sequences), orient="split")
+        sequence_data = pd.read_json(StringIO(sequence_data), orient="split")
+
+        # Format zip base and file name
+        folder_name = f"{camera_value}-{date_value}".replace(" ", "_").replace(":", "-").replace("°", "")
+        zip_filename = f"{folder_name}.zip"
+        prepare_archive(sequence_data, api_sequences, folder_name, camera_value)
+
+        return True, f"/download/{zip_filename}", zip_filename
+
+    elif triggered_id == "confirm-dl-button":
+        return False, "", ""
+
+    return dash.no_update
+
+
+@app.callback(
+    Output("start-live-stream", "style"),
+    Output("create-occlusion-mask", "style"),
+    Output("unmatch-sequence-button", "style"),
+    Input("sub_api_sequences", "data"),
+    Input("sequence_id_on_display", "data"),
+    State("event_id_table", "data"),
+    State("selected_event_id", "data"),
+    prevent_initial_call=True,
+)
+def hide_button_callback(sub_api_sequences, sequence_id, event_id_table_json, selected_event_id):
+    # Default: hide all
+    hide_style = {"display": "none"}
+    show_style = {"display": "block", "width": "100%"}
+
+    # Case 1 — sub_api_sequences is None or empty
+    if not sub_api_sequences:
+        return hide_style, hide_style, hide_style
+
+    try:
+        df_sequences = pd.read_json(StringIO(sub_api_sequences), orient="split")
+        if df_sequences.empty:
+            return hide_style, hide_style, hide_style
+    except Exception as e:
+        logger.error(f"[hide_button_callback] Failed to read sub_api_sequences: {e}")
+        return hide_style, hide_style, hide_style
+
+    # Default: show stream & mask buttons
+    stream_style = show_style
+    mask_style = show_style
+    unmatch_style = hide_style  # set conditionally
+
+    # Case 2 — sequence_id or selected_event_id missing
+    if not sequence_id or not selected_event_id:
+        return stream_style, mask_style, hide_style
+
+    # Case 3 — check if selected event has > 1 sequence
+    try:
+        df_events = pd.read_json(StringIO(event_id_table_json), orient="split")
+        row = df_events[df_events["event_id"] == selected_event_id]
+
+        if not row.empty:
+            sequences = row.iloc[0]["sequences"]
+            if isinstance(sequences, list) and len(sequences) > 1:
+                unmatch_style = show_style
+    except Exception as e:
+        logger.error(f"[hide_button_callback] Failed to process event_id_table: {e}")
+
+    return stream_style, mask_style, unmatch_style

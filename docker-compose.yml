@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3.11'
 
 services:
 
@@ -30,6 +30,7 @@ services:
       - 8050
     volumes:
       - ./app/:/usr/src/app/
+      - ./available_stream.json:/usr/src/app/available_stream.json
     environment:
       - API_URL=${API_URL}
       - API_LOGIN=${API_LOGIN}
@@ -37,6 +38,10 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - DEBUG=${DEBUG}
       - LOGIN=${LOGIN}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_REGION=${S3_REGION}
     networks:
       - web
     labels:

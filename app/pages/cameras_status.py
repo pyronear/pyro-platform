@@ -6,34 +6,52 @@
 from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
+import pytz
 from dash import html
+from timezonefinder import TimezoneFinder
+from translations import translate
 
 import config as cfg
-from utils.display import convert_dt_to_local_tz
+
+tf = TimezoneFinder()
 
 
 def display_cam_cards(cameras):
-
     no_cam_img_url = "assets/images/no-image.svg"
-
     cards = []
-    for _, row in cameras.iterrows():
 
+    for _, row in cameras.iterrows():
         clock_image_src_issue = "assets/images/clock-error.svg"
         last_active_at_style_issue = {"margin": "0", "color": "#f44336"}
 
-        if str(row["last_active_at"]) == "nan":
-            clock_image_src = clock_image_src_issue
-            last_active_at_style = last_active_at_style_issue
-        else:
-            if datetime.now() - datetime.strptime(row["last_active_at"], "%Y-%m-%d %H:%M") > timedelta(
-                minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES
-            ):
+        try:
+            # Step 1: Parse original UTC timestamp
+            ts_utc = datetime.fromisoformat(str(row["last_active_at"])).replace(tzinfo=pytz.utc)
+
+            # Step 2: Get local timezone from lat/lon
+            timezone_str = tf.timezone_at(lat=round(row["lat"], 4), lng=round(row["lon"], 4))
+            timezone_str = timezone_str or "UTC"
+            local_tz = pytz.timezone(timezone_str)
+
+            # Step 3: Convert timestamp to local time
+            dt_local = ts_utc.astimezone(local_tz)
+
+            # Step 4: Get current time in same local timezone
+            now_local = datetime.now(local_tz)
+
+            # Step 5: Inactivity check
+            if now_local - dt_local > timedelta(minutes=cfg.CAMERA_INACTIVITY_THRESHOLD_MINUTES):
                 clock_image_src = clock_image_src_issue
                 last_active_at_style = last_active_at_style_issue
             else:
                 clock_image_src = "assets/images/clock.svg"
                 last_active_at_style = {"margin": "0"}
+
+            formatted_last_active = dt_local.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            formatted_last_active = None
+            clock_image_src = clock_image_src_issue
+            last_active_at_style = last_active_at_style_issue
 
         card = dbc.Col(
             dbc.Card(
@@ -47,10 +65,7 @@ def display_cam_cards(cameras):
                                         src=clock_image_src,
                                         style={"width": "20px", "height": "20px", "marginRight": "5px"},
                                     ),
-                                    html.P(
-                                        f"{convert_dt_to_local_tz(row['lat'], row['lon'], row['last_active_at'])}",
-                                        style=last_active_at_style,
-                                    ),
+                                    html.P(formatted_last_active or "N/A", style=last_active_at_style),
                                 ],
                                 style={"display": "flex", "alignItems": "center"},
                             ),
@@ -58,7 +73,7 @@ def display_cam_cards(cameras):
                         style={"padding": "10px"},
                     ),
                     dbc.CardImg(
-                        src=row["last_image"] if row["last_image"] is not None else no_cam_img_url,
+                        src=row["last_image_url"] if row["last_image_url"] is not None else no_cam_img_url,
                         top=False,
                         style={"width": "100%", "borderRadius": "0"},
                     ),
@@ -76,26 +91,15 @@ def display_cam_cards(cameras):
 
 
 def cameras_status_layout(user_token, api_cameras, lang="fr"):
-    translate = {
-        "fr": {
-            "breadcrumb": "Dashboard des caméras",
-            "page_title": "Dashboard de l'état des caméras",
-        },
-        "es": {
-            "breadcrumb": "Panel de cámaras",
-            "page_title": "Panel de control del estado de la cámara",
-        },
-    }
-
     return dbc.Container(
         [
             dbc.Breadcrumb(
                 items=[
                     {"label": "Homepage", "href": "/", "external_link": False},
-                    {"label": translate[lang]["breadcrumb"], "active": True},
+                    {"label": translate("breadcrumb", lang), "active": True},
                 ],
             ),
-            html.H1(translate[lang]["page_title"], style={"font-size": "2rem"}),
+            html.H1(translate("page_title", lang), style={"font-size": "2rem"}),
             html.Div(id="camera-cards-container", children=[]),
         ],
         fluid=True,

@@ -5,360 +5,491 @@
 
 
 import dash_bootstrap_components as dbc
-from dash import Dash, dcc, html
+from dash import dcc, html
+from translations import translate
 
 from components.alerts import create_event_list
 from utils.display import build_alerts_map
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.css.append_css({"external_url": "/assets/style.css"})
 
-
-def homepage_layout(user_token, api_cameras, lang="fr"):
-    translate = {
-        "fr": {
-            "show_hide_prediction": "Afficher / Cacher la prédiction",
-            "download_image": "Télécharger l'image",
-            "acknowledge_alert": "Acquitter l'alerte",
-            "confirmation_modal_title": "Est-ce une fumée suspecte ?",
-            "confirmation_modal_yes": "Oui, c'est une fumée",
-            "confirmation_modal_no": "Non, c'est un faux positif",
-            "confirmation_modal_cancel": "Annuler",
-            "enlarge_map": "Agrandir la carte",
-            "alert_information": "Information Alerte",
-            "camera": "Caméra: ",
-            "camera_location": "Position caméra: ",
-            "detection_azimuth": "Azimuth de detection: ",
-            "date": "Date: ",
-            "map": "Carte",
-            "no_alert_default_image": "./assets/images/no-alert-default.png",
-        },
-        "es": {
-            "show_hide_prediction": "Mostrar / Ocultar la predicción",
-            "download_image": "Descargar la imagen",
-            "acknowledge_alert": "Descartar la alerta",
-            "confirmation_modal_title": "¿Es un humo sospechoso?",
-            "confirmation_modal_yes": "Sí, es un humo",
-            "confirmation_modal_no": "No, es un falso positivo",
-            "confirmation_modal_cancel": "Cancelar",
-            "enlarge_map": "Ampliar el mapa",
-            "alert_information": "Información sobre alerta",
-            "camera": "Cámara: ",
-            "camera_location": "Ubicación cámara: ",
-            "detection_azimuth": "Azimut de detección: ",
-            "date": "Fecha: ",
-            "map": "Mapa",
-            "no_alert_default_image": "./assets/images/no-alert-default-es.png",
-        },
-    }
-
+def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
     return dbc.Container(
         [
-            dbc.Row(
-                [
-                    dbc.Col([create_event_list()], width=2, className="mb-4"),
-                    dbc.Col(
-                        [
-                            html.Div(
-                                id="zoom-containement-container",
-                                className="common-style",
-                                style={"overflow": "hidden"},
-                                children=[
-                                    html.Div(
-                                        id="image-container-with-bbox",
-                                        style={"position": "relative"},
-                                        children=[
-                                            html.Div(
-                                                id="image-container",
-                                                children=[
-                                                    html.Img(
-                                                        id="main-image",
-                                                        src=translate[lang]["no_alert_default_image"],
-                                                        className="zoomable-image",
-                                                        style={"maxWidth": "100%", "height": "auto"},
-                                                    )
-                                                ],
-                                            ),
-                                            html.Div(
-                                                id="bbox-container",
-                                                style={
-                                                    "display": "block",
-                                                    "position": "absolute",
-                                                    "top": "0",
-                                                    "left": "0",
-                                                    "width": "100%",
-                                                    "height": "100%",
-                                                },
-                                                children=[
-                                                    html.Div(id="bbox-0", style={"display": "none"}),
-                                                    html.Div(id="bbox-1", style={"display": "none"}),
-                                                    html.Div(id="bbox-2", style={"display": "none"}),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                ],
-                            ),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        dbc.Button(
-                                            html.Img(src="assets/images/play-pause.svg"),
-                                            id="auto-move-button",
-                                            n_clicks=1,
-                                            style={"height": "100%", "width": "100%", "border": "0"},
-                                        ),
-                                        width=1,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            dcc.Slider(id="image-slider", min=0, max=10, step=1, value=0),
-                                            id="slider-container",
-                                            className="common-style-slider",
-                                            style={"display": "none"},
-                                        ),
-                                        width=11,
-                                    ),
-                                ],
-                                style={"marginTop": "10px"},
-                            ),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        dbc.Button(
-                                            translate[lang]["show_hide_prediction"],
-                                            id="hide-bbox-button",
-                                            n_clicks=0,
-                                            className="btn-uniform",
-                                            style={},  # Will be overwritten dynamically
-                                        ),
-                                        width=3,
-                                    ),
-                                    dbc.Col(
-                                        html.A(
-                                            dbc.Button(
-                                                translate[lang]["download_image"],
-                                                className="btn-uniform",
-                                                id="dl-image-button",
-                                            ),
-                                            className="no-underline",
-                                            id="download-link",
-                                            download="",
-                                            href="",
-                                            target="_blank",
-                                        ),
-                                        width=3,
-                                    ),
-                                    dbc.Col(
-                                        dbc.Button(
-                                            translate[lang]["acknowledge_alert"],
-                                            id="acknowledge-button",
-                                            n_clicks=0,
-                                            className="btn-uniform",
-                                        ),
-                                        width=3,
-                                    ),
-                                ],
-                                className="mb-4",
-                                style={"display": "flex", "marginTop": "10px", "justify-content": "space-evenly"},
-                            ),
-                            html.Div(
-                                id="confirmation-modal",
-                                style={
-                                    "display": "none",  # Hidden by default
-                                    "position": "fixed",
-                                    "top": "0",
-                                    "left": "0",
-                                    "width": "100%",
-                                    "height": "100%",
-                                    "background-color": "rgba(0, 0, 0, 0.5)",
-                                    "z-index": "1000",
-                                    "justify-content": "center",
-                                    "align-items": "center",
-                                },
-                                children=[
-                                    html.Div(
-                                        [
-                                            html.H4(
-                                                translate[lang]["confirmation_modal_title"],
-                                                style={
-                                                    "margin-bottom": "20px",
-                                                    "font-size": "20px",
-                                                    "font-weight": "bold",
-                                                },
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.Button(
-                                                        translate[lang]["confirmation_modal_yes"],
-                                                        id="confirm-wildfire",
-                                                        n_clicks=0,
-                                                        style={
-                                                            "margin-right": "10px",
-                                                            "padding": "10px 20px",
-                                                            "background-color": "#4CAF50",
-                                                            "color": "white",
-                                                            "border": "none",
-                                                            "border-radius": "5px",
-                                                            "cursor": "pointer",
-                                                        },
-                                                    ),
-                                                    html.Button(
-                                                        translate[lang]["confirmation_modal_no"],
-                                                        id="confirm-non-wildfire",
-                                                        n_clicks=0,
-                                                        style={
-                                                            "margin-right": "10px",
-                                                            "padding": "10px 20px",
-                                                            "background-color": "#f44336",
-                                                            "color": "white",
-                                                            "border": "none",
-                                                            "border-radius": "5px",
-                                                            "cursor": "pointer",
-                                                        },
-                                                    ),
-                                                    html.Button(
-                                                        translate[lang]["confirmation_modal_cancel"],
-                                                        id="cancel-confirmation",
-                                                        n_clicks=0,
-                                                        style={
-                                                            "padding": "10px 20px",
-                                                            "background-color": "#555",
-                                                            "color": "white",
-                                                            "border": "none",
-                                                            "border-radius": "5px",
-                                                            "cursor": "pointer",
-                                                        },
-                                                    ),
-                                                ],
-                                                style={"display": "flex", "justify-content": "center"},
-                                            ),
-                                        ],
-                                        style={
-                                            "background-color": "white",
-                                            "padding": "30px",
-                                            "border-radius": "8px",
-                                            "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.2)",
-                                            "max-width": "600px",
-                                            "width": "100%",
-                                            "text-align": "center",
-                                        },
-                                    ),
-                                ],
-                            ),
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        className="common-style",
+                        style={"padding": "8px"},
+                        children=[
+                            create_event_list(),
                         ],
-                        width=8,
-                        style={"padding": "0"},
                     ),
-                    dbc.Col(
-                        [
-                            html.Div(
+                    width=2,
+                    className="mb-4",
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
+                            dcc.Dropdown(
+                                id="sequence_dropdown",
+                                options=[],  # Populated via callback
+                                placeholder="Sélectionner une caméra",
+                                style={
+                                    "border": "none",
+                                    "color": "#c97a00",
+                                    "fontWeight": "bold",
+                                    "fontSize": "15px",
+                                    "background": "transparent",
+                                    "boxShadow": "none",
+                                    "minWidth": "220px",
+                                },
+                                className="dropdown-no-arrow",
+                            ),
+                            id="sequence_dropdown_container",
+                            style={
+                                "padding": "10px 20px",
+                                "borderRadius": "8px",
+                                "backgroundColor": "#f5f9f8",
+                                "display": "none",  # Default hidden
+                            },
+                        ),
+                        html.Div(
+                            id="zoom-containement-container",
+                            className="common-style",
+                            style={"overflow": "hidden"},
+                            children=[
                                 html.Div(
-                                    id="alert-information",
-                                    className="common-style",
-                                    style={"display": "none", "padding": "8px"},
+                                    id="image-container-with-bbox",
+                                    style={"position": "relative"},
                                     children=[
                                         html.Div(
-                                            id="alert-information-styling-container",
+                                            id="image-container",
                                             children=[
-                                                html.H5(
-                                                    translate[lang]["alert_information"], style={"text-align": "center"}
-                                                ),
-                                                html.Div(
-                                                    id="alert-camera",
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-camera-header",
-                                                            children=translate[lang]["camera"],
-                                                            className="alert-information-title",
-                                                        ),
-                                                        html.Span(
-                                                            id="alert-camera-value",
-                                                            children=[],
-                                                        ),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="camera-location",
-                                                    children=[
-                                                        html.Span(
-                                                            id="camera-location-header",
-                                                            children=translate[lang]["camera_location"],
-                                                            className="alert-information-title",
-                                                        ),
-                                                        html.Span(
-                                                            id="camera-location-value",
-                                                            children=[],
-                                                        ),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="alert-azimuth",
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-azimuth-header",
-                                                            children=translate[lang]["detection_azimuth"],
-                                                            className="alert-information-title",
-                                                        ),
-                                                        html.Span(
-                                                            id="alert-azimuth-value",
-                                                            children=[],
-                                                        ),
-                                                    ],
-                                                ),
-                                                html.Div(
-                                                    id="alert-date",
-                                                    children=[
-                                                        html.Span(
-                                                            id="alert-date-header",
-                                                            children=translate[lang]["date"],
-                                                            className="alert-information-title",
-                                                        ),
-                                                        html.Span(
-                                                            id="alert-date-value",
-                                                            children=[],
-                                                        ),
-                                                    ],
-                                                ),
+                                                html.Img(
+                                                    id="main-image",
+                                                    src=translate("no_alert_default_image", lang),
+                                                    className="zoomable-image",
+                                                    style={"maxWidth": "100%", "height": "auto"},
+                                                )
+                                            ],
+                                        ),
+                                        html.Div(
+                                            id="bbox-container",
+                                            style={
+                                                "display": "block",
+                                                "position": "absolute",
+                                                "top": "0",
+                                                "left": "0",
+                                                "width": "100%",
+                                                "height": "100%",
+                                            },
+                                            children=[
+                                                html.Div(id="bbox-0", style={"display": "none"}),
+                                                html.Div(id="bbox-1", style={"display": "none"}),
+                                                html.Div(id="bbox-2", style={"display": "none"}),
                                             ],
                                         ),
                                     ],
                                 ),
-                                id="alert-panel",
-                            ),
-                            html.Div(
+                            ],
+                        ),
+                        dbc.Row(
+                            [
+                                dbc.Col(  # Play button
+                                    dbc.Button(
+                                        html.Img(src="assets/images/play-pause.svg"),
+                                        id="auto-move-button",
+                                        n_clicks=1,
+                                        style={"height": "100%", "width": "100%", "border": "0"},
+                                    ),
+                                    width=1,
+                                ),
+                                dbc.Col(  # Input and toggle
+                                    html.Div(
+                                        [
+                                            html.Span(
+                                                translate("detections_to_fetch", lang), style={"marginRight": "6px"}
+                                            ),
+                                            dcc.Input(
+                                                id="detection_fetch_limit_input",
+                                                type="number",
+                                                min=1,
+                                                max=50,
+                                                step=1,
+                                                value=10,
+                                                style={"width": "60px", "marginRight": "12px"},
+                                            ),
+                                            dbc.Switch(
+                                                id="detection_fetch_desc",
+                                                label=translate("fetch_order", lang),
+                                                value=descending_order,  # value is a bool
+                                                style={"display": "inline-block"},
+                                            ),
+                                        ],
+                                        style={"display": "flex", "alignItems": "center"},
+                                    ),
+                                    width=5,
+                                ),
+                                dbc.Col(  # Slider
+                                    html.Div(
+                                        dcc.Slider(id="image-slider", min=0, max=0, step=1, value=0, marks={}),
+                                        id="slider-container",
+                                        className="common-style-slider",
+                                        style={"display": "none"},
+                                    ),
+                                    width=5,
+                                ),
+                                dbc.Col(  # Timestamp
+                                    html.Div(
+                                        html.Span(
+                                            id="image-timestamp",
+                                            children="",
+                                            style={
+                                                "fontFamily": "'Roboto', sans-serif",  # match Bootstrap default
+                                                "fontSize": "16px",
+                                                "fontWeight": "400",  # or 500
+                                                "color": "#212529",  # Bootstrap's default text color
+                                                "backgroundColor": "#fffffff",  # same as slider background
+                                                "padding": "6px 10px",
+                                                "borderRadius": "6px",
+                                            },
+                                        ),
+                                        style={"display": "flex", "alignItems": "center", "justifyContent": "flex-end"},
+                                    ),
+                                    width=1,
+                                ),
+                            ],
+                            style={"marginTop": "10px"},
+                        ),
+                        dbc.Row(
+                            [
                                 dbc.Col(
-                                    build_alerts_map(api_cameras),
-                                    className="common-style",
+                                    dbc.Button(
+                                        translate("show_hide_prediction", lang),
+                                        id="hide-bbox-button",
+                                        n_clicks=0,
+                                        className="btn-uniform",
+                                        style={},  # Will be overwritten dynamically
+                                    ),
+                                    width=3,
+                                ),
+                                dbc.Col(
+                                    html.A(
+                                        dbc.Button(
+                                            translate("download_image", lang),
+                                            className="btn-uniform",
+                                            id="dl-image-button",
+                                        ),
+                                        className="no-underline",
+                                        id="download-link",
+                                        download="",
+                                        href="",
+                                        target="_blank",
+                                    ),
+                                    width=3,
+                                ),
+                                dbc.Col(
+                                    dbc.Button(translate("download", lang), id="dl-button", className="btn-uniform"),
+                                    width=3,
+                                ),
+                                dbc.Col(
+                                    dbc.Button(
+                                        translate("acknowledge_alert", lang),
+                                        id="acknowledge-button",
+                                        n_clicks=0,
+                                        className="btn-uniform",
+                                    ),
+                                    width=3,
+                                ),
+                            ],
+                            className="mb-4",
+                            style={"display": "flex", "marginTop": "10px", "justify-content": "space-evenly"},
+                        ),
+                        html.Div(
+                            id="confirmation-modal",
+                            style={
+                                "display": "none",  # Hidden by default
+                                "position": "fixed",
+                                "top": "0",
+                                "left": "0",
+                                "width": "100%",
+                                "height": "100%",
+                                "background-color": "rgba(0, 0, 0, 0.5)",
+                                "z-index": "1000",
+                                "justify-content": "center",
+                                "align-items": "center",
+                            },
+                            children=[
+                                html.Div(
+                                    [
+                                        html.H4(
+                                            translate("confirmation_modal_title", lang),
+                                            style={
+                                                "margin-bottom": "20px",
+                                                "font-size": "20px",
+                                                "font-weight": "bold",
+                                            },
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    translate("confirmation_modal_yes", lang),
+                                                    id="confirm-wildfire",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "margin-right": "10px",
+                                                        "padding": "10px 20px",
+                                                        "background-color": "#4CAF50",
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "border-radius": "5px",
+                                                        "cursor": "pointer",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    translate("confirmation_modal_no", lang),
+                                                    id="confirm-non-wildfire",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "margin-right": "10px",
+                                                        "padding": "10px 20px",
+                                                        "background-color": "#f44336",
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "border-radius": "5px",
+                                                        "cursor": "pointer",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    translate("confirmation_modal_cancel", lang),
+                                                    id="cancel-confirmation",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "10px 20px",
+                                                        "background-color": "#555",
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "border-radius": "5px",
+                                                        "cursor": "pointer",
+                                                    },
+                                                ),
+                                            ],
+                                            style={"display": "flex", "justify-content": "center"},
+                                        ),
+                                    ],
                                     style={
-                                        "position": "relative",
+                                        "background-color": "white",
+                                        "padding": "30px",
+                                        "border-radius": "8px",
+                                        "box-shadow": "0 4px 8px rgba(0, 0, 0, 0.2)",
+                                        "max-width": "600px",
                                         "width": "100%",
-                                        "paddingTop": "100%",
+                                        "text-align": "center",
                                     },
                                 ),
-                            ),
+                            ],
+                        ),
+                    ],
+                    width=8,
+                    style={"padding": "0"},
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
                             html.Div(
-                                dbc.Button(
-                                    translate[lang]["enlarge_map"],
-                                    className="common-style",
-                                    style={"backgroundColor": "#FEBA6A", "color": "black", "width": "100%"},
-                                    id="map-button",
-                                ),
+                                id="alert-information",
+                                className="common-style",
+                                style={"display": "none", "padding": "8px"},
+                                children=[
+                                    html.Div(
+                                        id="alert-information-styling-container",
+                                        children=[
+                                            html.H5(
+                                                translate("alert_information", lang), style={"text-align": "center"}
+                                            ),
+                                            html.Div(
+                                                id="alert-camera",
+                                                children=[
+                                                    html.Span(
+                                                        id="alert-camera-header",
+                                                        children=translate("camera", lang),
+                                                        className="alert-information-title",
+                                                    ),
+                                                    html.Span(
+                                                        id="alert-camera-value",
+                                                        children=[],
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                id="camera-location",
+                                                style={"display": "flex", "alignItems": "center"},
+                                                children=[
+                                                    html.Span(
+                                                        translate("camera_location", lang),
+                                                        className="alert-information-title",
+                                                        style={"margin-right": "6px"},
+                                                    ),
+                                                    html.Span(
+                                                        id="camera-location-copy-content",
+                                                        children="",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    dcc.Clipboard(
+                                                        id="clipboard-location",
+                                                        target_id="camera-location-copy-content",
+                                                        title="Copier",
+                                                        style={
+                                                            "border": "none",
+                                                            "background": "transparent",
+                                                            "cursor": "pointer",
+                                                        },
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                id="alert-azimuth",
+                                                children=[
+                                                    html.Span(
+                                                        id="alert-azimuth-header",
+                                                        children=translate("detection_azimuth", lang),
+                                                        className="alert-information-title",
+                                                    ),
+                                                    html.Span(
+                                                        id="alert-azimuth-value",
+                                                        children=[],
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                id="alert-time-range",
+                                                style={"display": "flex", "alignItems": "center", "gap": "16px"},
+                                                children=[
+                                                    html.Div(
+                                                        id="alert-start-date",
+                                                        children=[
+                                                            html.Span(
+                                                                id="alert-start-date-header",
+                                                                children=translate("start_time", lang),
+                                                                className="alert-information-title",
+                                                            ),
+                                                            html.Span(
+                                                                id="alert-start-date-value",
+                                                                children=[],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    html.Div(
+                                                        id="alert-end-date",
+                                                        children=[
+                                                            html.Span(
+                                                                id="alert-end-date-header",
+                                                                children=translate("end_time", lang),
+                                                                className="alert-information-title",
+                                                            ),
+                                                            html.Span(
+                                                                id="alert-end-date-value",
+                                                                children=[],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                id="smoke-location",
+                                                style={"marginTop": "6px"},
+                                                children=[
+                                                    html.Span(
+                                                        translate("smoke_location", lang),
+                                                        className="alert-information-title",
+                                                        style={"display": "block", "marginBottom": "4px"},
+                                                    ),
+                                                    html.Div(
+                                                        style={"display": "flex", "alignItems": "center"},
+                                                        children=[
+                                                            html.Span(
+                                                                id="smoke-location-copy-content",
+                                                                children="",
+                                                                style={"marginRight": "6px", "whiteSpace": "nowrap"},
+                                                            ),
+                                                            dcc.Clipboard(
+                                                                id="clipboard-smoke-location",
+                                                                target_id="smoke-location-copy-content",
+                                                                title="Copier",
+                                                                style={
+                                                                    "border": "none",
+                                                                    "background": "transparent",
+                                                                    "cursor": "pointer",
+                                                                    "padding": 0,
+                                                                },
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                id="alert-location-parcel-info",
+                                                style={
+                                                    "display": "block",
+                                                    "margin": "0",
+                                                    "padding": "0",
+                                                    "lineHeight": "1",
+                                                },
+                                            ),
+                                        ],
+                                    ),
+                                ],
                             ),
-                        ],
-                        width=2,
-                        style={
-                            "display": "flex",
-                            "flex-direction": "column",
-                            "gap": "16px",
-                        },
-                    ),
-                ]
-            ),
+                            id="alert-panel",
+                        ),
+                        dbc.Button(
+                            translate("unmatch-sequence", lang),
+                            id="unmatch-sequence-button",
+                            color="primary",
+                            className="mb-2",
+                            style={"display": "none"},
+                        ),
+                        html.Div(
+                            dbc.Col(
+                                build_alerts_map(api_cameras),
+                                className="common-style",
+                                style={
+                                    "position": "relative",
+                                    "width": "100%",
+                                    "paddingTop": "100%",
+                                },
+                            ),
+                        ),
+                        html.Div(
+                            dbc.Button(
+                                translate("enlarge_map", lang),
+                                className="common-style",
+                                style={"backgroundColor": "#FEBA6A", "color": "black", "width": "100%"},
+                                id="map-button",
+                            ),
+                        ),
+                        dbc.Button(
+                            id="start-live-stream", color="primary", className="mb-1", style={"display": "none"}
+                        ),
+                        dbc.Button(
+                            id="create-occlusion-mask",
+                            color="primary",
+                            className="mb-1",
+                            style={"display": "none"},
+                        ),
+                    ],
+                    width=2,
+                    style={
+                        "display": "flex",
+                        "flex-direction": "column",
+                        "gap": "16px",
+                    },
+                ),
+            ]),
             dcc.Interval(id="auto-slider-update", interval=500, n_intervals=0),
             dbc.Modal(
                 [
-                    dbc.ModalHeader(translate[lang]["map"]),
+                    dbc.ModalHeader(translate("map", lang)),
                     dbc.ModalBody(
                         build_alerts_map(api_cameras, id_suffix="-md"),
                     ),
@@ -368,7 +499,47 @@ def homepage_layout(user_token, api_cameras, lang="fr"):
                 fullscreen=True,
                 is_open=False,
             ),
-            dcc.Store(id="language", data=lang),
+            dcc.Store(id="bbox-store"),
+            dbc.Modal(
+                id="bbox-modal",
+                is_open=False,
+                fullscreen=True,
+                children=[
+                    dbc.ModalHeader(translate("occlusion_modal", lang)),
+                    dbc.ModalBody(
+                        html.Div(
+                            id="bbox-image-container", style={"width": "100%", "height": "100%", "overflow": "hidden"}
+                        )
+                    ),
+                    dbc.ModalFooter([
+                        dbc.Button(translate("confirm_bbox", lang), id="confirm-bbox-button", color="primary"),
+                        dbc.Button(
+                            translate("delete_bbox", lang),
+                            id="delete-bbox-button",
+                            color="danger",
+                            className="ms-2",
+                        ),
+                    ]),
+                ],
+            ),
+            dcc.Store(id="bbox-store"),
+            dbc.Modal(
+                id="zip-modal",
+                is_open=False,
+                centered=True,
+                children=[
+                    dbc.ModalHeader(id="zip-modal-header", children=translate("archive_ready", lang)),
+                    dbc.ModalFooter(
+                        html.A(
+                            dbc.Button(translate("download", lang), id="confirm-dl-button", color="success"),
+                            id="zip-dl-link",
+                            href="",
+                            download="",
+                            target="_blank",
+                        )
+                    ),
+                ],
+            ),
         ],
         fluid=True,
     )

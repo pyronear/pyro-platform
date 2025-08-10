@@ -4,59 +4,25 @@
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
 
-from datetime import datetime
+import json
+import os
+import shutil
+from datetime import datetime, timedelta
 from io import StringIO
+from typing import List, Tuple
 
+import cv2
 import dash_leaflet as dl
+import numpy as np
 import pandas as pd
-import pytz
 import requests
 from dash import html
 from geopy import Point
 from geopy.distance import geodesic
-from timezonefinder import TimezoneFinder
 
 import config as cfg
 
 DEPARTMENTS = requests.get(cfg.GEOJSON_FILE, timeout=10).json()
-
-
-tf = TimezoneFinder()
-
-
-def convert_dt_to_local_tz(lat, lon, str_utc_timestamp):
-    """
-    Convert a UTC timestamp string to a local timezone string based on latitude and longitude.
-
-    Parameters:
-    lat (float): Latitude of the location.
-    lon (float): Longitude of the location.
-    str_utc_timestamp (str): UTC timestamp string in ISO 8601 format (e.g., "2023-10-01T12:34:56").
-
-    Returns:
-    str: Local timezone string in the format "%Y-%m-%d %H:%M" or None if the input timestamp is invalid.
-
-    Example:
-    >>> convert_dt_to_local_tz(48.8566, 2.3522, "2023-10-01T12:34:56")
-    '2023-10-01 14:34'
-    """
-    lat = round(lat, 4)
-    lon = round(lon, 4)
-
-    # Convert str_utc_timestamp to a timezone-aware datetime object assuming it's in UTC
-    try:
-        ts_utc = datetime.fromisoformat(str(str_utc_timestamp)).replace(tzinfo=pytz.utc)
-    except ValueError:
-        return None  # Handle invalid datetime format
-
-    # Find the local timezone
-    timezone_str = tf.timezone_at(lat=lat, lng=lon)
-    if timezone_str is None:  # If the timezone is not found, handle it appropriately
-        timezone_str = "UTC"  # Fallback to UTC
-    timezone = pytz.timezone(timezone_str)
-
-    # Convert ts_utc to the local timezone
-    return ts_utc.astimezone(timezone).strftime("%Y-%m-%d %H:%M")
 
 
 def build_departments_geojson():
@@ -76,19 +42,32 @@ def build_departments_geojson():
     return geojson
 
 
-def calculate_new_polygon_parameters(azimuth, opening_angle, bboxes):
+def calculate_new_polygon_parameters(azimuth, opening_angle, bbox):
     """
-    This function compute the vision polygon parameters based on bboxes
-    """
-    # Assuming bboxes is in the format [x0, y0, x1, y1, confidence]
-    x0, _, width, _ = bboxes
-    xc = (x0 + width / 2) / 100
+    Computes the new azimuth and opening angle based on the bounding box.
 
-    # New azimuth
+    Parameters:
+    - azimuth: float, center azimuth of the camera (in degrees)
+    - opening_angle: float, horizontal field of view of the camera (in degrees)
+    - bbox: list or tuple [x0, y0, x1, y1, confidence], normalized coordinates (0 to 1)
+
+    Returns:
+    - new_azimuth: int, estimated azimuth of the detection (in degrees)
+    - new_opening_angle: int, estimated angular width (in degrees)
+    """
+    x0, _, x1, _, _ = bbox
+
+    # Center x in normalized coordinates
+    xc = (x0 + x1) / 2
+
+    # Width of bbox in normalized coords
+    width = x1 - x0
+
+    # Compute new azimuth (relative offset from center)
     new_azimuth = azimuth - opening_angle * (0.5 - xc)
 
-    # New opening angle
-    new_opening_angle = opening_angle * width / 100 + 1  # avoid angle 0
+    # Compute angular width of the bbox
+    new_opening_angle = opening_angle * width + 1  # +1 to avoid zero angle
 
     return int(new_azimuth) % 360, int(new_opening_angle)
 
@@ -118,23 +97,21 @@ def build_sites_markers(api_cameras):
     markers = []
 
     for _, site in client_sites.iterrows():
-        site_id = site["id"]
         lat = round(site["lat"], 4)
         lon = round(site["lon"], 4)
-        site_name = site["name"][:-3].replace("_", " ").title()
+        site_name = site["name"][:-3].replace("_", " ").lower()
         markers.append(
             dl.Marker(
-                id=f"site_{site_id}",  # Necessary to set an id for each marker to receive callbacks
+                id={"type": "site-marker", "index": site_name.lower()},
                 position=(lat, lon),
                 icon=icon,
+                n_clicks=0,  # ✅ allows click tracking
                 children=[
                     dl.Tooltip(site_name),
-                    dl.Popup(
-                        [
-                            html.H2(f"Site {site_name}"),
-                            html.P(f"Coordonnées : ({lat}, {lon})"),
-                        ]
-                    ),
+                    dl.Popup([
+                        html.H2(f"Site {site_name}"),
+                        html.P(f"Coordonnées : ({lat}, {lon})"),
+                    ]),
                 ],
             )
         )
@@ -143,30 +120,61 @@ def build_sites_markers(api_cameras):
     return markers, client_sites
 
 
-def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bboxes=None):
+def build_fire_marker(id_suffix):
+    return dl.Marker(
+        id=f"fire-location-marker{id_suffix}",
+        position=[0, 0],  # dummy initial position
+        opacity=0,  # hidden by default
+        icon={
+            "iconUrl": "/assets/images/fire_icon.png",  # 🔁 correct path if inside `assets/`
+            "iconSize": [40, 40],
+            "iconAnchor": [20, 40],
+            "popupAnchor": [0, -20],
+        },
+        children=[
+            dl.Tooltip("🔥 Fire detected"),
+            dl.Popup([
+                html.H2("Fire Location"),
+                html.P(id=f"fire-marker-coords{id_suffix}", children=""),
+            ]),
+        ],
+    )
+
+
+def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km):
     """
     Create a vision polygon using dl.Polygon. This polygon is placed on the map using alerts data.
-    """
-    if len(bboxes):
-        azimuth, opening_angle = calculate_new_polygon_parameters(azimuth, opening_angle, bboxes[0])
 
-    # The center corresponds the point from which the vision angle "starts"
+    Parameters:
+        site_lat (float): Latitude of the camera.
+        site_lon (float): Longitude of the camera.
+        azimuth (float): Central direction of the camera in degrees.
+        opening_angle (float): Field of view in degrees.
+        dist_km (float): Distance to project the polygon edges.
+
+    Returns:
+        polygon (dl.Polygon): The vision cone polygon.
+        azimuth (float): The original azimuth value (unchanged).
+    """
     center = [site_lat, site_lon]
+
+    # Convert float angle to an integer for iteration
+    n_steps = max(1, round(opening_angle))  # avoid range(1,1)
 
     points1 = []
     points2 = []
 
-    for i in reversed(range(1, opening_angle + 1)):
+    for i in reversed(range(1, n_steps + 1)):
         azimuth1 = (azimuth - i / 2) % 360
         azimuth2 = (azimuth + i / 2) % 360
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth1)
-        points1.append([point.latitude, point.longitude])
+        point1 = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth1)
+        point2 = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
 
-        point = geodesic(kilometers=dist_km).destination(Point(site_lat, site_lon), azimuth2)
-        points2.append([point.latitude, point.longitude])
+        points1.append([point1.latitude, point1.longitude])
+        points2.append([point2.latitude, point2.longitude])
 
-    points = [center, *points1, *list(reversed(points2))]
+    points = [center, *points1, *reversed(points2)]
 
     polygon = dl.Polygon(
         id="vision_polygon",
@@ -175,13 +183,13 @@ def build_vision_polygon(site_lat, site_lon, azimuth, opening_angle, dist_km, bb
         positions=points,
     )
 
-    return polygon, azimuth
+    return polygon
 
 
 def build_alerts_map(api_cameras, id_suffix=""):
     """
-    The following function mobilises functions defined hereabove or in the utils module to
-    instantiate and return a dl.Map object, corresponding to the "Alerts and Infrastructure" view.
+    Instantiates and returns a dl.Map object, corresponding to the "Alerts and Infrastructure" view,
+    without clustering the camera site markers.
     """
     map_style = {
         "position": "absolute",
@@ -192,56 +200,254 @@ def build_alerts_map(api_cameras, id_suffix=""):
     }
 
     markers, client_sites = build_sites_markers(api_cameras)
+    fire_marker = build_fire_marker(id_suffix)
 
     map_object = dl.Map(
         center=[
             client_sites["lat"].median(),
             client_sites["lon"].median(),
-        ],  # Determines the point around which the map is centered
-        zoom=10,  # Determines the initial level of zoom around the center point
+        ],
+        zoom=9,
         children=[
             dl.TileLayer(id=f"tile_layer{id_suffix}"),
             build_departments_geojson(),
             dl.LayerGroup(id=f"vision_polygons{id_suffix}"),
-            dl.MarkerClusterGroup(children=markers, id="sites_markers"),
-        ],  # Will contain the past fire markers of the alerts map
-        style=map_style,  # Reminder: map_style is imported from utils.py
+            dl.LayerGroup(children=markers, id="sites_markers"),
+            dl.LayerGroup(children=[fire_marker], id=f"fire-markers-layer{id_suffix}"),
+        ],
+        style=map_style,
         id=f"map{id_suffix}",
     )
 
     return map_object
 
 
-def create_event_list_from_alerts(api_events, cameras):
+def create_sequence_list(api_sequences, cameras, event_id_table):
     """
-    This function build the list of events on the left based on event data
+    Create a list of cards, one per event, aggregating all overlapping sequences.
+    Uses a Dash button wrapper with event ID as component ID.
     """
-    if api_events.empty:
+    if api_sequences.empty or event_id_table.empty:
         return []
 
-    filtered_events = api_events.sort_values("started_at").drop_duplicates("id", keep="last")[::-1]
+    api_sequences = api_sequences.copy()
+    api_sequences["id"] = api_sequences["id"].astype(int)
+    api_sequences["started_at_local"] = api_sequences["started_at_local"].astype(str)
 
-    return [
-        html.Button(
-            id={"type": "event-button", "index": event["id"]},
-            children=[
-                html.Div(
-                    (
-                        f"{cameras[cameras['id'] == event['camera_id']]['name'].values[0][:-3].replace('_', ' ')}"
-                        f" : {int(event['azimuth'])}°"
-                    ),
-                    style={"fontWeight": "bold"},
-                ),
-                html.Div(
-                    convert_dt_to_local_tz(
-                        lat=cameras[cameras["id"] == event["camera_id"]]["lat"].values[0],
-                        lon=cameras[cameras["id"] == event["camera_id"]]["lon"].values[0],
-                        str_utc_timestamp=event["started_at"],
-                    )
-                ),
-            ],
-            n_clicks=0,
-            className="pyronear-card alert-card",
+    # Sort events by most recent first
+    event_id_table = event_id_table.sort_values("time", ascending=False)
+
+    def get_annotation_emoji(value):
+        if value == 1.0:
+            return "🔥"
+        elif value == 0.0:
+            return "🚫"
+        return ""
+
+    def get_camera_info(cam_id):
+        cam = cameras[cameras["id"] == cam_id]
+        if cam.empty:
+            return "Unknown", 0.0, 0.0
+        cam_name = cam["name"].values[0][:-3].replace("_", " ")
+        return cam_name, cam["lat"].values[0], cam["lon"].values[0]
+
+    cards = []
+    for _, event_row in event_id_table.iterrows():
+        event_id = event_row["event_id"]
+        sequence_ids = [int(sid) for sid in event_row["sequences"]]
+        event_time = pd.to_datetime(event_row["time"]).strftime("%Y-%m-%d %H:%M")
+
+        event_seqs = api_sequences[api_sequences["id"].isin(sequence_ids)]
+        if event_seqs.empty:
+            continue
+
+        header = html.Div(
+            f"📅 {event_time}",
+            style={"fontWeight": "bold", "textAlign": "left", "marginBottom": "3px"},
         )
-        for _, event in filtered_events.iterrows()
+
+        others = []
+        for _, row in event_seqs.sort_values("started_at").iterrows():
+            cam_name, _, _ = get_camera_info(row["camera_id"])
+            azimuth = int(row["cone_azimuth"]) % 360
+            emoji = get_annotation_emoji(row.get("is_wildfire"))
+
+            started_local = str(row.get("started_at_local", ""))
+            if " " in started_local:
+                _, local_time = started_local.split(" ")
+                local_time = local_time[:5]
+            else:
+                local_time = "??:??"
+
+            others.append(
+                html.Div(
+                    f"{cam_name} ({azimuth}°) • {local_time} {emoji}",
+                    style={
+                        "fontSize": "12px",
+                        "paddingLeft": "8px",
+                        "color": "#555",
+                        "display": "block",
+                        "textAlign": "left",
+                        "verticalAlign": "bottom",
+                    },
+                )
+            )
+
+        card = html.Button(
+            id={"type": "event-button", "index": event_id},
+            children=[header, *others],
+            className="pyronear-card alert-card",
+            style={"marginBottom": "10px"},
+            n_clicks=0,
+        )
+        cards.append(card)
+
+    return cards
+
+
+def bboxes_overlap(b1, b2, iou_threshold=0.1):
+    """
+    Compute IoU (Intersection over Union) between two bboxes and return True if they overlap.
+    Each bbox is a list: [x_min, y_min, x_max, y_max, score]
+    """
+    xA = max(b1[0], b2[0])
+    yA = max(b1[1], b2[1])
+    xB = min(b1[2], b2[2])
+    yB = min(b1[3], b2[3])
+
+    inter_area = max(0, xB - xA) * max(0, yB - yA)
+    if inter_area == 0:
+        return False
+
+    area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+    area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+    iou = inter_area / float(area1 + area2 - inter_area)
+    return iou > iou_threshold
+
+
+def filter_bboxes_dict(bboxes_dict):
+    """
+    Filters the input dict of {timestamp: bbox}:
+    - Keeps only bboxes < 60 days old
+    - Removes overlaps by keeping the most recent bbox
+    """
+    if not bboxes_dict:
+        return {}
+
+    now = datetime.now()
+    max_age = timedelta(days=60)
+
+    # Parse, filter old
+    items = [
+        (datetime.strptime(k, "%Y-%m-%d %H:%M:%S"), k, v)
+        for k, v in bboxes_dict.items()
+        if now - datetime.strptime(k, "%Y-%m-%d %H:%M:%S") <= max_age
     ]
+
+    # Sort by timestamp descending (most recent first)
+    items.sort(reverse=True)
+
+    kept: List[Tuple[str, list[float]]] = []
+    kept_dict = {}
+
+    for _, k, bbox in items:
+        if not any(bboxes_overlap(bbox, other_bbox) for _, other_bbox in kept):
+            kept.append((k, bbox))
+            kept_dict[k] = bbox
+
+    return kept_dict
+
+
+def prepare_archive(sequence_data, api_sequences, folder_name, camera_value):
+    # Clean old
+    if os.path.isdir("zips"):
+        shutil.rmtree("zips")
+
+    # Define directories
+    base_dir = os.path.join("zips", folder_name)
+    image_dir = os.path.join(base_dir, "images")
+    pred_dir = os.path.join(base_dir, "predictions")
+    os.makedirs(image_dir, exist_ok=True)
+    os.makedirs(pred_dir, exist_ok=True)
+
+    # Get metadata
+    sequence_id = sequence_data.get("sequence_id")[0]
+    sequence_metadata = api_sequences[api_sequences["id"] == sequence_id]
+    metadata_dict = sequence_metadata.iloc[0].to_dict()
+    metadata_dict["camera"] = camera_value.replace("°", "")
+    metadata_dict = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in metadata_dict.items()}
+
+    with open(os.path.join(base_dir, "sequence_metadata.json"), "w") as f:
+        json.dump(metadata_dict, f, indent=2)
+
+    for _, row in sequence_data.iterrows():
+        url = row["url"]
+        fname = row["bucket_key"]
+        original_path = os.path.join(image_dir, fname)
+        pred_path = os.path.join(pred_dir, fname)
+
+        # Download image
+        if not os.path.exists(original_path):
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(original_path, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+
+        # Load image and draw bbox
+        img = cv2.imread(original_path)
+        img_np = np.array(img)
+        h, w = img_np.shape[:2]
+
+        if isinstance(row["processed_bboxes"], list) and row["processed_bboxes"]:
+            for bbox in row["processed_bboxes"]:
+                bbox = [b / 100 for b in bbox]
+                x, y, w_box, h_box = bbox
+                x1 = int(x * w)
+                y1 = int(y * h)
+                x2 = int((x + w_box) * w)
+                y2 = int((y + h_box) * h)
+                cv2.rectangle(img_np, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+        # Save prediction image
+        cv2.imwrite(pred_path, img_np)
+
+    # Create zip
+    shutil.make_archive(os.path.join("zips", folder_name), "zip", base_dir)
+
+
+def get_location_info(lat, lon):
+    # Step 1: Reverse geocode using Nominatim
+    nominatim_url = "https://nominatim.openstreetmap.org/reverse"
+    params = {"lat": lat, "lon": lon, "format": "json", "addressdetails": 1}
+    headers = {"User-Agent": "YourAppName/1.0"}
+    response = requests.get(nominatim_url, params=params, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+
+    address = data.get("address", {})
+    city = address.get("city") or address.get("town") or address.get("village") or None
+    country = address.get("country")
+    country_code = address.get("country_code")
+
+    result = {"city": city, "country": country, "country_code": country_code, "parcel": None}
+
+    # Step 2: If in France, check for forest parcel
+    if country_code == "fr":
+        parcel_url = "https://services1.arcgis.com/Y4HgaQpzkE7kenlE/arcgis/rest/services/Parcelles_foresti%C3%A8res_publiques_de_France_m%C3%A9tropolitaine/FeatureServer/11/query"
+        parcel_params = {
+            "geometry": f"{lon},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": 4326,
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json",
+        }
+        parcel_response = requests.get(parcel_url, params=parcel_params)
+        parcel_response.raise_for_status()
+        parcel_data = parcel_response.json()
+
+        if parcel_data.get("features"):
+            result["parcel"] = parcel_data["features"][0]["attributes"]
+
+    return result

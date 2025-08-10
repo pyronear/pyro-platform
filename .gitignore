@@ -150,3 +150,6 @@ poetry.lock
 
 #project files
 site_devices.json
+available_stream.json
+occlusion_masks
+zips
