@@ -12,6 +12,7 @@ from io import StringIO
 
 import logging_config
 import pandas as pd
+import requests
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
@@ -505,6 +506,48 @@ def open_capture_modal(n_clicks, current_camera, api_url):
         return False, "", ""
 
 
+@app.callback(
+    Output("bbox-fetch-interval", "disabled"),
+    Output("anonymizer-bboxes", "data"),
+    Input("video-stream", "src"),  # toggle on/off
+    Input("bbox-fetch-interval", "n_intervals"),  # periodic fetch
+    State("current_camera", "data"),
+    State("pi_api_url", "data"),
+    prevent_initial_call=False,
+)
+def manage_bboxes(stream_src, _n, current_camera, pi_api_url):
+    # Case 1: stream is stopped → disable interval & clear masks
+    if not stream_src:
+        logger.info("[bbox] stream inactive, disabling bbox polling and clearing masks")
+        return True, []
+
+    # Case 2: stream is active, interval tick triggered
+    if ctx.triggered_id == "bbox-fetch-interval":
+        if not current_camera or not pi_api_url:
+            raise PreventUpdate
+        ip = current_camera.get("camera", {}).get("ip")
+        if not ip:
+            raise PreventUpdate
+
+        url = f"{pi_api_url}/anonymizer/last_prediction/{ip}"
+        try:
+            r = requests.get(url, timeout=2.0)
+            r.raise_for_status()
+            data = r.json() or {}
+            bboxes = data.get("bboxes", [])
+            return False, [list(bb) for bb in bboxes]  # interval stays enabled
+        except Exception as e:
+            logger.warning(f"[bbox] fetch failed from {url}: {e}")
+            return False, []
+
+    # Case 3: stream just started → enable interval, but don't update bboxes yet
+    if ctx.triggered_id == "video-stream":
+        logger.info("[bbox] stream active, enabling bbox polling")
+        return False, no_update
+
+    raise PreventUpdate
+
+
 app.clientside_callback(
     """
     function(n_clicks) {
@@ -550,38 +593,6 @@ app.index_string = """
 """
 
 
-# in callbacks file, after app.index_string or alongside other clientside callbacks
-
-# Fetch bboxes every second
-app.clientside_callback(
-    """
-    async function(n, current_camera, pi_api_url) {
-        if (!current_camera || !pi_api_url) return window.dash_clientside.no_update;
-        const ip = current_camera?.camera?.ip;
-        if (!ip) return window.dash_clientside.no_update;
-
-        // Adjust the path here if your router prefix differs
-        const url = `${pi_api_url}/anonymizer/last_prediction/${ip}`;
-
-        try {
-            const resp = await fetch(url, { cache: "no-store" });
-            if (!resp.ok) return [];
-            const data = await resp.json();
-            // Expected: { camera_ip, timestamp, bboxes: [[x1,y1,x2,y2,score], ...] } or empty object
-            if (!data || !Array.isArray(data.bboxes)) return [];
-            return data.bboxes;
-        } catch (e) {
-            return [];
-        }
-    }
-    """,
-    Output("anonymizer-bboxes", "data"),
-    Input("bbox-fetch-interval", "n_intervals"),
-    State("current_camera", "data"),
-    State("pi_api_url", "data"),
-)
-
-# Draw masks on the canvas when bboxes change or on resize checks
 app.clientside_callback(
     """
     function(bboxes, streamRes) {
@@ -589,9 +600,7 @@ app.clientside_callback(
         const container = document.getElementById("video-container");
         if (!canvas || !container) return window.dash_clientside.no_update;
 
-        // Match canvas pixels to the displayed size each time
         const rect = container.getBoundingClientRect();
-        // Only set width and height properties, not just style, so the drawing buffer matches CSS pixels
         canvas.width = Math.max(1, Math.floor(rect.width));
         canvas.height = Math.max(1, Math.floor(rect.height));
 
@@ -602,29 +611,39 @@ app.clientside_callback(
 
         const baseW = streamRes?.w || 1920;
         const baseH = streamRes?.h || 1080;
-        const sx = canvas.width / baseW;
-        const sy = canvas.height / baseH;
 
-        ctx.globalAlpha = 0.6;
+        ctx.save();
+        ctx.globalAlpha = 0.9;
         ctx.fillStyle = "black";
 
         for (let i = 0; i < bboxes.length; i++) {
             const bb = bboxes[i];
             if (!bb || bb.length < 4) continue;
-            const x1 = Math.max(0, Math.min(baseW, bb[0])) * sx;
-            const y1 = Math.max(0, Math.min(baseH, bb[1])) * sy;
-            const x2 = Math.max(0, Math.min(baseW, bb[2])) * sx;
-            const y2 = Math.max(0, Math.min(baseH, bb[3])) * sy;
+
+            const x1v = bb[0], y1v = bb[1], x2v = bb[2], y2v = bb[3];
+            const normalized = Math.max(x1v, y1v, x2v, y2v) <= 1.5;
+
+            let x1, y1, x2, y2;
+            if (normalized) {
+                x1 = Math.max(0, Math.min(1, x1v)) * canvas.width;
+                y1 = Math.max(0, Math.min(1, y1v)) * canvas.height;
+                x2 = Math.max(0, Math.min(1, x2v)) * canvas.width;
+                y2 = Math.max(0, Math.min(1, y2v)) * canvas.height;
+            } else {
+                const sx = canvas.width / baseW;
+                const sy = canvas.height / baseH;
+                x1 = Math.max(0, Math.min(baseW, x1v)) * sx;
+                y1 = Math.max(0, Math.min(baseH, y1v)) * sy;
+                x2 = Math.max(0, Math.min(baseW, x2v)) * sx;
+                y2 = Math.max(0, Math.min(baseH, y2v)) * sy;
+            }
 
             const w = Math.max(0, x2 - x1);
             const h = Math.max(0, y2 - y1);
-            if (w > 1 && h > 1) {
-                ctx.fillRect(x1, y1, w, h);
-            }
+            if (w > 1 && h > 1) ctx.fillRect(x1, y1, w, h);
         }
 
-        // Reset alpha for any future drawings
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
         return window.dash_clientside.no_update;
     }
     """,
