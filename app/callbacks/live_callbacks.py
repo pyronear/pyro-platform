@@ -399,6 +399,17 @@ def update_cone_and_center_from_current_camera(current_camera, zoom_level, api_c
 
 
 @app.callback(
+    Output("stream-resolution", "data"),
+    Input("stream-start-time", "data"),
+    State("current_camera", "data"),
+    prevent_initial_call=True,
+)
+def set_stream_resolution_on_start(_start_time, current_camera):
+    # Replace with real detection if available
+    return {"w": 1920, "h": 1080}
+
+
+@app.callback(
     Output("loading-modal", "is_open"),
     Output("modal-close-interval", "disabled"),
     Output("video-stream", "src"),
@@ -537,3 +548,87 @@ app.index_string = """
     </body>
 </html>
 """
+
+
+# in callbacks file, after app.index_string or alongside other clientside callbacks
+
+# Fetch bboxes every second
+app.clientside_callback(
+    """
+    async function(n, current_camera, pi_api_url) {
+        if (!current_camera || !pi_api_url) return window.dash_clientside.no_update;
+        const ip = current_camera?.camera?.ip;
+        if (!ip) return window.dash_clientside.no_update;
+
+        // Adjust the path here if your router prefix differs
+        const url = `${pi_api_url}/anonymizer/last_prediction/${ip}`;
+
+        try {
+            const resp = await fetch(url, { cache: "no-store" });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            // Expected: { camera_ip, timestamp, bboxes: [[x1,y1,x2,y2,score], ...] } or empty object
+            if (!data || !Array.isArray(data.bboxes)) return [];
+            return data.bboxes;
+        } catch (e) {
+            return [];
+        }
+    }
+    """,
+    Output("anonymizer-bboxes", "data"),
+    Input("bbox-fetch-interval", "n_intervals"),
+    State("current_camera", "data"),
+    State("pi_api_url", "data"),
+)
+
+# Draw masks on the canvas when bboxes change or on resize checks
+app.clientside_callback(
+    """
+    function(bboxes, streamRes) {
+        const canvas = document.getElementById("bbox-canvas");
+        const container = document.getElementById("video-container");
+        if (!canvas || !container) return window.dash_clientside.no_update;
+
+        // Match canvas pixels to the displayed size each time
+        const rect = container.getBoundingClientRect();
+        // Only set width and height properties, not just style, so the drawing buffer matches CSS pixels
+        canvas.width = Math.max(1, Math.floor(rect.width));
+        canvas.height = Math.max(1, Math.floor(rect.height));
+
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!bboxes || bboxes.length === 0) return window.dash_clientside.no_update;
+
+        const baseW = streamRes?.w || 1920;
+        const baseH = streamRes?.h || 1080;
+        const sx = canvas.width / baseW;
+        const sy = canvas.height / baseH;
+
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = "black";
+
+        for (let i = 0; i < bboxes.length; i++) {
+            const bb = bboxes[i];
+            if (!bb || bb.length < 4) continue;
+            const x1 = Math.max(0, Math.min(baseW, bb[0])) * sx;
+            const y1 = Math.max(0, Math.min(baseH, bb[1])) * sy;
+            const x2 = Math.max(0, Math.min(baseW, bb[2])) * sx;
+            const y2 = Math.max(0, Math.min(baseH, bb[3])) * sy;
+
+            const w = Math.max(0, x2 - x1);
+            const h = Math.max(0, y2 - y1);
+            if (w > 1 && h > 1) {
+                ctx.fillRect(x1, y1, w, h);
+            }
+        }
+
+        // Reset alpha for any future drawings
+        ctx.globalAlpha = 1.0;
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("bbox-dummy", "children"),
+    Input("anonymizer-bboxes", "data"),
+    State("stream-resolution", "data"),
+)

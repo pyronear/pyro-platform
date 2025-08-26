@@ -179,6 +179,19 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                                         "borderRadius": "10px",
                                                     },
                                                 ),
+                                                html.Canvas(
+                                                    id="bbox-canvas",
+                                                    style={
+                                                        "position": "absolute",
+                                                        "top": 0,
+                                                        "left": 0,
+                                                        "width": "100%",
+                                                        "height": "100%",
+                                                        "zIndex": 1,
+                                                        "pointerEvents": "none",
+                                                        "borderRadius": "10px",
+                                                    },
+                                                ),
                                                 EventListener(
                                                     id="click-listener",
                                                     children=html.Div(
@@ -269,6 +282,7 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
                                                     },
                                                 ),
                                             ],
+                                            id="video-container",
                                             style={
                                                 "position": "relative",
                                                 "width": "100%",
@@ -478,7 +492,11 @@ def live_stream_layout(user_token, api_cameras, available_stream, selected_camer
             dcc.Store(id="click-coords", storage_type="session"),
             dcc.Store(id="click-coords2", storage_type="session"),
             dcc.Store(id="lang", storage_type="session", data=lang),
+            dcc.Store(id="anonymizer-bboxes", storage_type="memory"),
+            dcc.Store(id="stream-resolution", data={"w": 1920, "h": 1080}, storage_type="memory"),
+            dcc.Interval(id="bbox-fetch-interval", interval=1000, n_intervals=0),
             dcc.Interval(id="stream-check-interval", interval=10_000, n_intervals=0),
+            html.Div(id="bbox-dummy"),
             dbc.Modal(
                 id="inactivity-modal",
                 is_open=False,
