@@ -628,12 +628,21 @@ def update_location_and_parcel_info(opacity, smoke_location, lang):
     return children, {"display": "block", "marginTop": "0px", "padding": "6px 0"}
 
 
+# Button id → enum string mapping
+BUTTON_TO_ENUM = {
+    "confirm-fire": "wildfire_smoke",
+    "confirm-other-smoke": "other_smoke",
+    "confirm-false": "other",
+}
+
+
 @app.callback(
     [Output("confirmation-modal", "style"), Output("to_acknowledge", "data")],
     [
         Input("acknowledge-button", "n_clicks"),
-        Input("confirm-wildfire", "n_clicks"),
-        Input("confirm-non-wildfire", "n_clicks"),
+        Input("confirm-fire", "n_clicks"),
+        Input("confirm-other-smoke", "n_clicks"),
+        Input("confirm-false", "n_clicks"),
         Input("cancel-confirmation", "n_clicks"),
     ],
     [
@@ -643,7 +652,7 @@ def update_location_and_parcel_info(opacity, smoke_location, lang):
     prevent_initial_call=True,
 )
 def acknowledge_event(
-    acknowledge_clicks, confirm_wildfire, confirm_non_wildfire, cancel, sequence_id_on_display, user_token
+    acknowledge_clicks, confirm_fire, confirm_other_smoke, confirm_false, cancel, sequence_id_on_display, user_token
 ):
     ctx = dash.callback_context
 
@@ -669,24 +678,26 @@ def acknowledge_event(
     client.token = user_token
 
     if triggered_id == "acknowledge-button":
-        if acknowledge_clicks is None or acknowledge_clicks == 0:
+        if not acknowledge_clicks:
             raise PreventUpdate
         return modal_visible_style, dash.no_update
 
-    elif triggered_id == "confirm-wildfire":
-        if confirm_wildfire is None or confirm_wildfire == 0:
+    elif triggered_id in BUTTON_TO_ENUM:
+        # guard for specific button click
+        if triggered_id == "confirm-fire" and not confirm_fire:
             raise PreventUpdate
-        client.label_sequence(sequence_id_on_display, True)
-        return modal_hidden_style, sequence_id_on_display
+        if triggered_id == "confirm-other-smoke" and not confirm_other_smoke:
+            raise PreventUpdate
+        if triggered_id == "confirm-false" and not confirm_false:
+            raise PreventUpdate
 
-    elif triggered_id == "confirm-non-wildfire":
-        if confirm_non_wildfire is None or confirm_non_wildfire == 0:
-            raise PreventUpdate
-        client.label_sequence(sequence_id_on_display, False)
+        enum_value = BUTTON_TO_ENUM[triggered_id]
+        client.label_sequence(sequence_id_on_display, enum_value)
+
         return modal_hidden_style, sequence_id_on_display
 
     elif triggered_id == "cancel-confirmation":
-        if cancel is None or cancel == 0:
+        if not cancel:
             raise PreventUpdate
         return modal_hidden_style, dash.no_update
 
