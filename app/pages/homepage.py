@@ -233,13 +233,13 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                         html.Div(
                                             [
                                                 html.Button(
-                                                    translate("confirmation_modal_yes", lang),
-                                                    id="confirm-wildfire",
+                                                    translate("confirmation_modal_fire", lang),
+                                                    id="confirm-fire",
                                                     n_clicks=0,
                                                     style={
                                                         "margin-right": "10px",
                                                         "padding": "10px 20px",
-                                                        "background-color": "#4CAF50",
+                                                        "background-color": "#f44336",  # red
                                                         "color": "white",
                                                         "border": "none",
                                                         "border-radius": "5px",
@@ -247,13 +247,27 @@ def homepage_layout(user_token, api_cameras, lang="fr", descending_order=True):
                                                     },
                                                 ),
                                                 html.Button(
-                                                    translate("confirmation_modal_no", lang),
-                                                    id="confirm-non-wildfire",
+                                                    translate("confirmation_modal_other_smoke", lang),
+                                                    id="confirm-other-smoke",
                                                     n_clicks=0,
                                                     style={
                                                         "margin-right": "10px",
                                                         "padding": "10px 20px",
-                                                        "background-color": "#f44336",
+                                                        "background-color": "#ff9800",  # orange
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "border-radius": "5px",
+                                                        "cursor": "pointer",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    translate("confirmation_modal_false", lang),
+                                                    id="confirm-false",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "margin-right": "10px",
+                                                        "padding": "10px 20px",
+                                                        "background-color": "#4CAF50",  # green
                                                         "color": "white",
                                                         "border": "none",
                                                         "border-radius": "5px",
