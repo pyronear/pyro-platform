@@ -23,7 +23,7 @@ This file will have to hold the following information:
 - `API_URL`: URL to the endpoint of [Pyronear Alert API](https://github.com/pyronear/pyro-api)
 - `API_LOGIN`: your login for the API
 - `API_PWD`: your password for the API
-- `S3_ENDPOINT_URL`: your s3 url (S3 settings to manage occlusions masks)
+- `S3_ENDPOINT_URL`: your s3 url (S3 settings to manage occlusion masks)
 - `S3_ACCESS_KEY` : your s3 access key id
 - `S3_SECRET_KEY`: your s3 secret key
 - `S3_REGION`: s3 region
