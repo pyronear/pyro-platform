@@ -195,12 +195,17 @@ def project_polygon(polygon):
 
 
 def sequences_have_changed(df1, df2, cols_to_check=None):
-    if cols_to_check is None:
-        cols_to_check = ["last_seen_at_local", "is_wildfire"]
+    import pandas as pd
 
+    # Default to new schema
+    if cols_to_check is None:
+        cols_to_check = ["last_seen_at_local", "label"]
+
+    # Shape change means changed
     if df1.shape != df2.shape:
         return True
 
+    # Required columns missing means changed
     if not all(col in df1.columns and col in df2.columns for col in cols_to_check):
         return True
 
@@ -208,15 +213,25 @@ def sequences_have_changed(df1, df2, cols_to_check=None):
     df2_checked = df2[cols_to_check].copy()
 
     for col in cols_to_check:
-        if "datetime" in str(df1_checked[col].dtype) or "date" in col:
+        # Normalize datetimes to seconds
+        if "datetime" in str(df1_checked[col].dtype) or "date" in col or "time" in col:
             df1_checked[col] = pd.to_datetime(df1_checked[col], errors="coerce").dt.round("s")
             df2_checked[col] = pd.to_datetime(df2_checked[col], errors="coerce").dt.round("s")
-        elif col == "is_wildfire":
-            # Do NOT fillna; keep None/NA to detect changes
-            df1_checked[col] = df1_checked[col].astype("boolean")
-            df2_checked[col] = df2_checked[col].astype("boolean")
 
-    # Sort by id if available
+        # Legacy support when comparing a boolean column
+        elif col == "is_wildfire":
+            # Keep NA to detect changes, cast only if boolean like
+            if df1_checked[col].dtype == bool or df2_checked[col].dtype == bool:
+                df1_checked[col] = df1_checked[col].astype("boolean")
+                df2_checked[col] = df2_checked[col].astype("boolean")
+
+        # New schema label, keep strings and NA as is
+        elif col == "label":
+            # Ensure object dtype, do not fillna so NA stays comparable
+            df1_checked[col] = df1_checked[col].astype("object")
+            df2_checked[col] = df2_checked[col].astype("object")
+
+    # Stable index for comparison
     if "id" in df1.columns and "id" in df2.columns:
         df1_checked.index = df1["id"]
         df2_checked.index = df2["id"]
@@ -227,7 +242,7 @@ def sequences_have_changed(df1, df2, cols_to_check=None):
     df1_checked = df1_checked.sort_index()
     df2_checked = df2_checked.sort_index()
 
-    # Compare while preserving NA values
+    # pandas.DataFrame.equals treats NaN as equal, which is desired here
     return not df1_checked.equals(df2_checked)
 
 
@@ -388,7 +403,7 @@ def compute_overlap(api_sequences, R_km=35, r_min_km=0.5, max_dist_km=2.0, unmat
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
-    df_valid = df[df["is_wildfire"] != 0.0]
+    df_valid = df[df["is_wildfire"].isin([None, "wildfire_smoke"])]
 
     projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
 

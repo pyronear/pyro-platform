@@ -510,7 +510,7 @@ app.index_string = """
 <html>
     <head>
         {%metas%}
-        <title>Clickable Stream</title>
+        <title>Pyronear</title>
         {%favicon%}
         {%css%}
         <script>

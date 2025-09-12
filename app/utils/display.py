@@ -237,10 +237,12 @@ def create_sequence_list(api_sequences, cameras, event_id_table):
     # Sort events by most recent first
     event_id_table = event_id_table.sort_values("time", ascending=False)
 
-    def get_annotation_emoji(value):
-        if value == 1.0:
+    def get_annotation_emoji(value: str) -> str:
+        if value == "wildfire_smoke":
             return "🔥"
-        elif value == 0.0:
+        elif value == "other_smoke":
+            return "🏭"  # chimney / smoke stack
+        elif value == "other":
             return "🚫"
         return ""
 
