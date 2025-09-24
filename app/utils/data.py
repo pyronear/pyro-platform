@@ -322,208 +322,190 @@ def compute_smoke_location(seq, projected_cones):
         avg_lon = sum(lon for _, lon in barycenters) / len(barycenters)
         return (avg_lat, avg_lon)
 
-
-def filter_localized_events(event_id_table, df_valid, R_km=30, r_min_km=0.5, max_dist_km=2.0):
+def _compute_localized_groups_from_cliques(
+    df: pd.DataFrame,
+    cliques: list[tuple[int, ...]],
+    projected_cones: dict[int, "Polygon"],
+    max_dist_km: float,
+) -> list[tuple[int, ...]]:
     """
-    Identify events with 3 or more sequences that have consistent intersection barycenters.
-
-    For each group:
-        - Compute all pairwise intersections.
-        - Keep if max distance between barycenters is below threshold.
-
-    Parameters:
-        event_id_table (pd.DataFrame): Table with 'event_id' and 'sequences'.
-        df_valid (pd.DataFrame): Subset of sequences with is_wildfire != 0.0.
-        R_km (float): Maximum detection range of the cone in kilometers.
-        r_min_km (float): Minimum (inner) radius of the cone in kilometers.
-        max_dist_km (float): Maximum allowed distance between barycenters.
-
-    Returns:
-        set: Set of valid event IDs (str) with spatially localized detections.
+    From maximal cliques, split each clique into localized groups.
+    Rule: for groups with size >= 3, keep the whole group if the maximum distance
+    among all pair intersection barycenters is <= max_dist_km, otherwise split into all 2 by 2 pairs.
+    Returns a list of unique groups as sorted tuples, with subset groups removed.
     """
-    df_valid = df_valid[df_valid["is_wildfire"] != 0.0]
-    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
+    # Build a local working list
+    base = [tuple(sorted(g)) for g in cliques]
+    ids_in_cliques = set(x for g in base for x in g)
+    all_ids = set(df["id"].astype(int).tolist())
+    singletons = [(sid,) for sid in sorted(all_ids - ids_in_cliques)]
+    work = base + singletons
 
-    valid_event_ids = set()
+    def split_one_group(group: tuple[int, ...]) -> list[tuple[int, ...]]:
+        group = tuple(sorted(group))
+        if len(group) <= 1:
+            return [group]
 
-    for _, row in event_id_table.iterrows():
-        seq = row["sequences"]
-        if len(seq) < 3:
+        # gather pair barycenters
+        pair_barys = []
+        for i, j in itertools.combinations(group, 2):
+            gi = projected_cones.get(i)
+            gj = projected_cones.get(j)
+            if gi is None or gj is None:
+                continue
+            inter = gi.intersection(gj)
+            if inter.is_empty or inter.area <= 0:
+                continue
+            pair_barys.append(get_centroid_latlon(inter))
+
+        if len(group) == 2:
+            return [group]
+
+        if len(pair_barys) < 2:
+            return [tuple(sorted(p)) for p in itertools.combinations(group, 2)]
+
+        # diameter of barycenters
+        max_d = 0.0
+        for (lat1, lon1), (lat2, lon2) in itertools.combinations(pair_barys, 2):
+            d = haversine_km(lat1, lon1, lat2, lon2)
+            if d > max_d:
+                max_d = d
+
+        if max_d <= max_dist_km:
+            return [group]
+        else:
+            return [tuple(sorted(p)) for p in itertools.combinations(group, 2)]
+
+    # Split, dedupe, and drop strict subsets
+    candidates = []
+    for clique in sorted(set(work)):
+        candidates.extend(split_one_group(clique))
+
+    candidates = sorted(set(tuple(sorted(g)) for g in candidates))
+
+    keep = []
+    as_sets = [set(g) for g in candidates]
+    for i, gi in enumerate(as_sets):
+        if any(i != j and gi.issubset(as_sets[j]) for j in range(len(as_sets))):
             continue
+        keep.append(candidates[i])
 
-        bary_dict = {}
-        for id1, id2 in itertools.combinations(seq, 2):
-            inter = projected_cones[id1].intersection(projected_cones[id2])
-            if not inter.is_empty and inter.area > 0:
-                lat, lon = get_centroid_latlon(inter)
-                bary_dict[id1, id2] = (lat, lon)
-
-        if len(bary_dict) < 2:
-            continue
-
-        bary_coords = list(bary_dict.values())
-        distances = [
-            haversine_km(lat1, lon1, lat2, lon2)
-            for (lat1, lon1), (lat2, lon2) in itertools.combinations(bary_coords, 2)
-        ]
-
-        if max(distances) <= max_dist_km:
-            valid_event_ids.add(row["event_id"])
-
-    return valid_event_ids
+    return keep
 
 
-def compute_overlap(api_sequences, R_km=35, r_min_km=0.5, max_dist_km=2.0, unmatched_event_table=None):
+def compute_overlap(api_sequences, R_km=50, r_min_km=0.5, max_dist_km=5.0, unmatched_event_table=None):
     """
-    Identify groups of overlapping camera sequences and consolidate them into events.
-
-    Steps:
-        1. Compute intersection graph of cone projections.
-        2. Extract maximal cliques of sequences (overlapping in space and time).
-        3. Filter valid (localized) events using barycenter consistency.
-        4. Decompose non-localized events with >2 sequences into 2-by-2 pairs.
-        5. Estimate smoke location for each final event.
-
-    Parameters:
-        api_sequences (pd.DataFrame): Input with fields:
-            - 'id', 'lat', 'lon', 'cone_azimuth', 'cone_angle', 'is_wildfire'
-            - 'started_at', 'last_seen_at', 'started_at_local' (datetime-compatible)
-        R_km (float): Outer radius of the camera detection cone (in km).
-        r_min_km (float): Inner radius of the camera detection cone (in km).
-        max_dist_km (float): Maximum allowed distance between intersection barycenters for validation.
-        unmatched_event_table: Events id that can't match
-
-    Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]:
-            - Updated DataFrame with 'overlap' column.
-            - Final event table with 'event_id', 'sequences', 'time', and 'smoke_location'.
+    Identify groups of overlapping camera sequences and consolidate them into localized events.
+    Phase 1 fills df['overlap'] with maximal cliques, Phase 2 derives df['localized_groups']
+    by enforcing a spatial consistency threshold on pair intersection barycenters.
+    Returns df and a compact event_id_table built from localized groups.
     """
     df = api_sequences.copy()
     df["id"] = df["id"].astype(int)
     df["started_at"] = pd.to_datetime(df["started_at"])
     df["last_seen_at"] = pd.to_datetime(df["last_seen_at"])
 
+    # keep positives and unknowns, as agreed
     df_valid = df[df["is_wildfire"].isin([None, "wildfire_smoke"])]
 
-    projected_cones = {row["id"]: get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
+    # short circuit if nothing valid
+    if df_valid.empty:
+        df["overlap"] = [[] for _ in range(len(df))]
+        df["localized_groups"] = df["id"].astype(int).map(lambda i: [(i,)])
+        # build a minimal event table for downstream
+        time_col = "started_at_local" if "started_at_local" in df.columns else "started_at"
+        event_id_table = pd.DataFrame({
+            "event_id": [f"event_{i}" for i in range(len(df))],
+            "sequences": df["id"].astype(int).map(lambda i: [i]).tolist(),
+            "time": df[time_col].tolist(),
+            "smoke_location": [None] * len(df),
+        })
+        return df, event_id_table
 
-    overlapping_pairs = []
-    ids = df_valid["id"].tolist()
+    # precompute cones
+    projected_cones = {int(row["id"]): get_projected_cone(row, R_km, r_min_km) for _, row in df_valid.iterrows()}
 
-    # Prepare the exclusion set from unmatched_event_table
+    # exclusions
     unmatched_exclusions = set()
     if unmatched_event_table is not None and isinstance(unmatched_event_table, list):
         try:
             for source_seq, group_seqs in unmatched_event_table:
-                source_seq = int(source_seq)
-                group_seqs = [int(s) for s in group_seqs]
-                for seq in group_seqs:
-                    if seq != source_seq:
-                        unmatched_exclusions.add((source_seq, seq))
-                        unmatched_exclusions.add((seq, source_seq))  # make it symmetric
+                s = int(source_seq)
+                for t in (int(x) for x in group_seqs):
+                    if t != s:
+                        unmatched_exclusions.add((s, t))
+                        unmatched_exclusions.add((t, s))
         except Exception as e:
             logger.warning(f"Failed to parse unmatched_event_table: {e}")
 
-    for i, id1 in enumerate(ids):
-        row1 = df_valid[df_valid["id"] == id1].iloc[0]
-        for id2 in ids[i + 1 :]:
-            row2 = df_valid[df_valid["id"] == id2].iloc[0]
+    # Phase 1, build overlap graph with time window check
+    ids = df_valid["id"].astype(int).tolist()
+    rows_by_id = df_valid.set_index("id")[["started_at", "last_seen_at"]].to_dict("index")
 
-            # Skip if time windows do not overlap
+    overlapping_pairs: list[tuple[int, int]] = []
+    for i, id1 in enumerate(ids):
+        row1 = rows_by_id[id1]
+        for id2 in ids[i + 1:]:
+            row2 = rows_by_id[id2]
+            # time windows must overlap
             if row1["started_at"] > row2["last_seen_at"] or row2["started_at"] > row1["last_seen_at"]:
                 continue
-
-            # Skip forbidden matches
+            # forbidden matches
             if (id1, id2) in unmatched_exclusions:
                 continue
-
+            # spatial test
             if projected_cones[id1].intersects(projected_cones[id2]):
                 overlapping_pairs.append((id1, id2))
 
     G = nx.Graph()
     G.add_edges_from(overlapping_pairs)
-    cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G) if len(clique) >= 2]
+    cliques = [tuple(sorted(c)) for c in nx.find_cliques(G) if len(c) >= 2]
 
+    # map id to cliques
     id_to_groups = defaultdict(list)
     for group in cliques:
         for sid in group:
             id_to_groups[sid].append(group)
 
-    df["overlap"] = df["id"].map(lambda x: id_to_groups.get(x, None))
+    df["overlap"] = df["id"].map(lambda x: id_to_groups.get(int(x), []))
 
-    # Phase 1 : raw event groups
-    raw_event_records = []
-    event_counter = 0
-    added_ids = set()
+    # Phase 2, localized groups from cliques
+    localized_groups = _compute_localized_groups_from_cliques(df, cliques, projected_cones, max_dist_km)
 
-    for group in cliques:
-        group_ids = sorted(int(sid) for sid in group)
-        group_df = df[df["id"].isin(group_ids)]
-        group_time = group_df["started_at_local"].min()
-        raw_event_records.append({"event_id": f"event_{event_counter}", "sequences": group_ids, "time": group_time})
-        added_ids.update(group_ids)
-        event_counter += 1
+    # attach to df, as list of tuples for each id
+    id_to_local = defaultdict(list)
+    for g in localized_groups:
+        for sid in g:
+            id_to_local[sid].append(g)
+    df["localized_groups"] = df["id"].astype(int).map(lambda sid: id_to_local.get(sid, []))
 
-    all_ids = set(df["id"])
-    for sid in sorted(all_ids - added_ids):
-        row = df[df["id"] == sid].iloc[0]
-        raw_event_records.append({
-            "event_id": f"event_{event_counter}",
-            "sequences": [int(sid)],
-            "time": row["started_at_local"],
+    # Build a tidy event table for downstream use
+    time_col = "started_at_local" if "started_at_local" in df.columns else "started_at"
+    records = []
+    for k, seq_tuple in enumerate(localized_groups):
+        seq = list(seq_tuple)
+        time_val = df[df["id"].astype(int).isin(seq)][time_col].min()
+        records.append({
+            "event_id": f"event_{k}",
+            "sequences": seq,
+            "time": time_val,
         })
-        event_counter += 1
 
-    raw_event_table = pd.DataFrame(raw_event_records)
+    event_id_table = pd.DataFrame(records)
 
-    # Phase 2 : filter localized
-    valid_ids = filter_localized_events(raw_event_table, df, R_km, r_min_km, max_dist_km)
+    # smoke location per event, median of pair barycenters for robustness
+    def _smoke_from_pairs(seq: list[int]) -> tuple[float, float] | None:
+        pts = []
+        for i, j in itertools.combinations(sorted(seq), 2):
+            inter = projected_cones[i].intersection(projected_cones[j])
+            if inter.is_empty or inter.area <= 0:
+                continue
+            pts.append(get_centroid_latlon(inter))
+        if not pts:
+            return None
+        lats, lons = zip(*pts)
+        return float(np.median(lats)), float(np.median(lons))
 
-    final_event_records = []
-    new_event_counter = 0
-
-    for _, row in raw_event_table.iterrows():
-        seq = row["sequences"]
-        if len(seq) < 2 or row["event_id"] in valid_ids:
-            final_event_records.append({
-                "event_id": f"event_{new_event_counter}",
-                "sequences": seq,
-                "time": row["time"],
-            })
-            new_event_counter += 1
-        else:
-            for id1, id2 in itertools.combinations(seq, 2):
-                time = df[df["id"].isin([id1, id2])]["started_at_local"].min()
-                final_event_records.append({
-                    "event_id": f"event_{new_event_counter}",
-                    "sequences": [id1, id2],
-                    "time": time,
-                })
-                new_event_counter += 1
-
-    event_id_table = pd.DataFrame(final_event_records)
-
-    # Add smoke_location
-    event_id_table["smoke_location"] = event_id_table["sequences"].apply(
-        lambda seq: compute_smoke_location(seq, projected_cones)
-    )
-
-    event_id_table = event_id_table.copy()
-    event_id_table["sequence_tuple"] = event_id_table["sequences"].apply(lambda seq: tuple(sorted(seq)))
-
-    # Remove exact duplicates
-    event_id_table = event_id_table.drop_duplicates(subset="sequence_tuple").reset_index(drop=True)
-
-    sequence_tuples = event_id_table["sequence_tuple"].tolist()
-    to_drop = set()
-
-    for i, seq1 in enumerate(sequence_tuples):
-        for j, seq2 in enumerate(sequence_tuples):
-            if i != j and set(seq1).issubset(set(seq2)):
-                to_drop.add(i)
-                break  # no need to check further if already a subset
-
-    event_id_table = event_id_table.drop(index=to_drop).reset_index(drop=True)
-    event_id_table = event_id_table.drop(columns="sequence_tuple")
+    event_id_table["smoke_location"] = event_id_table["sequences"].apply(_smoke_from_pairs)
 
     return df, event_id_table
