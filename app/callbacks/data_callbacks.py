@@ -328,7 +328,25 @@ def api_watcher(
                         logger.info("Skipping update: no significant change detected")
                         return dash.no_update
 
-        return api_sequences.to_json(orient="split"), event_id_table.to_json(orient="split")
+        # Compare new and old event_id_table before returning
+        new_event_id_table_json = (
+            event_id_table.to_json(orient="split")
+            if not event_id_table.empty
+            else pd.DataFrame().to_json(orient="split")
+        )
+
+        print(event_id_table)
+
+        old_event_id_table_json = (
+            local_event_id_table.to_json(orient="split") if not local_event_id_table.empty else None
+        )
+
+        if new_event_id_table_json == old_event_id_table_json:
+            # Only api_sequences changed, keep event_id_table untouched
+            return api_sequences.to_json(orient="split"), dash.no_update
+        else:
+            # Both changed, update both
+            return api_sequences.to_json(orient="split"), new_event_id_table_json
 
     except Exception as e:
         logger.error(f"Failed to fetch sequences: {e}")
