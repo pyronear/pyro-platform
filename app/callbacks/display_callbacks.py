@@ -823,7 +823,7 @@ def update_datepicker(open_clicks, selected_date):
     ctx = dash.callback_context
     triggered_id = ctx.triggered_id
     today = date.today()
-    min_date = today - relativedelta(months=3)
+    min_date = today - relativedelta(months=12)
 
     if triggered_id == "open-datepicker-modal":
         return min_date, today, today, dash.no_update
