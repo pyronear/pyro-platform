@@ -15,7 +15,7 @@ import pandas as pd
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 from main import app
-from reolink_api_client import ReolinkAPIClient  # type: ignore
+from pyro_camera_api_client.client import PyroCameraAPIClient  # type: ignore
 from translations import translate
 
 import config as cfg
@@ -59,8 +59,8 @@ def fetch_cameras_from_pi(site_name, available_stream):
     logger.info(f"Querying Pi at: {pi_api_url}")
 
     try:
-        # Use the ReolinkAPIClient instead of the old fetch_cameras
-        client = ReolinkAPIClient(pi_api_url)
+        # Use the PyroCameraAPIClient instead of the old fetch_cameras
+        client = PyroCameraAPIClient(pi_api_url)
         data = client.get_camera_infos()  # this calls /info/camera_infos
 
         pi_cameras = {}
@@ -160,7 +160,7 @@ def start_stream(camera_name, current_camera, pi_api_url, lang):
         raise PreventUpdate
 
     # Create a new client instance safely
-    client = ReolinkAPIClient(pi_api_url)
+    client = PyroCameraAPIClient(pi_api_url)
 
     try:
         logger.info(f"[start_stream] Stoping patrol for {camera_ip}")
@@ -224,7 +224,7 @@ def control_camera(current_camera, up, down, left, right, stop, zoom_level, move
         raise PreventUpdate
 
     # Instantiate the API client
-    client = ReolinkAPIClient(pi_api_url)
+    client = PyroCameraAPIClient(pi_api_url)
 
     direction_map = {
         "move-up": "Up",
@@ -295,7 +295,7 @@ def move_by_click(click_data, current_camera, zoom_value, pi_api_url):
         raise PreventUpdate
 
     # Instantiate the API client
-    client = ReolinkAPIClient(pi_api_url)
+    client = PyroCameraAPIClient(pi_api_url)
 
     # --- 1. Extract click position ---
     x_percent = round((click_data["offsetX"] / click_data["width"]) * 100, 2)
@@ -438,7 +438,7 @@ def stream_management(
 
     # === Periodic check: is stream still alive? ===
     if triggered == "stream-check-interval" and not is_inactive_open:
-        client = ReolinkAPIClient(pi_api_url)
+        client = PyroCameraAPIClient(pi_api_url)
         result = client.is_stream_running(camera_ip)
 
         if not result.get("running", True):
@@ -468,7 +468,7 @@ def open_capture_modal(n_clicks, current_camera, api_url):
 
     try:
         # Instantiate the API client
-        client = ReolinkAPIClient(api_url)
+        client = PyroCameraAPIClient(api_url)
 
         # Capture the image using the client
         img = client.capture_image(camera_ip)
